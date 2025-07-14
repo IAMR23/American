@@ -1,0 +1,46 @@
+.fondo {
+  background-image: url('https://images.unsplash.com/photo-1578662996442-48f60103fc96?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9uZG9zJTIwbmVncm9zfGVufDB8fDB8fHww');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+}
+.container-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: 100px 100px 1fr 100px;
+  gap: 2px;
+}
+
+.item:nth-child(1),
+.item:nth-child(5) {
+  grid-column: 1 / -1;
+  justify-content: center;
+  text-align: center;
+}
+
+.item:nth-child(2) {
+  grid-row: 2 / 3;
+  grid-column: 1 / 4;
+}
+
+.item:nth-child(3) {
+  grid-column: 4 / 10;
+}
+
+.item:nth-child(4) {
+  grid-row: 2 / 3;
+  grid-column: 10 / 13;
+}
+
+.styleIt {
+  width: 90%;
+  margin: auto;
+}
+
+/* Para pantallas grandes (ej. desde 768px en adelante) */
+@media (min-width: 768px) {
+  .styleIt {
+    width: 80%;
+  }
+}

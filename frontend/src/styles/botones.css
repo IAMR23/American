@@ -1,0 +1,61 @@
+.boton-personalizado {
+      display: inline-block;
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      border: 4px solid #ccc;
+      border-radius: 20px;
+      background: linear-gradient(to bottom, #ff6666, #cc0000);
+      box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.4),
+                  0 0 5px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .boton-personalizado.verde {
+      background: linear-gradient(to bottom, #66ff66, #009900);
+    }
+
+    .boton-personalizado:hover {
+      transform: scale(1.05);
+    }
+
+
+     .boton-espejo {
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(to bottom, #f0f0f0, #c0c0c0, #f0f0f0);
+      border: 1px solid #999;
+      border-radius: 12px;
+      padding: 15px 40px;
+      box-shadow: 
+        inset 0 1px 2px rgba(255,255,255,0.6),
+        0 4px 8px rgba(0,0,0,0.5);
+      text-shadow: 0 1px 1px #000;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease-in-out;
+      cursor: pointer;
+    }
+
+    .boton-espejo::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 50%;
+      width: 100%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.5), transparent);
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+
+    .boton-espejo:hover {
+      transform: scale(1.05);
+      box-shadow: 
+        inset 0 1px 4px rgba(255,255,255,0.7),
+        0 6px 10px rgba(0,0,0,0.6);
+    }

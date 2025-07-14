@@ -1,0 +1,15 @@
+.marquee {
+  animation: scroll 20s linear infinite;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
