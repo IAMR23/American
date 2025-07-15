@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-   allowedHosts: ['.ngrok-free.app'], 
+   allowedHosts: ['.ngrok-free.app' , 'american-karaoke.com', 'www.american-karaoke.com'], 
     host: true, // 👈 esto permite el acceso desde tu red local
     port: 5173  // puedes dejarlo así o cambiarlo
   }
