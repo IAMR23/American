@@ -364,7 +364,12 @@ export default function Inicial() {
               className="song-icon position-relative"
               style={{ cursor: "pointer" }}
             >
-              <FaCompactDisc size={40} className="mb-1 text-primary" />
+              <FaCompactDisc
+                size={40}
+                className={`mb-1 ${
+                  index === currentIndex ? "song-playing" : "text-primary"
+                }`}
+              />
               <div className="custom-tooltip">
                 <strong>{cancion.titulo}</strong>
                 <br />
