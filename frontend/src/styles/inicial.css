@@ -1,3 +1,8 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
 .fondo {
   background-image: url('https://images.unsplash.com/photo-1578662996442-48f60103fc96?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Zm9uZG9zJTIwbmVncm9zfGVufDB8fDB8fHww');
   background-size: cover;
@@ -43,4 +48,7 @@
   .styleIt {
     width: 80%;
   }
+}
+.fullscreen-container {
+  min-height: 100vh;
 }

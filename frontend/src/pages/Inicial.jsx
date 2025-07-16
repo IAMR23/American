@@ -21,6 +21,7 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import PublicacionesPage from "./PublicacionesPage";
 import PlantTest from "../components/PlanTest";
+import Carrousel from "../components/Carrousel";
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -113,6 +114,13 @@ export default function Inicial() {
       nuevaCola.splice(currentIndex + 1, 0, nuevaCancion);
       return nuevaCola;
     });
+  };
+
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    setUserId(null);
+    navigate("/"); // O recarga la página si prefieres
+    window.location.reload(); // Fuerza recarga total si quieres limpiar estados
   };
 
   const dirigir = (ubicacion) => {
@@ -233,6 +241,11 @@ export default function Inicial() {
     }
   };
 
+  const handlePlaySong = (index) => {
+    setCurrentIndex(index);
+    setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
+  };
+
   return (
     <>
       <div className="fondo container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
@@ -331,6 +344,13 @@ export default function Inicial() {
             >
               Galería Otros
             </button>
+
+            <button
+              className="boton-personalizado rojo"
+              onClick={() => cerrarSesion()}
+            >
+              Cerrar Sesión
+            </button>
           </div>
         </div>
 
@@ -355,11 +375,12 @@ export default function Inicial() {
         </div>
 
         <AnunciosVisibles />
-        <GaleriaYoutube
+        <Carrousel
           setCola={setCola}
           cola={cola}
           cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
           onAgregarCancion={insertarCancion}
+          onPlaySong={handlePlaySong} // <-- Nuevo prop
         />
       </div>
     </>

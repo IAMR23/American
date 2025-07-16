@@ -9,7 +9,15 @@ export default function Sidebar() {
           className="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start"
           id="menu"
         >
-                    <li>
+                   <li>
+            <Link to="/" className="nav-link px-0 align-middle">
+              <i className="fs-4 bi-table"></i>
+              <span className="ms-1 d-none d-sm-inline text-light">
+                American Karaoke
+              </span>
+            </Link>
+          </li>
+          <li>
             <Link to="/promociones" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
@@ -66,15 +74,13 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
-            <li>
+          <li>
             <Link to="/productos" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
-              <span className="ms-1 d-none d-sm-inline text-light">
-                Planes
-              </span>
+              <span className="ms-1 d-none d-sm-inline text-light">Planes</span>
             </Link>
           </li>
-        </ul> 
+        </ul>
       </div>
     </div>
   );

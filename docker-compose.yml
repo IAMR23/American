@@ -19,7 +19,6 @@ services:
       - PAYPAL_API=${PAYPAL_API}
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
-      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - mongo
 
@@ -28,6 +27,8 @@ services:
     container_name: frontend
     ports:
       - "5173:5173"
+    environment : 
+      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend
 

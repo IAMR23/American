@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 
-import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Dashboard from "./pages/Dashboard";
 import LoginForm from "./components/LoginForm";
@@ -51,7 +50,6 @@ function App() {
       <BrowserRouter> 
         <div>
           {/* 🔹 Pasamos auth y setAuth a Navbar para manejar autenticación */}
-          <Navbar auth={auth} setAuth={setAuth} />
           <main className="flex-grow w-full ">
             <Routes>
               <Route path="/" element={<SidebarLayout />}>

@@ -1,0 +1,28 @@
+#videoCarousel {
+  position: relative;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  background-size: 60% 60%;
+}
+
+.carousel-control-prev.boton-externo {
+  left: -50px;
+}
+
+.carousel-control-next.boton-externo {
+  right: -50px;
+}
