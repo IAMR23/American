@@ -1,9 +1,20 @@
 const Cancion = require("../models/Cancion");
+const mongoose = require("mongoose");
 
 const crearCancion = async (req, res) => {
   try {
-    const { titulo, artista, generos, videoUrl } = req.body;
-    const nuevaCancion = new Cancion({ titulo, artista, generos, videoUrl });
+    const { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal } = req.body;
+
+    const nuevaCancion = new Cancion({
+      numero,
+      titulo,
+      artista,
+      generos,
+      videoUrl,
+      imagenUrl,
+      visiblePrincipal: visiblePrincipal || false, // por defecto false si no se envía
+    });
+
     await nuevaCancion.save();
     res.status(201).json(nuevaCancion);
   } catch (error) {
@@ -13,17 +24,29 @@ const crearCancion = async (req, res) => {
 
 const listarCanciones = async (req, res) => {
   try {
-    const canciones = await Cancion.find().populate("generos");
+    const canciones = await Cancion.find().sort({ titulo: 1 }); // 1 para ascendente
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+const listarCancionesArtista = async (req, res) => {
+  try {
+    const canciones = await Cancion.find().sort({ artista: 1 }); // 1 para ascendente
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 const obtenerCancion = async (req, res) => {
   try {
     const cancion = await Cancion.findById(req.params.id).populate("generos");
-    if (!cancion) return res.status(404).json({ error: "Canción no encontrada" });
+    if (!cancion)
+      return res.status(404).json({ error: "Canción no encontrada" });
     res.json(cancion);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -32,13 +55,17 @@ const obtenerCancion = async (req, res) => {
 
 const actualizarCancion = async (req, res) => {
   try {
-    const { titulo, artista, generos, videoUrl } = req.body;
+    const { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal } = req.body;
+
     const cancionActualizada = await Cancion.findByIdAndUpdate(
       req.params.id,
-      { titulo, artista, generos, videoUrl },
+      { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal },
       { new: true }
     );
-    if (!cancionActualizada) return res.status(404).json({ error: "Canción no encontrada" });
+
+    if (!cancionActualizada)
+      return res.status(404).json({ error: "Canción no encontrada" });
+
     res.json(cancionActualizada);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -48,14 +75,14 @@ const actualizarCancion = async (req, res) => {
 const eliminarCancion = async (req, res) => {
   try {
     const cancionEliminada = await Cancion.findByIdAndDelete(req.params.id);
-    if (!cancionEliminada) return res.status(404).json({ error: "Canción no encontrada" });
+    if (!cancionEliminada)
+      return res.status(404).json({ error: "Canción no encontrada" });
+
     res.json({ message: "Canción eliminada correctamente" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
-const mongoose = require("mongoose");
 
 const filtrarCanciones = async (req, res) => {
   try {
@@ -64,7 +91,7 @@ const filtrarCanciones = async (req, res) => {
     const pipeline = [
       {
         $lookup: {
-          from: "generos", // nombre de la colección en MongoDB
+          from: "generos",
           localField: "generos",
           foreignField: "_id",
           as: "generos",
@@ -74,7 +101,6 @@ const filtrarCanciones = async (req, res) => {
 
     if (busqueda) {
       const regex = new RegExp(busqueda, "i");
-
       pipeline.push({
         $match: {
           $or: [
@@ -86,11 +112,8 @@ const filtrarCanciones = async (req, res) => {
       });
     }
 
-    // Ordenar por fecha de creación
     pipeline.push({
-      $sort: {
-        createdAt: ordenFecha === "asc" ? 1 : -1,
-      },
+      $sort: { createdAt: ordenFecha === "asc" ? 1 : -1 },
     });
 
     const canciones = await mongoose.model("Cancion").aggregate(pipeline);
@@ -102,13 +125,10 @@ const filtrarCanciones = async (req, res) => {
   }
 };
 
-// GET /song?search=texto&page=1&limit=20
-// Backend: controlador para /song/search
 const getCancionesPaginadas = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-
   const busqueda = req.query.busqueda || "";
   const ordenFecha = req.query.ordenFecha === "asc" ? 1 : -1;
 
@@ -116,14 +136,13 @@ const getCancionesPaginadas = async (req, res) => {
     $or: [
       { titulo: { $regex: busqueda, $options: "i" } },
       { artista: { $regex: busqueda, $options: "i" } },
-      { "generos.nombre": { $regex: busqueda, $options: "i" } }, // si quieres buscar por género
     ],
   };
 
   try {
     const canciones = await Cancion.find(query)
       .populate("generos")
-      .sort({ fecha: ordenFecha })
+      .sort({ createdAt: ordenFecha })
       .skip(skip)
       .limit(limit);
 
@@ -141,6 +160,15 @@ const getCancionesPaginadas = async (req, res) => {
   }
 };
 
+// Controlador para canciones visibles en principal
+const listarCancionesVisibles = async (req, res) => {
+  try {
+    const cancionesVisibles = await Cancion.find({ visiblePrincipal: true }).populate("generos");
+    res.json(cancionesVisibles);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 
 
@@ -150,6 +178,8 @@ module.exports = {
   obtenerCancion,
   actualizarCancion,
   eliminarCancion,
-  filtrarCanciones , 
-  getCancionesPaginadas
+  filtrarCanciones,
+  getCancionesPaginadas,
+  listarCancionesVisibles, 
+  listarCancionesArtista
 };
