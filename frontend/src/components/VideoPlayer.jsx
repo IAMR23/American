@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
+import "../styles/react-player.css";
 
-export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }) {
+export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex ,  fullscreenRequested = false,
+  onFullscreenHandled }) {
   const playlist = cola || [];
 
   const [showNextMessage, setShowNextMessage] = useState(false);
@@ -12,7 +14,20 @@ export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }
 
   const currentVideo = playlist[currentIndex];
 
-  // Previene errores si currentIndex está fuera de rango
+  useEffect(() => {
+  if (fullscreenRequested) {
+    const el = containerRef.current;
+    if (el) {
+      if (!document.fullscreenElement) {
+        el.requestFullscreen?.();
+      }
+    }
+    // Avisar al padre que ya manejó el fullscreen para no repetir
+    if (onFullscreenHandled) onFullscreenHandled();
+  }
+}, [fullscreenRequested, onFullscreenHandled]);
+
+
   useEffect(() => {
     if (currentIndex >= playlist.length) {
       setCurrentIndex(0);
@@ -74,7 +89,6 @@ export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }
     }
   };
 
-  // Si no hay canciones
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
       <div
@@ -91,7 +105,6 @@ export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }
     );
   }
 
-  // Si la canción actual no tiene videoUrl
   if (!currentVideo || !currentVideo.videoUrl) {
     return (
       <div
@@ -115,22 +128,32 @@ export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }
         margin: "auto",
         position: "relative",
         background: "#000",
+        width: "100%",
+        height: isFullscreen ? "100vh" : "auto",
       }}
     >
-      {isFullscreen && (
-        <p style={{ fontWeight: "bold", textAlign: "center", color: "white" , justifyContent : "center" }}>
+      {/* {!isFullscreen && (
+        <p
+          style={{
+            fontWeight: "bold",
+            textAlign: "center",
+            color: "white",
+            justifyContent: "center",
+          }}
+        >
           💡 Mensaje del administrador: ¡Recuerda hidratarte!
         </p>
-      )}
+      )} */}
 
       <div style={{ position: "relative" }}>
         <ReactPlayer
+          className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
           controls
           playing
           width="100%"
-          height={isFullscreen ? "100vh" : "500px"}
+          height={isFullscreen ? "100vh" : "85vh"}
           onProgress={handleProgress}
           onEnded={nextVideo}
           config={{
@@ -199,17 +222,20 @@ export default function VideoPlayer({ cola = [], currentIndex, setCurrentIndex }
   );
 }
 
-// Estilos reutilizables para botones de navegación
 const navButtonStyle = (side, disabled) => ({
   position: "absolute",
   top: "50%",
   [side]: "10px",
   transform: "translateY(-50%)",
-  fontSize: "30px",
+  width: "50px",
+  height: "50px",
   background: "rgba(0,0,0,0.5)",
   color: "white",
   border: "none",
   borderRadius: "50%",
-  padding: "10px",
+  fontSize: "24px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   cursor: disabled ? "not-allowed" : "pointer",
 });

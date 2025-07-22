@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-    const API_URL2 = import.meta.env.VITE_API_URL;
-
-
-
+const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
 const GENEROS_URL = `${API_URL2}/genero`;
 
@@ -12,10 +9,13 @@ export default function CancionCRUD() {
   const [canciones, setCanciones] = useState([]);
   const [generos, setGeneros] = useState([]);
   const [form, setForm] = useState({
+    numero: "",
     titulo: "",
     artista: "",
-    generos: [],
+    generos: "",
     videoUrl: "",
+    imagenUrl: "",
+    visiblePrincipal: false, // Nuevo campo agregado
   });
   const [editId, setEditId] = useState(null);
 
@@ -36,7 +36,7 @@ export default function CancionCRUD() {
   const fetchGeneros = async () => {
     try {
       const res = await axios.get(GENEROS_URL, { headers });
-      setGeneros(res.data.genero); // Asumes que viene como { genero: [...] }
+      setGeneros(res.data.genero || []);
     } catch (error) {
       console.error("Error al obtener géneros:", error);
     }
@@ -51,18 +51,24 @@ export default function CancionCRUD() {
     if (cancion) {
       setEditId(cancion._id);
       setForm({
+        numero: cancion.numero || "",
         titulo: cancion.titulo,
         artista: cancion.artista,
-        generos: cancion.generos.map((g) => g._id),
+        generos: cancion.generos?._id || "",
         videoUrl: cancion.videoUrl,
+        imagenUrl: cancion.imagenUrl || "",
+        visiblePrincipal: cancion.visiblePrincipal || false,
       });
     } else {
       setEditId(null);
       setForm({
+        numero: "",
         titulo: "",
         artista: "",
-        generos: [],
+        generos: "",
         videoUrl: "",
+        imagenUrl: "",
+        visiblePrincipal: false,
       });
     }
     new window.bootstrap.Modal(document.getElementById("cancionModal")).show();
@@ -76,7 +82,15 @@ export default function CancionCRUD() {
       } else {
         await axios.post(API_URL, form, { headers });
       }
-      setForm({ titulo: "", artista: "", generos: [], videoUrl: "" });
+      setForm({
+        numero: "",
+        titulo: "",
+        artista: "",
+        generos: "",
+        videoUrl: "",
+        imagenUrl: "",
+        visiblePrincipal: false,
+      });
       setEditId(null);
       fetchCanciones();
       document.getElementById("cerrarModalCancion").click();
@@ -109,24 +123,40 @@ export default function CancionCRUD() {
       <table className="table table-striped table-bordered">
         <thead className="thead-dark">
           <tr>
+            <th>#</th>
             <th>Título</th>
             <th>Artista</th>
-            <th>Géneros</th>
+            <th>Género</th>
             <th>Video</th>
+            <th>Imagen</th>
+            <th>Visible Principal</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {canciones.map((cancion) => (
             <tr key={cancion._id}>
+              <td>{cancion.numero}</td>
               <td>{cancion.titulo}</td>
               <td>{cancion.artista}</td>
-              <td>{cancion.generos.map((g) => g.nombre).join(", ")}</td>
+              <td>{cancion.generos?.nombre || "Sin género"}</td>
               <td>
                 <a href={cancion.videoUrl} target="_blank" rel="noreferrer">
                   Ver Video
                 </a>
               </td>
+              <td>
+                {cancion.imagenUrl ? (
+                  <img
+                    src={cancion.imagenUrl}
+                    alt={cancion.titulo}
+                    style={{ width: "60px", height: "auto" }}
+                  />
+                ) : (
+                  "Sin imagen"
+                )}
+              </td>
+              <td>{cancion.visiblePrincipal ? "Sí" : "No"}</td>
               <td>
                 <div className="d-flex gap-2">
                   <button
@@ -164,6 +194,18 @@ export default function CancionCRUD() {
               />
             </div>
             <div className="modal-body">
+              {/* Campos del formulario */}
+              <div className="mb-3">
+                <label className="form-label">Número</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={form.numero}
+                  onChange={(e) =>
+                    setForm({ ...form, numero: parseInt(e.target.value) || "" })
+                  }
+                />
+              </div>
               <div className="mb-3">
                 <label className="form-label">Título</label>
                 <input
@@ -187,19 +229,15 @@ export default function CancionCRUD() {
                 />
               </div>
               <div className="mb-3">
-                <label className="form-label">Géneros</label>
+                <label className="form-label">Género</label>
                 <select
-                  multiple
                   className="form-select"
                   value={form.generos}
-                  onChange={(e) => {
-                    const selected = Array.from(
-                      e.target.selectedOptions,
-                      (option) => option.value
-                    );
-                    setForm({ ...form, generos: selected });
-                  }}
+                  onChange={(e) =>
+                    setForm({ ...form, generos: e.target.value })
+                  }
                 >
+                  <option value="">Seleccionar género</option>
                   {generos.map((g) => (
                     <option key={g._id} value={g._id}>
                       {g.nombre}
@@ -218,7 +256,34 @@ export default function CancionCRUD() {
                   }
                 />
               </div>
+              <div className="mb-3">
+                <label className="form-label">Imagen URL</label>
+                <input
+                  type="url"
+                  className="form-control"
+                  value={form.imagenUrl}
+                  onChange={(e) =>
+                    setForm({ ...form, imagenUrl: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="mb-3 form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="visiblePrincipal"
+                  checked={form.visiblePrincipal}
+                  onChange={(e) =>
+                    setForm({ ...form, visiblePrincipal: e.target.checked })
+                  }
+                />
+                <label className="form-check-label" htmlFor="visiblePrincipal">
+                  ¿Visible en principal?
+                </label>
+              </div>
             </div>
+
             <div className="modal-footer">
               <button type="submit" className="btn btn-primary">
                 {editId ? "Actualizar" : "Crear"}

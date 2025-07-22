@@ -153,124 +153,121 @@ export default function Carrousel({
           data-bs-ride="carousel"
         >
           <div className="carousel-inner">
-            {/* Dividimos los videos en grupos de 4 */}
-            {Array.from({ length: Math.ceil(videos.length / 4) }).map(
-              (_, groupIndex) => (
-                <div
-                  key={groupIndex}
-                  className={`carousel-item ${
-                    groupIndex === 0 ? "active" : ""
-                  }`}
-                >
-                  <div className="row mx-0">
-                    {videos
-                      .slice(groupIndex * 4, (groupIndex + 1) * 4)
-                      .map((video) => {
+            {Array.from({ length: Math.ceil(videos.length / 6) }).map(
+              (_, groupIndex) => {
+                const videosDelGrupo = videos.slice(
+                  groupIndex * 6,
+                  (groupIndex + 1) * 6
+                );
+
+                const placeholders = 6 - videosDelGrupo.length;
+
+                return (
+                  <div
+                    key={groupIndex}
+                    className={`carousel-item ${
+                      groupIndex === 0 ? "active" : ""
+                    }`}
+                  >
+                    <div className="row mx-0">
+                      {videosDelGrupo.map((video) => {
                         const thumbnail = getYoutubeThumbnail(video.videoUrl);
-                        const indexEnCola = cola.findIndex(
-                          (c) => c._id === video._id
-                        );
+
                         return (
                           <div
                             key={video._id}
-                            className="col-12 col-sm-6 col-md-4 col-lg-3 mb-2"
-                            style={{ cursor: "pointer" }}
+                            className="col-2 mb-2 video-card"
+                            style={{
+                              position: "relative",
+                              cursor: "pointer",
+                              padding: "5px",
+                            }}
                           >
                             <img
                               src={thumbnail}
                               alt={`Miniatura de ${video.titulo}`}
                               className="img-fluid rounded"
                               onClick={() => setVideoSeleccionado(video)}
+                              style={{
+                                width: "100%",
+                                height: "200px",
+                                objectFit: "cover",
+                              }}
                             />
-                            <div className="d-flex flex-column">
+
+                            <button
+                              className="video-btn heart-btn"
+                              onClick={() => agregarAFavoritos(video._id)}
+                              title="Agregar a favoritos"
+                              disabled={!isAuthenticated}
+                            >
+                              <BsHeart size={20} />
+                            </button>
+
+                            <button
+                              className="video-btn list-btn"
+                              onClick={() => agregarACola(video._id)}
+                              title="Agregar a cola"
+                              disabled={!isAuthenticated}
+                            >
+                              <BsList size={20} />
+                            </button>
+
+                            <button
+                              className="video-btn play-btn"
+                              onClick={async () => {
+                                let index = cola.findIndex(
+                                  (c) => c._id === video._id
+                                );
+                                if (index === -1) {
+                                  if (onAgregarCancion) {
+                                    await onAgregarCancion(video._id);
+                                    index = cola.length;
+                                  }
+                                }
+                                if (onPlaySong && index !== -1) {
+                                  onPlaySong(index);
+                                } else {
+                                  alert("No se pudo reproducir la canción.");
+                                }
+                              }}
+                              title="Reproducir ahora"
+                            >
+                              <FaPlay size={24} />
+                            </button>
+
+                            <div className="d-flex flex-column mt-2">
                               <span className="fw-bold text-light">
                                 {video.titulo}
                               </span>
-                              <div className="d-flex justify-content-between align-items-center text-light">
-                                <small>
-                                  {video.artista} -{" "}
-                                  {(video.generos || [])
-                                    .map((g) => g.nombre)
-                                    .join(", ")}
-                                </small>
-                                <div className="d-flex gap-1">
-                                  <button
-                                    className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center p-1"
-                                    onClick={() => agregarAFavoritos(video._id)}
-                                    title="Agregar a favoritos"
-                                    disabled={!isAuthenticated}
-                                  >
-                                    <BsHeart size={18} />
-                                  </button>
-                                  <button
-                                    className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center p-1"
-                                    onClick={() => agregarACola(video._id)}
-                                    title="Agregar a cola"
-                                    disabled={!isAuthenticated}
-                                  >
-                                    <BsList size={18} />
-                                  </button>
-                                  <button
-                                    className="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center p-1"
-                                    onClick={() => handleOpenModal(video._id)}
-                                    title="Agregar a playlist"
-                                    disabled={!isAuthenticated}
-                                  >
-                                    <FaPlus size={18} />
-                                  </button>
-
-                                  <button
-                                    className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center p-1 mb-1"
-                                    onClick={async () => {
-                                      try {
-                                        let index = cola.findIndex(
-                                          (c) => c._id === video._id
-                                        );
-
-                                        if (index === -1) {
-                                          // Si no está en la cola, la agregamos
-                                          if (onAgregarCancion) {
-                                            await onAgregarCancion(video._id);
-                                            // Luego actualizamos el índice (última posición)
-                                            index = cola.length; // Asumiendo que se agrega al final
-                                          }
-                                        }
-
-                                        if (onPlaySong && index !== -1) {
-                                          onPlaySong(index);
-                                        } else {
-                                          alert(
-                                            "No se pudo reproducir la canción."
-                                          );
-                                        }
-                                      } catch (error) {
-                                        console.error(
-                                          "Error al reproducir la canción:",
-                                          error
-                                        );
-                                        alert(
-                                          "Ocurrió un error al reproducir la canción."
-                                        );
-                                      }
-                                    }}
-                                    title="Reproducir ahora"
-                                  >
-                                    <FaPlay size={18} />
-                                  </button>
-                                </div>
-                              </div>
+                              <small className="text-light">
+                                {video.artista} -{" "}
+                                {video.generos?.nombre || "Sin género"}
+                              </small>
                             </div>
                           </div>
                         );
                       })}
+
+                      {/* Placeholders invisibles */}
+                      {Array.from({ length: placeholders }).map((_, i) => (
+                        <div
+                          key={`placeholder-${i}`}
+                          className="col-2 mb-2"
+                          style={{
+                            visibility: "hidden",
+                            height: "200px",
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )
+                );
+              }
             )}
           </div>
 
-          {/* Controles del carrusel */}
-          {videos.length > 4 && (
+          {videos.length > 5 && (
             <>
               <button
                 className="carousel-control-prev"
@@ -299,19 +296,17 @@ export default function Carrousel({
             </>
           )}
         </div>
-      </div>
 
-      {/* Modal solo si está autenticado */}
-      {isAuthenticated && (
-        <PlaylistSelectorModal
-          show={showPlaylistModal}
-          onClose={() => setShowPlaylistModal(false)}
-          userId={userId}
-          songId={selectedSongId}
-          onAddToPlaylistSuccess={() => {
-          }}
-        />
-      )}
+        {isAuthenticated && (
+          <PlaylistSelectorModal
+            show={showPlaylistModal}
+            onClose={() => setShowPlaylistModal(false)}
+            userId={userId}
+            songId={selectedSongId}
+            onAddToPlaylistSuccess={() => {}}
+          />
+        )}
+      </div>
     </div>
   );
 }

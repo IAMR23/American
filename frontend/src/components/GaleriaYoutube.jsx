@@ -4,9 +4,10 @@ import { BsHeart, BsList } from "react-icons/bs";
 import { FaPlus } from "react-icons/fa";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import { jwtDecode } from "jwt-decode";
-import { API_URL } from "../config"
+import { API_URL } from "../config";
 import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
+import "../styles/Carrousel.css";
 const SONG_URL = `${API_URL}/song`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
@@ -142,67 +143,67 @@ export default function GaleriaYoutube({
   };
 
   return (
-    <div className="">
-      <div className="flex flex-wrap items-end mb-4">
-        <input
-          type="text"
-          name="busqueda"
-          placeholder="Buscar por título, artista o género"
-          value={filtros.busqueda}
-          onChange={handleChange}
-          className="p-2 m-2 border rounded w-full md:w-64"
-        />
-      </div>
-
-      <div className="row">
+    <div className="" style={{ height: "100vh" }}>
+      <div className="d-flex flex-wrap justify-content-center gap-2">
         {videos.map((video) => {
-          const thumbnail = getYoutubeThumbnail(video.videoUrl);
           return (
             <div
               key={video._id}
-              className="col-12 col-sm-6 col-md-4 col-lg-3 mb-2"
-              style={{ cursor: "pointer" }}
+              className=" bg-dark col-12 col-sm-6 col-md-4 col-lg-3"
+              style={{
+                cursor: "pointer",
+                position: "relative",
+                height: "200px",
+                flex: "0 0 calc((100% / 6) - 8px)", // 6 tarjetas menos gap (gap-2 ~ 8px)
+                maxWidth: "calc((100% / 6) - 8px)", // limita el ancho máximo
+                borderRadius: "0.25rem",
+                overflow: "hidden",
+              }}
             >
-              <img
-                src={thumbnail}
-                alt={`Miniatura de ${video.titulo}`}
-                className="img-fluid rounded"
-                onClick={() => setVideoSeleccionado(video)}
-              />
-              <div className="d-flex flex-column">
+              <div className="thumbnail-container ">
+                {/* Botón Corazón (Superior Izquierdo) */}
+                <button
+                  className="video-btn heart-btn"
+                  onClick={() => agregarAFavoritos(video._id)}
+                  title="Agregar a favoritos"
+                  disabled={!isAuthenticated}
+                >
+                  <BsHeart size={20} />
+                </button>
+
+                {/* Botón Cola (Superior Derecho) */}
+                <button
+                  className="video-btn list-btn"
+                  onClick={() => agregarACola(video._id)}
+                  title="Agregar a cola"
+                  disabled={!isAuthenticated}
+                >
+                  <BsList size={20} />
+                </button>
+
+                {/* Botón Play (Centro) */}
+                <button
+                  className="video-btn play-btn"
+                  onClick={() => setVideoSeleccionado(video)}
+                >
+                  ▶
+                </button>
+              </div>
+
+              <div className="d-flex flex-column justify-content-center align-items-center">
                 <span className="fw-bold text-light">{video.titulo}</span>
-                <div className="d-flex justify-content-between align-items-center text-light">
-                  <small>
-                    {video.artista} -{" "}
-                    {(video.generos || []).map((g) => g.nombre).join(", ")}
-                  </small>
-                  <div className="d-flex gap-1">
-                    <button
-                      className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center p-1"
-                      onClick={() => agregarAFavoritos(video._id)}
-                      title="Agregar a favoritos"
-                      disabled={!isAuthenticated}
-                    >
-                      <BsHeart size={18} />
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center p-1"
-                      onClick={() => agregarACola(video._id)}
-                      title="Agregar a cola"
-                      disabled={!isAuthenticated}
-                    >
-                      <BsList size={18} />
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center p-1"
-                      onClick={() => handleOpenModal(video._id)}
-                      title="Agregar a playlist"
-                      disabled={!isAuthenticated}
-                    >
-                      <FaPlus size={18} />
-                    </button>
-                  </div>
-                </div>
+                <small className="text-light">
+                  {video.artista} - {video.generos?.nombre}
+                </small>
+
+                {/* <button
+                  className="btn btn-sm btn-outline-light mt-1"
+                  onClick={() => handleOpenModal(video._id)}
+                  title="Agregar a playlist"
+                  disabled={!isAuthenticated}
+                >
+                  <FaPlus size={18} /> Playlist
+                </button> */}
               </div>
             </div>
           );

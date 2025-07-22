@@ -5,6 +5,7 @@ import AnunciosVisibles from "../components/AnunciosVisibles";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import "../styles/botones.css";
+import "../styles/button.css";
 import "../styles/disco.css";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistModal from "../components/PlaylistSelector";
@@ -22,6 +23,7 @@ import { getToken } from "../utils/auth";
 import PublicacionesPage from "./PublicacionesPage";
 import PlantTest from "../components/PlanTest";
 import Carrousel from "../components/Carrousel";
+import BuscadorTabla from "../components/BuscadorTabla";
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -42,12 +44,13 @@ export default function Inicial() {
     switch (seccionActiva) {
       case "buscador":
         return (
-          <BuscadorCanciones
-            setCola={setCola}
-            cola={cola}
-            cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
-            onAgregarCancion={insertarCancion}
-          />
+          // <BuscadorCanciones
+          //   setCola={setCola}
+          //   cola={cola}
+          //   cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+          //   onAgregarCancion={insertarCancion}
+          // />
+          <BuscadorTabla />
         );
       case "playlist":
         return (
@@ -57,7 +60,6 @@ export default function Inicial() {
               setSelectedPlaylist(playlist);
               cargarPlaylistACola(playlist._id);
               setSeccionActiva("video"); // 👈 esto lleva al VideoPlayer
-
               setShowModal(false);
             }}
             onAdd={handleAddPlaylist}
@@ -98,6 +100,8 @@ export default function Inicial() {
             cola={cola}
             currentIndex={currentIndex}
             setCurrentIndex={setCurrentIndex}
+            fullscreenRequested={shouldFullscreen}
+            onFullscreenHandled={() => setShouldFullscreen(false)} // callback para resetear
           />
         );
     }
@@ -241,9 +245,12 @@ export default function Inicial() {
     }
   };
 
+  const [shouldFullscreen, setShouldFullscreen] = useState(false);
+
   const handlePlaySong = (index) => {
     setCurrentIndex(index);
     setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
+    setShouldFullscreen(true); // activar fullscreen en VideoPlayer
   };
 
   return (
@@ -271,40 +278,43 @@ export default function Inicial() {
 
         <div className="d-flex flex-row justify-content-center align-items-center w-100 flex-wrap gap-2">
           <div className="d-flex flex-row flex-md-column flex-wrap justify-content-center gap-1">
+            {getToken() && (
+              <button className="boton2" onClick={() => navigate("/dashboard")}>
+                Dashboard
+              </button>
+            )}
             <button
-              className="boton-personalizado rojo"
+              className="boton1"
               onClick={() => setSeccionActiva("buscador")}
             >
               Buscador
             </button>
             <button
-              className="boton-personalizado verde"
+              className="boton2"
               onClick={() => setSeccionActiva("playlist")}
             >
               PlayList
             </button>
-            <button className="boton-personalizado rojo">Lo más cantado</button>
+            <button className="boton3">Lo más cantado</button>
             <button
-              className="boton-personalizado verde"
+              className="boton4"
               onClick={() => setSeccionActiva("favoritos")}
             >
               Favoritos
             </button>
             <button
               onClick={() => navigate("/listaCanciones")}
-              className="boton-personalizado rojo"
+              className="boton5"
             >
               Lista de Canciones
             </button>
             <button
-              className="boton-personalizado verde"
+              className="boton6"
               onClick={() => setSeccionActiva("sugerirCanciones")}
             >
               Sugerir Canciones
             </button>
-            <button className="boton-personalizado rojo">
-              Scanner a Celular
-            </button>
+            <button className="boton7">Scanner a Celular</button>
           </div>
 
           <div className="flex-grow-1"> {renderContenido()}</div>
@@ -312,43 +322,40 @@ export default function Inicial() {
           <div className="d-flex flex-row flex-md-column flex-wrap justify-content-center gap-2">
             {!getToken() && (
               <button
-                className="boton-personalizado rojo"
+                className="boton8"
                 onClick={() => setSeccionActiva("ingresar")}
               >
                 Ingresar
               </button>
             )}
             <button
-              className="boton-personalizado verde"
+              className="boton9"
               onClick={() => setSeccionActiva("listadoPdf")}
             >
               Listado PDF
             </button>
 
-            <button className="boton-personalizado rojo">Calificación</button>
+            <button className="boton10">Calificación</button>
             <button
-              className="boton-personalizado verde"
+              className="boton9"
               onClick={() => setSeccionActiva("suscribir")}
             >
               Suscribir
             </button>
             <button
-              className="boton-personalizado rojo"
+              className="boton1"
               onClick={() => setSeccionActiva("ayuda")}
             >
               Ayuda
             </button>
             <button
-              className="boton-personalizado verde"
+              className="boton2"
               onClick={() => setSeccionActiva("galeriaOtros")}
             >
               Galería Otros
             </button>
 
-            <button
-              className="boton-personalizado rojo"
-              onClick={() => cerrarSesion()}
-            >
+            <button className="boton3" onClick={() => cerrarSesion()}>
               Cerrar Sesión
             </button>
           </div>

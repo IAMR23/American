@@ -1,0 +1,8 @@
+/* styles/react-player.css */
+
+.react-player iframe {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background-color: black; /* opcional, para evitar parpadeos al cargar */
+}

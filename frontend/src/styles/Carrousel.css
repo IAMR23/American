@@ -4,15 +4,17 @@
 
 .carousel-control-prev,
 .carousel-control-next {
-  position: absolute;
-  top: 50%;
+  position: absolute; /* cambiar relative por absolute */
+  top:150%;
   transform: translateY(-50%);
   width: 40px;
   height: 40px;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(230, 11, 11, 0.5);
   border-radius: 50%;
   z-index: 10;
+  
 }
+
 
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
@@ -26,3 +28,68 @@
 .carousel-control-next.boton-externo {
   right: -50px;
 }
+
+
+.video-btn {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  color: white;
+  padding: 8px;
+  border-radius: 50%;
+  z-index: 10;
+  transition: background 0.3s ease;
+}
+
+.video-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.heart-btn,
+.list-btn {
+  position: absolute;    /* necesario para top/left/right */
+  width: 35px;           /* tamaño fijo */
+  height: 35px;          /* igual que ancho para círculo */
+  border-radius: 50%;    /* para que sea circular */
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid white;
+  color: white;
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  cursor: pointer;
+}
+
+.heart-btn {
+  top: 10px;
+  left: 10px;
+}
+
+.list-btn {
+  top: 10px;
+  right: 10px;
+}
+
+
+.play-btn {
+  position: absolute; /* importante para que top/left funcionen */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  background: rgba(0, 0, 0, 0.5);
+  
+  width: 50px;      /* ancho fijo */
+  height: 50px;     /* alto fijo igual al ancho */
+  border-radius: 50%; /* hace que sea circular */
+  
+  display: flex;           /* para centrar el contenido */
+  justify-content: center; /* horizontal */
+  align-items: center;     /* vertical */
+  
+  color: white;  /* color del texto/icono */
+  cursor: pointer;
+}
+

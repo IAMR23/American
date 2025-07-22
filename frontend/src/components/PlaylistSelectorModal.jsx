@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { getToken } from "../utils/auth";
+import { API_URL } from "../config";
 
 export default function PlaylistSelectorModal({ 
   userId, 
@@ -26,6 +27,7 @@ export default function PlaylistSelectorModal({
         const res = await axios.get(`${API_URL}/t/playlist/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log(res.data)
         setPlaylists(res.data || []);
       } catch (err) {
         setError("Error cargando playlists");
