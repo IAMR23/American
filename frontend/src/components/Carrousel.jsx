@@ -9,7 +9,7 @@ import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import "../styles/Carrousel.css";
 
-const SONG_URL = `${API_URL}/song`;
+const SONG_URL = `${API_URL}/song/visibles`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
 export default function Carrousel({

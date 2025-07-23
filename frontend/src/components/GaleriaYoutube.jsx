@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { BsHeart, BsList } from "react-icons/bs";
+import { BsHeart, BsList, BsPlug, BsPlus, BsPlusCircle } from "react-icons/bs";
 import { FaPlus } from "react-icons/fa";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import { jwtDecode } from "jwt-decode";
@@ -106,6 +106,7 @@ export default function GaleriaYoutube({
       alert("Ocurrió un error al agregar a favoritos");
     }
   };
+  console.log(videos);
 
   const agregarACola = async (songId) => {
     if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
@@ -144,6 +145,17 @@ export default function GaleriaYoutube({
 
   return (
     <div className="" style={{ height: "100vh" }}>
+      <div className="d-flex flex-wrap justify-content-center align-items-center mb-4">
+        <input
+          type="text"
+          name="busqueda"
+          placeholder="Buscar por título, artista"
+          value={filtros.busqueda}
+          onChange={handleChange}
+          className="bg-dark p-3   text-center"
+        />
+      </div>
+
       <div className="d-flex flex-wrap justify-content-center gap-2">
         {videos.map((video) => {
           return (
@@ -153,7 +165,7 @@ export default function GaleriaYoutube({
               style={{
                 cursor: "pointer",
                 position: "relative",
-                height: "200px",
+                height: "100px",
                 flex: "0 0 calc((100% / 6) - 8px)", // 6 tarjetas menos gap (gap-2 ~ 8px)
                 maxWidth: "calc((100% / 6) - 8px)", // limita el ancho máximo
                 borderRadius: "0.25rem",
@@ -168,7 +180,7 @@ export default function GaleriaYoutube({
                   title="Agregar a favoritos"
                   disabled={!isAuthenticated}
                 >
-                  <BsHeart size={20} />
+                  <img src="./heart.png" alt="" width={"60px"} />
                 </button>
 
                 {/* Botón Cola (Superior Derecho) */}
@@ -178,7 +190,7 @@ export default function GaleriaYoutube({
                   title="Agregar a cola"
                   disabled={!isAuthenticated}
                 >
-                  <BsList size={20} />
+                  <img src="./mas.png" alt="" width={"60px"} />
                 </button>
 
                 {/* Botón Play (Centro) */}
@@ -186,14 +198,16 @@ export default function GaleriaYoutube({
                   className="video-btn play-btn"
                   onClick={() => setVideoSeleccionado(video)}
                 >
-                  ▶
+                  <img src="./play.png" alt="" width={"60px"} />
                 </button>
               </div>
 
               <div className="d-flex flex-column justify-content-center align-items-center">
-                <span className="fw-bold text-light">{video.titulo}</span>
+                <span className="fw-bold text-light">
+                  {video.numero} - {video.titulo}
+                </span>
                 <small className="text-light">
-                  {video.artista} - {video.generos?.nombre}
+                  {video.artista} - {video.generos?.nombre || "Sin genero"}
                 </small>
 
                 {/* <button

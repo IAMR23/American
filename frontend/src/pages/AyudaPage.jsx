@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const datosSistema = [
   {
     titulo: 'Autenticación de usuarios',
-    descripcion: 'El sistema permite autenticación mediante tokens JWT, asegurando que cada solicitud esté protegida.'
+    descripcion: ', asegurando que cada solicitud esté protegida.'
   },
   {
     titulo: 'Módulo de administración',
