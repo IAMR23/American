@@ -5,7 +5,8 @@ exports.crearSolicitud = async (req, res) => {
   try {
     const nuevaSolicitud = new SolicitudCancion({
       usuario: req.body.usuario,
-      comentario: req.body.comentario,
+      cantante: req.body.cantante,
+      cancion: req.body.cancion,
     });
 
     const solicitudGuardada = await nuevaSolicitud.save();
@@ -17,14 +18,21 @@ exports.crearSolicitud = async (req, res) => {
 
 // Obtener todas las solicitudes
 
-// Obtener todas las solicitudes
 exports.obtenerSolicitudes = async (req, res) => {
   try {
     const solicitudes = await SolicitudCancion.find()
-      .populate('usuario', 'nombre email') // <-- Esta línea es clave
-      .sort({ createdAt: -1 });
+      .populate('usuario', 'nombre email');
 
-    res.status(200).json(solicitudes);
+    // Mapeo para añadir totalVotos
+    const solicitudesConVotos = solicitudes.map((sol) => ({
+      ...sol.toObject(),
+      totalVotos: sol.votos.length
+    }));
+
+    // Ordenar de mayor a menor votos
+    solicitudesConVotos.sort((a, b) => b.totalVotos - a.totalVotos);
+
+    res.status(200).json(solicitudesConVotos);
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al obtener las solicitudes', error });
   }
@@ -34,7 +42,7 @@ exports.obtenerSolicitudes = async (req, res) => {
 // Obtener solicitud por ID
 exports.obtenerSolicitudPorId = async (req, res) => {
   try {
-    const solicitud = await SolicitudCancion.findById(req.params.id).populate('usuario');
+    const solicitud = await SolicitudCancion.findById(req.params.id).populate('usuario', 'nombre email');
     if (!solicitud) {
       return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
     }
@@ -49,7 +57,11 @@ exports.actualizarSolicitud = async (req, res) => {
   try {
     const solicitudActualizada = await SolicitudCancion.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {
+        usuario: req.body.usuario,
+        cantante: req.body.cantante,
+        cancion: req.body.cancion,
+      },
       { new: true }
     );
 
@@ -77,3 +89,31 @@ exports.eliminarSolicitud = async (req, res) => {
     res.status(500).json({ mensaje: 'Error al eliminar la solicitud', error });
   }
 };
+
+
+// Votar por una solicitud
+exports.votarPorSolicitud = async (req, res) => {
+  try {
+    const solicitud = await SolicitudCancion.findById(req.params.id);
+
+    if (!solicitud) {
+      return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
+    }
+
+    const userId = req.body.usuario;
+
+    // Verificar si ya votó
+    if (solicitud.votos.includes(userId)) {
+      return res.status(400).json({ mensaje: 'Ya votaste por esta canción' });
+    }
+
+    // Agregar voto
+    solicitud.votos.push(userId);
+    await solicitud.save();
+
+    res.status(200).json({ mensaje: 'Voto registrado', votos: solicitud.votos.length });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al votar por la solicitud', error });
+  }
+};
+

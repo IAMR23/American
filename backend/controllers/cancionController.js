@@ -24,7 +24,7 @@ const crearCancion = async (req, res) => {
 
 const listarCanciones = async (req, res) => {
   try {
-    const canciones = await Cancion.find().sort({ titulo: 1 }); // 1 para ascendente
+    const canciones = await Cancion.find().sort({ titulo: 1 }).populate("generos"  , "nombre"); // 1 para ascendente
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -33,7 +33,7 @@ const listarCanciones = async (req, res) => {
 
 const listarCancionesArtista = async (req, res) => {
   try {
-    const canciones = await Cancion.find().sort({ artista: 1 }); // 1 para ascendente
+    const canciones = await Cancion.find().sort({ artista: 1 }).populate("generos"  , "nombre"); // 1 para ascendente
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -169,6 +169,8 @@ const listarCancionesVisibles = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
 
 
 
