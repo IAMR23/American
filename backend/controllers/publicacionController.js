@@ -58,3 +58,13 @@ exports.eliminarPublicacion = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+exports.obtenerPublicacionesVideo = async (req, res) => {
+  try {
+    const publicaciones = await Publicacion.find({ tipoMedia: "video" });
+    res.json(publicaciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

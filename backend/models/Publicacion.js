@@ -6,7 +6,7 @@ const publicacionSchema = new mongoose.Schema(
     descripcion: { type: String, required: true },
     tipo: { type: String, required: true },
     mediaUrl: { type: String },
-    tipoMedia: { type: String, enum: ["imagen", "video"], default: null }, // <- NUEVO
+    tipoMedia: { type: String, enum: ["video", "pdf" , "mp3"], default: null }, // <- NUEVO
   },
   { timestamps: true }
 );
