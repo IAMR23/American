@@ -88,8 +88,6 @@ export default function Inicial() {
         return <PlantTest />;
       case "ayuda":
         return <AyudaPage />;
-      case "galeriaOtros":
-        return <PublicacionesPage />;
       case "tv":
         return <ScannerCelular />;
 
@@ -314,7 +312,7 @@ export default function Inicial() {
             >
               Sugerir Canciones
             </button>
-            <button className="boton7">Scanner a Celular</button>
+            {/* <button className="boton7">Scanner a Celular</button> */}
           </div>
 
           <div className="flex-grow-1"> {renderContenido()}</div>
@@ -350,7 +348,7 @@ export default function Inicial() {
             </button>
             <button
               className="boton2"
-              onClick={() => setSeccionActiva("galeriaOtros")}
+              onClick={() => navigate("/publicaciones")}
             >
               Galería Otros
             </button>

@@ -260,8 +260,9 @@ const PublicacionesCrud = () => {
                     onChange={manejarCambio}
                   >
                     <option value="">-- Selecciona --</option>
-                    <option value="imagen">Imagen</option>
-                    <option value="video">Video</option>
+                    <option value="video">Video Musical</option>
+                    <option value="pdf">Libros y Revistas</option>
+                    <option value="mp3">Radio Novelas</option>
                   </select>
                 </div>
 

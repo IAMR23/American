@@ -2,21 +2,10 @@ import React, { useState } from 'react';
 
 const datosSistema = [
   {
-    titulo: 'Autenticación de usuarios',
-    descripcion: ', asegurando que cada solicitud esté protegida.'
+    titulo: 'Cómo funciona el sistema',
+    pdfUrl: '/pdfs/ayuda.pdf', // Ajusta esta ruta según tu estructura de carpetas públicas
   },
-  {
-    titulo: 'Módulo de administración',
-    descripcion: 'Los administradores pueden gestionar contenido, usuarios y reportes desde un panel privado.'
-  },
-  {
-    titulo: 'Integración con servicios externos',
-    descripcion: 'Se conecta con APIs de terceros como Vimeo y Firebase para ofrecer streaming y notificaciones.'
-  },
-  {
-    titulo: 'Análisis de datos',
-    descripcion: 'El sistema genera reportes con gráficos sobre el uso del sistema y la interacción de los usuarios.'
-  }
+  // Puedes agregar más ítems aquí si deseas
 ];
 
 const AyudaPage = () => {
@@ -32,7 +21,7 @@ const AyudaPage = () => {
 
       <div
         className="border rounded p-2"
-        style={{ maxHeight: '300px', overflowY: 'auto' }}
+        style={{ maxHeight: '700px', overflowY: 'auto' }}
       >
         {datosSistema.map((item, index) => (
           <div key={index} className="mb-2">
@@ -45,9 +34,15 @@ const AyudaPage = () => {
             </button>
 
             <div className={`collapse ${activo === index ? 'show' : ''}`}>
-              <div className="card card-body">
-                {item.descripcion}
-              </div>
+                {item.pdfUrl && (
+                  <iframe
+                    src={item.pdfUrl}
+                    title={`PDF-${index}`}
+                    width="100%"
+                    height="900px"
+                    style={{ border: '1px solid #ccc' }}
+                  />
+                )}
             </div>
           </div>
         ))}

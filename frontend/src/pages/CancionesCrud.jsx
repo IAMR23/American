@@ -15,7 +15,7 @@ export default function CancionCRUD() {
     generos: "",
     videoUrl: "",
     imagenUrl: "",
-    visiblePrincipal: false, // Nuevo campo agregado
+    visiblePrincipal: false,
   });
   const [editId, setEditId] = useState(null);
 
@@ -76,12 +76,33 @@ export default function CancionCRUD() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const { numero, titulo, artista, generos, videoUrl, imagenUrl } = form;
+
+    if (
+      !numero ||
+      !titulo.trim() ||
+      !artista.trim() ||
+      !generos ||
+      !videoUrl.trim() ||
+      !imagenUrl.trim()
+    ) {
+      alert("Por favor, complete todos los campos obligatorios.");
+      return;
+    }
+
     try {
+      const dataToSend = {
+        ...form,
+        numero: parseInt(form.numero), // aseguramos que sea número
+      };
+
       if (editId) {
-        await axios.put(`${API_URL}/${editId}`, form, { headers });
+        await axios.put(`${API_URL}/${editId}`, dataToSend, { headers });
       } else {
-        await axios.post(API_URL, form, { headers });
+        await axios.post(API_URL, dataToSend, { headers });
       }
+
       setForm({
         numero: "",
         titulo: "",
@@ -200,9 +221,13 @@ export default function CancionCRUD() {
                 <input
                   type="number"
                   className="form-control"
+                  required
                   value={form.numero}
                   onChange={(e) =>
-                    setForm({ ...form, numero: parseInt(e.target.value) || "" })
+                    setForm({
+                      ...form,
+                      numero: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -232,6 +257,7 @@ export default function CancionCRUD() {
                 <label className="form-label">Género</label>
                 <select
                   className="form-select"
+                  required
                   value={form.generos}
                   onChange={(e) =>
                     setForm({ ...form, generos: e.target.value })
@@ -250,6 +276,7 @@ export default function CancionCRUD() {
                 <input
                   type="url"
                   className="form-control"
+                  required
                   value={form.videoUrl}
                   onChange={(e) =>
                     setForm({ ...form, videoUrl: e.target.value })
@@ -261,13 +288,13 @@ export default function CancionCRUD() {
                 <input
                   type="url"
                   className="form-control"
+                  required
                   value={form.imagenUrl}
                   onChange={(e) =>
                     setForm({ ...form, imagenUrl: e.target.value })
                   }
                 />
               </div>
-
               <div className="mb-3 form-check">
                 <input
                   type="checkbox"

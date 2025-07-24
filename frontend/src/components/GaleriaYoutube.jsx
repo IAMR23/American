@@ -144,36 +144,26 @@ export default function GaleriaYoutube({
   };
 
   return (
-    <div className="" style={{ height: "100vh" }}>
-      <div className="d-flex flex-wrap justify-content-center align-items-center mb-4">
-        <input
+    <div className="p-2">
+      <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
+        <label className="caja-buscar" htmlFor="busqueda">Buscar por Artista:</label>
+        <div className="buscar-2">
+       <input
           type="text"
           name="busqueda"
-          placeholder="Buscar por título, artista"
           value={filtros.busqueda}
           onChange={handleChange}
-          className="bg-dark p-3   text-center"
+          className="buscar text-center text-dark bg-light"
         />
+        </div>
+ 
       </div>
 
-      <div className="d-flex flex-wrap justify-content-center gap-2">
+      <div className="tarjetas">
         {videos.map((video) => {
           return (
-            <div
-              key={video._id}
-              className=" bg-dark col-12 col-sm-6 col-md-4 col-lg-3"
-              style={{
-                cursor: "pointer",
-                position: "relative",
-                height: "100px",
-                flex: "0 0 calc((100% / 6) - 8px)", // 6 tarjetas menos gap (gap-2 ~ 8px)
-                maxWidth: "calc((100% / 6) - 8px)", // limita el ancho máximo
-                borderRadius: "0.25rem",
-                overflow: "hidden",
-              }}
-            >
-              <div className="thumbnail-container ">
-                {/* Botón Corazón (Superior Izquierdo) */}
+            <div key={video._id} className="bg-modificado">
+              <div className="">
                 <button
                   className="video-btn heart-btn"
                   onClick={() => agregarAFavoritos(video._id)}
@@ -183,7 +173,6 @@ export default function GaleriaYoutube({
                   <img src="./heart.png" alt="" width={"60px"} />
                 </button>
 
-                {/* Botón Cola (Superior Derecho) */}
                 <button
                   className="video-btn list-btn"
                   onClick={() => agregarACola(video._id)}
@@ -193,7 +182,6 @@ export default function GaleriaYoutube({
                   <img src="./mas.png" alt="" width={"60px"} />
                 </button>
 
-                {/* Botón Play (Centro) */}
                 <button
                   className="video-btn play-btn"
                   onClick={() => setVideoSeleccionado(video)}
@@ -202,22 +190,16 @@ export default function GaleriaYoutube({
                 </button>
               </div>
 
-              <div className="d-flex flex-column justify-content-center align-items-center">
-                <span className="fw-bold text-light">
-                  {video.numero} - {video.titulo}
-                </span>
-                <small className="text-light">
-                  {video.artista} - {video.generos?.nombre || "Sin genero"}
-                </small>
-
-                {/* <button
-                  className="btn btn-sm btn-outline-light mt-1"
-                  onClick={() => handleOpenModal(video._id)}
-                  title="Agregar a playlist"
-                  disabled={!isAuthenticated}
-                >
-                  <FaPlus size={18} /> Playlist
-                </button> */}
+              <div className="">
+                <div className="text-center text-black p-2 texto-superior">
+                  <span className="fw-bold">
+                    {video.numero} - {video.titulo}
+                  </span>
+                  <br />
+                  <small>{video.artista} -</small>
+                  <br />
+                  <small>{video.generos?.nombre || "Sin género"}</small>
+                </div>
               </div>
             </div>
           );

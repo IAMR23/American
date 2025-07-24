@@ -24,6 +24,7 @@ import ProductoDetalle from "./components/ProductoDetalle";
 import PlanTest from "./components/PlanTest";
 import { AuthProvider } from "./utils/AuthContext";
 import { getToken } from "./utils/auth";
+import PublicacionesPage from "./pages/PublicacionesPage";
 
 function App() {
   // 🔹 Estado global de autenticación
@@ -73,6 +74,7 @@ function App() {
               {/* 🔹 Pasamos setAuth a LoginForm para actualizar estado tras login */}
               <Route path="/login" element={<LoginForm setAuth={setAuth} />} />
               <Route path="/registro" element={<RegistrationForm />} />
+              <Route path="/publicaciones" element={<PublicacionesPage />} />
             </Routes>
           </main>
           <Footer />

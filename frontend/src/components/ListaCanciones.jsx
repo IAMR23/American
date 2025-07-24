@@ -149,7 +149,7 @@ export default function ListaCanciones() {
 
   return (
     <>
-      <div className="p-3 fondo">
+      <div className="p-3 ">
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3 p-2">
           <img
             src="./icono.png"
@@ -169,13 +169,13 @@ export default function ListaCanciones() {
             }}
           />
         </div>
-        <GaleriaYoutube
-          setCola={setCola}
-          cola={cola}
-          cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
-          onAgregarCancion={insertarCancion}
-        />
       </div>
+      <GaleriaYoutube
+        setCola={setCola}
+        cola={cola}
+        cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+        onAgregarCancion={insertarCancion}
+      />
     </>
   );
 }
