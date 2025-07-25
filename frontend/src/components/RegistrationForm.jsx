@@ -1,4 +1,4 @@
-import React , { useState } from "react";
+import React, { useState } from "react";
 import { registerUser } from "../services/userServices";
 
 function RegistrationForm() {
@@ -6,6 +6,7 @@ function RegistrationForm() {
     nombre: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -23,14 +24,23 @@ function RegistrationForm() {
     setError(null);
     setSuccess(null);
 
+    // Validar que las contraseñas coincidan antes de enviar
+    if (formData.password !== formData.confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await registerUser(formData);
+      const { nombre, email, password } = formData;
+      const response = await registerUser({ nombre, email, password });
       setSuccess("Usuario registrado exitosamente.");
       setFormData({
         nombre: "",
         email: "",
         password: "",
-      }); // Limpiar formulario
+        confirmPassword: "",
+      });
     } catch (error) {
       setError(error.response?.data?.message || "Error al registrar usuario.");
     } finally {
@@ -38,11 +48,14 @@ function RegistrationForm() {
     }
   };
 
+  const contrasenasCoinciden =
+    formData.password === formData.confirmPassword && formData.confirmPassword.length > 0;
+
   return (
-    <div className="d-flex vh-100 justify-content-center align-items-center bg-light">
-      <div className="card shadow" style={{ maxWidth: "400px", width: "100%" }}>
+    <div className="d-flex justify-content-center align-items-center">
+      <div className="card shadow bg-primary" style={{ maxWidth: "700px", width: "100%" }}>
         <div className="card-body">
-          <h2 className="card-title text-center mb-4">Registro</h2>
+          <h2 className="card-title text-center mb-4 text-white">Registro</h2>
 
           {error && <p className="text-danger text-center">{error}</p>}
           {success && <p className="text-success text-center">{success}</p>}
@@ -93,9 +106,36 @@ function RegistrationForm() {
               />
             </div>
 
+            <div className="mb-3">
+              <label htmlFor="confirmPassword" className="form-label">
+                Confirmar Contraseña
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={`form-control ${
+                  formData.confirmPassword.length > 0
+                    ? contrasenasCoinciden
+                      ? "is-valid"
+                      : "is-invalid"
+                    : ""
+                }`}
+                required
+              />
+              {formData.confirmPassword.length > 0 && !contrasenasCoinciden && (
+                <div className="invalid-feedback">Las contraseñas no coinciden</div>
+              )}
+              {formData.confirmPassword.length > 0 && contrasenasCoinciden && (
+                <div className="valid-feedback">Las contraseñas coinciden</div>
+              )}
+            </div>
+
             <button
               type="submit"
-              className="btn btn-primary w-100"
+              className="btn btn-dark w-100"
               disabled={loading}
             >
               {loading ? "Registrando..." : "Registrarse"}

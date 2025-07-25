@@ -24,6 +24,8 @@ import PublicacionesPage from "./PublicacionesPage";
 import PlantTest from "../components/PlanTest";
 import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
+import RegistrationForm from "../components/RegistrationForm";
+
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -31,6 +33,7 @@ export default function Inicial() {
   const [playlists, setPlaylists] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [suscrito, setSuscrito] = useState(false);
 
   // Renderizado
   const [seccionActiva, setSeccionActiva] = useState("video");
@@ -80,6 +83,8 @@ export default function Inicial() {
 
       case "ingresar":
         return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+      case "registrar":
+        return <RegistrationForm />;
       case "listadoPdf":
         return <ListadoPDFCanciones />;
       case "calificacion":
@@ -153,37 +158,61 @@ export default function Inicial() {
     }
   };
 
+  const [userRole, setUserRole] = useState(null);
+
   // Cargar token y datos del usuario
+
+  // Primer efecto: decodifica y establece userId y rol
   useEffect(() => {
     const token = getToken();
 
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        const userIdDecoded = decoded.userId;
-        setUserId(userIdDecoded);
-        const cargarPlaylists = async () => {
-          try {
-            const res = await axios.get(
-              `${API_URL}/t/playlist/${userIdDecoded}`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-            setPlaylists(Array.isArray(res.data) ? res.data : []);
-          } catch (error) {
-            console.error("Error al cargar playlists", error);
-            setPlaylists([]);
-          }
-        };
-
-        cargarCola();
-        cargarPlaylists();
+        setUserId(decoded.userId);
+        setUserRole(decoded.rol);
       } catch (err) {
         console.error("Token inválido", err);
       }
     }
+  }, []);
+
+  // Segundo efecto: una vez userId está listo, carga todo
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !userId) return;
+
+    const cargarDatos = async () => {
+      try {
+        const resPlaylists = await axios.get(
+          `${API_URL}/t/playlist/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setPlaylists(Array.isArray(resPlaylists.data) ? resPlaylists.data : []);
+      } catch (error) {
+        console.error("Error al cargar playlists", error);
+        setPlaylists([]);
+      }
+
+      try {
+        const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuscrito(resSub.data.suscrito === true);
+      } catch (error) {
+        console.warn("No estás suscrito o hubo un error al verificar.");
+        setSuscrito(false);
+      }
+
+      cargarCola();
+    };
+
+    cargarDatos();
   }, [userId]);
+
+  console.log(suscrito);
 
   const cargarPlaylistACola = async (playlistId) => {
     const token = getToken();
@@ -276,20 +305,23 @@ export default function Inicial() {
 
         <div className="d-flex flex-row justify-content-center align-items-center w-100 flex-wrap gap-2">
           <div className="d-flex flex-row flex-md-column flex-wrap justify-content-center gap-1">
-            {getToken() && (
+            {getToken() && userRole === "admin" && (
               <button className="boton2" onClick={() => navigate("/dashboard")}>
                 Dashboard
               </button>
             )}
+
             <button
               className="boton1"
               onClick={() => setSeccionActiva("buscador")}
+              disabled={!suscrito}
             >
               Buscador
             </button>
             <button
               className="boton2"
               onClick={() => setSeccionActiva("playlist")}
+              disabled={!suscrito}
             >
               PlayList
             </button>
@@ -297,18 +329,21 @@ export default function Inicial() {
             <button
               className="boton4"
               onClick={() => setSeccionActiva("favoritos")}
+              disabled={!suscrito}
             >
               Favoritos
             </button>
             <button
               onClick={() => navigate("/listaCanciones")}
               className="boton5"
+              disabled={!suscrito}
             >
               Lista de Canciones
             </button>
             <button
               className="boton6"
               onClick={() => setSeccionActiva("sugerirCanciones")}
+              disabled={!suscrito}
             >
               Sugerir Canciones
             </button>
@@ -326,9 +361,18 @@ export default function Inicial() {
                 Ingresar
               </button>
             )}
+            {!getToken() && (
+              <button
+                className="boton7"
+                onClick={() => setSeccionActiva("registrar")}
+              >
+                Registrar
+              </button>
+            )}
             <button
               className="boton9"
               onClick={() => setSeccionActiva("listadoPdf")}
+              disabled={!suscrito}
             >
               Listado PDF
             </button>
@@ -343,19 +387,23 @@ export default function Inicial() {
             <button
               className="boton1"
               onClick={() => setSeccionActiva("ayuda")}
+              disabled={!suscrito}
             >
               Ayuda
             </button>
             <button
               className="boton2"
               onClick={() => navigate("/publicaciones")}
+              disabled={!suscrito}
             >
               Galería Otros
             </button>
 
-            <button className="boton3" onClick={() => cerrarSesion()}>
-              Cerrar Sesión
-            </button>
+            {getToken() && (
+              <button className="boton3" onClick={cerrarSesion}>
+                Cerrar Sesión
+              </button>
+            )}
           </div>
         </div>
 

@@ -22,9 +22,8 @@ export default function AnunciosCRUD() {
 
   const fetchAnuncios = async () => {
     try {
-      const res = await axios.get(`${API_ANUNCIOS}/anuncio`);
+      const res = await axios.get(`${API_ANUNCIOS}`);
       setAnuncios(res.data);
-      console.log(res.data)
     } catch (err) {
       console.error("Error al obtener anuncios", err);
     }
