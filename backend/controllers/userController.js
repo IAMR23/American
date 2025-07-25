@@ -10,8 +10,16 @@ async function createUser(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  // Validación de seguridad de contraseña
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
   if (!password) {
     return res.status(400).json({ message: "La contraseña es obligatoria" });
+  }
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      message:
+        "La contraseña debe tener mínimo 8 caracteres,  mayúsculas, minúsculas, números y un carácter especial.",
+    });
   }
 
   try {
@@ -131,5 +139,5 @@ module.exports = {
   updateUser,
   getUserById,
   deleteUser,
-  getUsers
+  getUsers,
 };

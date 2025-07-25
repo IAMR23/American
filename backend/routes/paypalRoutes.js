@@ -66,7 +66,7 @@ router.post("/crear-producto", async (req, res) => {
     res.status(201).json({ message: "Producto creado y guardado con éxito", producto: nuevoProducto });
   } catch (error) {
     console.error("Error al crear producto:", error?.response?.data || error.message);
-    res.status(500).json({ error: "Error al crear el producto en PayPal" });
+    res.status(500).json({ error: " producto en PayPal" });
   }
 });
 
