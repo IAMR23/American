@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 
-export default function VideoPlayer({
+export default function VideoPlayer2({
   cola = [],
   currentIndex,
   setCurrentIndex,
@@ -157,7 +157,7 @@ export default function VideoPlayer({
           controls
           playing
           width="100%"
-          height={isFullscreen ? "100vh" : "85vh"}
+          height={isFullscreen ? "100vh" : "100%"}
           onProgress={handleProgress}
           onEnded={nextVideo}
           config={{

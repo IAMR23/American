@@ -8,6 +8,9 @@ import { API_URL } from "../config";
 import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import "../styles/Carrousel.css";
+import { useNavigate } from "react-router-dom";
+import VideoPlayer from "./VideoPlayer";
+import VideoPlayer2 from "./VideoPlayer2";
 const SONG_URL = `${API_URL}/song`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
@@ -16,6 +19,8 @@ export default function GaleriaYoutube({
   cola,
   cargarCola,
   onAgregarCancion,
+  setCurrentIndex,
+  setFullscreenRequested,
 }) {
   const [videos, setVideos] = useState([]);
   const [videoSeleccionado, setVideoSeleccionado] = useState(null);
@@ -50,6 +55,8 @@ export default function GaleriaYoutube({
   };
 
   const handleChange = (e) => {
+    setMostrarReproductor(false);
+
     const { name, value } = e.target;
     setFiltros((prev) => ({ ...prev, [name]: value }));
   };
@@ -142,21 +149,24 @@ export default function GaleriaYoutube({
       alert("No se pudo agregar la canción ❌");
     }
   };
+  const [mostrarReproductor, setMostrarReproductor] = useState(false);
+  const [videoActual, setVideoActual] = useState(null);
 
   return (
     <div className="p-2">
       <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-        <label className="caja-buscar" htmlFor="busqueda">Buscar por Artista:</label>
+        <label className="caja-buscar" htmlFor="busqueda">
+          Buscar por Artista:
+        </label>
         <div className="buscar-2">
-       <input
-          type="text"
-          name="busqueda"
-          value={filtros.busqueda}
-          onChange={handleChange}
-          className="buscar text-center text-dark bg-light"
-        />
+          <input
+            type="text"
+            name="busqueda"
+            value={filtros.busqueda}
+            onChange={handleChange}
+            className="buscar text-center text-dark bg-light"
+          />
         </div>
- 
       </div>
 
       <div className="tarjetas">
@@ -166,8 +176,8 @@ export default function GaleriaYoutube({
               <div className="">
                 <button
                   className="video-btn heart-btn"
-                  onClick={() => agregarAFavoritos(video._id)}
-                  title="Agregar a favoritos"
+                  onClick={() => handleOpenModal(video._id)}
+                  title="Agregar a playlist"
                   disabled={!isAuthenticated}
                 >
                   <img src="./heart.png" alt="" width={"60px"} />
@@ -184,7 +194,10 @@ export default function GaleriaYoutube({
 
                 <button
                   className="video-btn play-btn"
-                  onClick={() => setVideoSeleccionado(video)}
+                  onClick={() => {
+                    setVideoActual(video);
+                    setMostrarReproductor(true);
+                  }}
                 >
                   <img src="./play.png" alt="" width={"60px"} />
                 </button>
@@ -218,6 +231,20 @@ export default function GaleriaYoutube({
           }}
         />
       )}
+
+      {mostrarReproductor && (
+        <div className="mini-player-flotante">
+          <VideoPlayer2
+            cola={[videoActual]}
+            currentIndex={0}
+            setCurrentIndex={() => {}}
+            fullscreenRequested={true}
+            onFullscreenHandled={() => {}}
+          />
+        </div>
+      )}
+
+
     </div>
   );
 }

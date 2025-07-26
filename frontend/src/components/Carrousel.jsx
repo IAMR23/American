@@ -51,11 +51,6 @@ export default function Carrousel({
     setShowPlaylistModal(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFiltros((prev) => ({ ...prev, [name]: value }));
-  };
-
   const fetchVideos = async (usarFiltro = false) => {
     try {
       const headers = isAuthenticated
@@ -104,7 +99,6 @@ export default function Carrousel({
       );
       alert("Canción agregada a favoritos");
     } catch (error) {
-      console.error("Error al agregar a favoritos", error);
       alert("Ocurrió un error al agregar a favoritos");
     }
   };
@@ -211,6 +205,15 @@ export default function Carrousel({
                               disabled={!isAuthenticated}
                             >
                               <BsList size={20} />
+                            </button>
+
+                            <button
+                              className="video-btn heart-btn"
+                              onClick={() => handleOpenModal(video._id)}
+                              title="Agregar a playlist"
+                              disabled={!isAuthenticated}
+                            >
+                              <BsHeart size={18} />
                             </button>
 
                             <button
