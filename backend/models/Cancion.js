@@ -9,7 +9,8 @@ const CancionSchema = new mongoose.Schema(
     generos: { type: mongoose.Schema.Types.ObjectId, ref: "Genero" },
     videoUrl: String,
     imagenUrl: String,
-    visiblePrincipal : Boolean
+    visiblePrincipal: Boolean,
+    reproducciones: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
