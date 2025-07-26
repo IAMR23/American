@@ -27,6 +27,7 @@ import { getToken } from "./utils/auth";
 import PublicacionesPage from "./pages/PublicacionesPage";
 import ReproductorPage from "./pages/ReproductorPage";
 import MasReproducidas from "./pages/MasReproducidas";
+import SolicitudesPage from "./components/SolicitudesPage";
 
 function App() {
   // 🔹 Estado global de autenticación
@@ -65,10 +66,10 @@ function App() {
                 <Route path="productos" element={<Productos />} />
                 <Route path="producto/:id" element={<ProductoDetalle />} />
                 <Route path="/mas-reproducidas" element={<MasReproducidas />} />
+                <Route path="solicitudes" element={<SolicitudesPage />} />
               </Route>
               <Route path="favoritos" element={<FavoritosPage />} />
               {/* Son las funcionalidades de los botones */}
-              <Route path="solicitud" element={<SolicitudesCancion />} />
               <Route path="listacanciones" element={<ListaCanciones />} />
               <Route path="test" element={<PublicacionesCrud />} />
 

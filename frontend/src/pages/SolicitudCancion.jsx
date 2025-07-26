@@ -92,7 +92,13 @@ const SolicitudesCancion = () => {
     <div className="container my-4 bg-dark p-4 rounded">
       <h2 className="mb-4 text-white">Solicitudes de Canciones</h2>
 
-      <div className="row g-2 mb-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          crearSolicitud();
+        }}
+        className="row g-2 mb-3"
+      >
         <div className="col-md-5">
           <input
             type="text"
@@ -100,6 +106,7 @@ const SolicitudesCancion = () => {
             value={cantante}
             onChange={(e) => setCantante(e.target.value)}
             placeholder="Nombre del cantante"
+            required
           />
         </div>
         <div className="col-md-5">
@@ -109,14 +116,15 @@ const SolicitudesCancion = () => {
             value={cancion}
             onChange={(e) => setCancion(e.target.value)}
             placeholder="Nombre de la canción"
+            required
           />
         </div>
         <div className="col-md-2">
-          <button className="btn btn-light w-100" onClick={crearSolicitud}>
+          <button type="submit" className="btn btn-light w-100">
             Enviar
           </button>
         </div>
-      </div>
+      </form>
 
       <div
         className="list-group"
