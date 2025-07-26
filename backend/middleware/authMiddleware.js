@@ -58,7 +58,12 @@ const isAdmin = (req, res, next) => {
 
 const verificarSuscripcionActiva = async (req, res, next) => {
   try {
-    const usuario = req.user; // ya tienes el usuario autenticado aquí
+    const usuario = req.user; // usuario autenticado
+
+    // Si es admin, saltar validación de suscripción
+    if (usuario.rol === "admin") {
+      return next();
+    }
 
     const ahora = new Date();
     const fin = new Date(usuario.subscriptionEnd);
@@ -67,7 +72,7 @@ const verificarSuscripcionActiva = async (req, res, next) => {
       return res.status(403).json({ mensaje: "Tu suscripción ha expirado" });
     }
 
-    next(); // usuario está suscrito y activo
+    next(); // usuario suscrito y activo
   } catch (err) {
     console.error("Error en middleware de suscripción:", err);
     res.status(500).json({ mensaje: "Error del servidor" });
