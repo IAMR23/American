@@ -49,7 +49,15 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   const { id } = req.params;
-  const { nombre, email, password, rol } = req.body;
+  const {
+    nombre,
+    email,
+    password,
+    rol,
+    suscrito,
+    subscriptionStart,
+    subscriptionEnd,
+  } = req.body;
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -75,15 +83,28 @@ async function updateUser(req, res) {
       user.password = await bcrypt.hash(password, 10);
     }
 
+    // Campos básicos
     user.nombre = nombre || user.nombre;
     user.email = email || user.email;
     user.rol = rol || user.rol;
+
+    // ✅ Campos de suscripción
+    if (typeof suscrito === "boolean") user.suscrito = suscrito;
+
+    // Convertir fechas si existen
+    user.subscriptionStart = subscriptionStart
+      ? new Date(subscriptionStart)
+      : null;
+
+    user.subscriptionEnd = subscriptionEnd ? new Date(subscriptionEnd) : null;
 
     await user.save();
 
     res.status(200).json({ message: "Usuario actualizado exitosamente", user });
   } catch (error) {
     res.status(500).json({ message: "Error al actualizar el usuario", error });
+    console.log(error)
+
   }
 }
 

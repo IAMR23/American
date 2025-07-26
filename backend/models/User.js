@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
 
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
 const UsuarioSchema = new mongoose.Schema(
   {
     nombre: String,
@@ -24,8 +27,8 @@ const UsuarioSchema = new mongoose.Schema(
 
     rol: {
       type: String,
-      enum: ["admin"],
-      default: "admin",
+      enum: ["cantante"],
+      default: "cantante",
     },
 
     // Nuevo: Suscripción
