@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/Whatsapp.css";
 import axios from "axios";
+import { API_URL } from "../config";
 
 export default function WhatsAppButton() {
   const [mostrarBoton, setMostrarBoton] = useState(false);
@@ -10,7 +11,7 @@ export default function WhatsAppButton() {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await axios.get("http://localhost:5000/user/suscripcion", {
+        const res = await axios.get(`${API_URL}/user/suscripcion`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
