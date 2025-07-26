@@ -138,6 +138,11 @@ export default function Carrousel({
     }
   };
 
+  const masReproducida = async (id) => {
+    await axios.post(`${API_URL}/song/${id}/reproducir`);
+    // lógica para reproducir el video...
+  };
+
   return (
     <div>
       <div className="container-fluid px-0">
@@ -219,6 +224,8 @@ export default function Carrousel({
                             <button
                               className="video-btn play-btn"
                               onClick={async () => {
+                                await masReproducida(video._id);
+                                
                                 let index = cola.findIndex(
                                   (c) => c._id === video._id
                                 );

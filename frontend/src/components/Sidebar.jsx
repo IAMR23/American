@@ -42,10 +42,10 @@ export default function Sidebar() {
             </Link>
           </li>
           <li>
-            <Link to="/canciones" className="nav-link px-0 align-middle">
+            <Link to="/mas-reproducidas" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
-                Mas escuchadas
+                Mas reproducidas
               </span>
             </Link>
           </li>

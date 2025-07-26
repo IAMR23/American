@@ -26,6 +26,7 @@ import { AuthProvider } from "./utils/AuthContext";
 import { getToken } from "./utils/auth";
 import PublicacionesPage from "./pages/PublicacionesPage";
 import ReproductorPage from "./pages/ReproductorPage";
+import MasReproducidas from "./pages/MasReproducidas";
 
 function App() {
   // 🔹 Estado global de autenticación
@@ -49,7 +50,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter> 
+      <BrowserRouter>
         <div>
           {/* 🔹 Pasamos auth y setAuth a Navbar para manejar autenticación */}
           <main className="flex-grow w-full ">
@@ -63,6 +64,7 @@ function App() {
                 <Route path="usuarios" element={<UsuariosPage />} />
                 <Route path="productos" element={<Productos />} />
                 <Route path="producto/:id" element={<ProductoDetalle />} />
+                <Route path="/mas-reproducidas" element={<MasReproducidas />} />
               </Route>
               <Route path="favoritos" element={<FavoritosPage />} />
               {/* Son las funcionalidades de los botones */}
@@ -76,7 +78,6 @@ function App() {
               <Route path="/login" element={<LoginForm setAuth={setAuth} />} />
               <Route path="/registro" element={<RegistrationForm />} />
               <Route path="/publicaciones" element={<PublicacionesPage />} />
-               <Route path="/reproductor/:id" element={<ReproductorPage />} />
             </Routes>
           </main>
           <Footer />
