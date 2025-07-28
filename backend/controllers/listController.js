@@ -42,17 +42,23 @@ function createListController(Model) {
     },
 
     async removeSong(req, res) {
-      const { songId } = req.body;
-      const userId = req.user.id;
-      const list = await Model.findOne({ user: userId });
-      if (!list)
-        return res.status(404).json({ message: "Lista no encontrada" });
+      const { playlistId, songId } = req.params;
+      try {
+        const playlist = await Playlist.findById(playlistId);
+        if (!playlist)
+          return res.status(404).json({ message: "Playlist no encontrada" });
 
-      list.canciones = list.canciones.filter((id) => id.toString() !== songId);
-      await list.save();
-      res.status(200).json(list);
+        playlist.canciones = playlist.canciones.filter(
+          (id) => id.toString() !== songId
+        );
+        await playlist.save();
+
+        res.status(200).json({ message: "Canción eliminada", playlist });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error del servidor" });
+      }
     },
-
     async getList(req, res) {
       const userId = req.params.userId;
       const list = await Model.findOne({ user: userId }).populate("canciones");
@@ -69,13 +75,11 @@ function createListController(Model) {
       res.status(200).json({ message: "Lista vaciada" });
     },
 
-    //Estos son los del playlist 
+    //Estos son los del playlist
 
     async createPlaylist(req, res) {
       const { nombre } = req.body;
       const userId = req.user.id;
-      console.log(nombre);
-
       if (!nombre) {
         return res.status(400).json({ error: "El nombre es obligatorio" });
       }
@@ -98,65 +102,108 @@ function createListController(Model) {
     },
 
     async getUserPlaylists(req, res) {
-    const userId = req.params.userId || req.user.id;
+      try {
+        const userId = req.user._id; // Aquí obtienes el ID del usuario autenticado
+        const playlists = await Playlist.find({ user: userId }).populate(
+          "canciones"
+        );
+        res.status(200).json(playlists);
+      } catch (error) {
+        console.error("Error al obtener las playlists del usuario:", error);
+        res.status(500).json({ error: "Error al obtener las playlists" });
+      }
+    },
 
-    try {
-      const playlists = await Playlist.find({ user: userId }).populate("canciones");
-      res.status(200).json(playlists);
-    } catch (error) {
-      console.error("Error al obtener las playlists del usuario:", error);
-      res.status(500).json({ error: "Error al obtener las playlists" });
-    }
-  },
+    async getUserPlaylistsParams(req, res) {
+      const userId = req.params.userId || req.user.id;
 
-   async getCancionesDePlaylist(req, res) {
-    const { playlistId } = req.params;
+      try {
+        const playlists = await Playlist.find({ user: userId }).populate(
+          "canciones"
+        );
+        res.status(200).json(playlists);
+      } catch (error) {
+        console.error("Error al obtener las playlists del usuario:", error);
+        res.status(500).json({ error: "Error al obtener las playlists" });
+      }
+    },
 
-    try {
-      const playlist = await Playlist.findById(playlistId).populate("canciones");
+    async getCancionesDePlaylist(req, res) {
+      const { playlistId } = req.params;
 
-      if (!playlist) {
-        return res.status(404).json({ error: "Playlist no encontrada" });
+      try {
+        const playlist = await Playlist.findById(playlistId).populate(
+          "canciones"
+        );
+
+        if (!playlist) {
+          return res.status(404).json({ error: "Playlist no encontrada" });
+        }
+
+        res.status(200).json({ canciones: playlist.canciones });
+      } catch (error) {
+        console.error("Error al obtener canciones del playlist:", error);
+        res.status(500).json({ error: "Error del servidor" });
+      }
+    },
+    async addCancionAPlaylist(req, res) {
+      const { playlistId } = req.params;
+      const { songId } = req.body;
+
+      if (!songId) {
+        return res.status(400).json({ error: "Falta el ID de la canción" });
       }
 
-      res.status(200).json({ canciones: playlist.canciones });
-    } catch (error) {
-      console.error("Error al obtener canciones del playlist:", error);
-      res.status(500).json({ error: "Error del servidor" });
-    }
-  }, 
-   async addCancionAPlaylist(req, res) {
-    const { playlistId } = req.params;
-    const { songId } = req.body;
+      try {
+        const playlist = await Playlist.findById(playlistId);
+        if (!playlist) {
+          return res.status(404).json({ error: "Playlist no encontrada" });
+        }
 
-    if (!songId) {
-      return res.status(400).json({ error: "Falta el ID de la canción" });
-    }
+        // Verificar si la canción ya existe en el playlist
+        const yaExiste = playlist.canciones.some(
+          (id) => id.toString() === songId.toString()
+        );
 
-    try {
-      const playlist = await Playlist.findById(playlistId);
-      if (!playlist) {
-        return res.status(404).json({ error: "Playlist no encontrada" });
+        if (yaExiste) {
+          return res
+            .status(200)
+            .json({ mensaje: "La canción ya está en el playlist", playlist });
+        }
+
+        playlist.canciones.push(songId);
+        await playlist.save();
+
+        res.status(200).json({ mensaje: "Canción agregada", playlist });
+      } catch (error) {
+        console.error("Error al agregar canción al playlist:", error);
+        res.status(500).json({ error: "Error del servidor" });
       }
+    },
+    async deletePlaylist(req, res) {
+      const { playlistId } = req.params;
+      const userId = req.user.id;
 
-      // Verificar si la canción ya existe en el playlist
-      const yaExiste = playlist.canciones.some(
-        (id) => id.toString() === songId.toString()
-      );
+      try {
+        // Buscar la playlist y asegurarse que pertenece al usuario
+        const playlist = await Playlist.findOne({
+          _id: playlistId,
+          user: userId,
+        });
 
-      if (yaExiste) {
-        return res.status(200).json({ mensaje: "La canción ya está en el playlist", playlist });
+        if (!playlist) {
+          return res.status(404).json({ error: "Playlist no encontrada" });
+        }
+
+        // Eliminar la playlist
+        await Playlist.deleteOne({ _id: playlistId });
+
+        res.status(200).json({ message: "Playlist eliminada correctamente" });
+      } catch (error) {
+        console.error("Error al eliminar la playlist:", error);
+        res.status(500).json({ error: "Error del servidor" });
       }
-
-      playlist.canciones.push(songId);
-      await playlist.save();
-
-      res.status(200).json({ mensaje: "Canción agregada", playlist });
-    } catch (error) {
-      console.error("Error al agregar canción al playlist:", error);
-      res.status(500).json({ error: "Error del servidor" });
-    }
-  },
+    },
   };
 }
 

@@ -15,10 +15,11 @@ const solicitudCancionRouter = require("./routes/solicitudCancionRoutes");
 const publicacionRoutes = require ("./routes/publicacionRoutes");
 const paypalRoutes = require ("./routes/paypalRoutes");
 const suscripcionRoutes = require ("./routes/suscripcionRoutes");
+const playlistPropiaRoutes = require ("./routes/PlaylistPropiaRoutes");
  
 const app = express();
 const PORT = process.env.PORT || 5000;
-
+ 
 // Middleware
 app.use(express.json());
 app.use(cors());
@@ -42,6 +43,7 @@ conectarDB()
     app.use("/publicacion", publicacionRoutes);
     app.use("/paypal", paypalRoutes);
     app.use("/suscripcion", suscripcionRoutes);
+    app.use("/t2", playlistPropiaRoutes);
 
 
     app.listen(PORT,  '0.0.0.0', () => {
