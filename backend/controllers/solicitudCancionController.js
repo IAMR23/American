@@ -114,3 +114,14 @@ exports.votarPorSolicitud = async (req, res) => {
     res.status(500).json({ mensaje: 'Error al registrar el voto', error });
   }
 };
+
+exports.eliminarTodasSolicitudes = async (req, res) => {
+  try {
+    console.log("XP1")
+    await SolicitudCancion.deleteMany({});
+    res.status(200).json({ mensaje: "Todas las solicitudes han sido eliminadas" });
+  } catch (error) {
+    console.error("Error al eliminar todas las solicitudes:", error);
+    res.status(500).json({ mensaje: "Error al eliminar las solicitudes", error });
+  }
+};
