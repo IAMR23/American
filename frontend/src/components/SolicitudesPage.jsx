@@ -7,24 +7,40 @@ export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    const obtenerSolicitudes = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/solicitud`);
-        setSolicitudes(res.data);
-      } catch (err) {
-        console.error("Error al obtener solicitudes", err);
-      } finally {
-        setCargando(false);
-      }
-    };
+  const obtenerSolicitudes = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/solicitud`);
+      setSolicitudes(res.data);
+    } catch (err) {
+      console.error("Error al obtener solicitudes", err);
+    } finally {
+      setCargando(false);
+    }
+  };
 
+  const eliminarTodas = async () => {
+    if (!window.confirm("¿Estás seguro de eliminar todas las solicitudes?")) return;
+
+    try {
+      await axios.delete(`${API_URL}/solicitud/all`);
+      setSolicitudes([]); // limpiar el estado
+    } catch (err) {
+      console.error("Error al eliminar solicitudes", err);
+    }
+  };
+
+  useEffect(() => {
     obtenerSolicitudes();
   }, []);
 
   return (
     <div className="">
-      <h2 className="fw-bold mb-4">Solicitudes de Canciones</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold">Solicitudes de Canciones</h2>
+        <button className="btn btn-danger" onClick={eliminarTodas}>
+          Eliminar todo
+        </button>
+      </div>
 
       {cargando ? (
         <p>Cargando solicitudes...</p>
