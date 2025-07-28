@@ -28,6 +28,8 @@ import PublicacionesPage from "./pages/PublicacionesPage";
 import ReproductorPage from "./pages/ReproductorPage";
 import MasReproducidas from "./pages/MasReproducidas";
 import SolicitudesPage from "./components/SolicitudesPage";
+import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
+import MiPlaylist from "./pages/MiPlaylist";
 
 function App() {
   // 🔹 Estado global de autenticación
@@ -67,6 +69,9 @@ function App() {
                 <Route path="producto/:id" element={<ProductoDetalle />} />
                 <Route path="/mas-reproducidas" element={<MasReproducidas />} />
                 <Route path="solicitudes" element={<SolicitudesPage />} />
+                <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
+                <Route path="/playlist/:id" element={<MiPlaylist />} />
+
               </Route>
               <Route path="favoritos" element={<FavoritosPage />} />
               {/* Son las funcionalidades de los botones */}
