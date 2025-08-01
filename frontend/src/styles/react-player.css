@@ -1,8 +1,15 @@
-/* styles/react-player.css */
+.marquee {
+  animation: scroll 20s linear infinite;
+  white-space: nowrap;
+  display: inline-block;
+}
 
-.react-player iframe {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  background-color: black; /* opcional, para evitar parpadeos al cargar */
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
 }

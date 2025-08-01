@@ -13,7 +13,7 @@ const ListadoPDFCanciones = () => {
 
   const obtenerCanciones = async () => {
     try {
-      const res = await axios.get(`${API_URL}/song`);
+      const res = await axios.get(`${API_URL}/song/numero`);
       setCanciones(res.data);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
@@ -25,6 +25,8 @@ const ListadoPDFCanciones = () => {
     let titulo = "AMERICAN KARAOKE - LISTA POR ";
 
     let cancionesOrdenadas = [...canciones];
+    let head = [];
+    let data = [];
 
     if (orden === "artista") {
       titulo += "ARTISTA";
@@ -33,6 +35,17 @@ const ListadoPDFCanciones = () => {
         const artB = (b.artista || "").toLowerCase();
         return artA.localeCompare(artB);
       });
+
+      // Encabezado y datos para orden por artista
+      head = [["Cantante", "Nº", "Canción", "Género"]];
+      data = cancionesOrdenadas.map((cancion, index) => [
+        cancion.artista || "Sin artista",
+        cancion.numero != null ? cancion.numero : index + 1,
+        cancion.titulo || "Sin título",
+        typeof cancion.generos === "object"
+          ? cancion.generos.nombre || "Sin género"
+          : cancion.generos || "Sin género",
+      ]);
     } else if (orden === "cancion") {
       titulo += "CANCION";
       cancionesOrdenadas.sort((a, b) => {
@@ -40,6 +53,17 @@ const ListadoPDFCanciones = () => {
         const titB = (b.titulo || "").toLowerCase();
         return titA.localeCompare(titB);
       });
+
+      // Encabezado y datos para orden por canción
+      head = [["Canción", "Nº", "Cantante", "Género"]];
+      data = cancionesOrdenadas.map((cancion, index) => [
+        cancion.titulo || "Sin título",
+        cancion.numero != null ? cancion.numero : index + 1,
+        cancion.artista || "Sin artista",
+        typeof cancion.generos === "object"
+          ? cancion.generos.nombre || "Sin género"
+          : cancion.generos || "Sin género",
+      ]);
     }
 
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -47,17 +71,8 @@ const ListadoPDFCanciones = () => {
     const x = (pageWidth - textWidth) / 2;
     doc.text(titulo, x, 10);
 
-    const data = cancionesOrdenadas.map((cancion, index) => [
-      cancion.numero != null ? cancion.numero : index + 1,
-      cancion.titulo || "Sin título",
-      cancion.artista || "Sin artista",
-      cancion.generos && typeof cancion.generos === "object"
-        ? cancion.generos.nombre || "Sin género"
-        : cancion.generos || "Sin género",
-    ]);
-
     autoTable(doc, {
-      head: [["Nº", "Título", "Artista", "Género"]],
+      head: head,
       body: data,
       startY: 20,
     });
@@ -78,7 +93,7 @@ const ListadoPDFCanciones = () => {
           className="btn btn-success"
           onClick={() => generarPDF("artista")}
         >
-          Descargar PDF por Artista
+          Descargar PDF por Cantante
         </button>
       </div>
     </div>

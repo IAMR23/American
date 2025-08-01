@@ -26,7 +26,7 @@ export default function CancionCRUD() {
 
   const fetchCanciones = async () => {
     try {
-      const res = await axios.get(API_URL, { headers });
+      const res = await axios.get(`${API_URL}/numero`, { headers });
       setCanciones(res.data);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
@@ -84,8 +84,7 @@ export default function CancionCRUD() {
       !titulo.trim() ||
       !artista.trim() ||
       !generos ||
-      !videoUrl.trim() ||
-      !imagenUrl.trim()
+      !videoUrl.trim()
     ) {
       alert("Por favor, complete todos los campos obligatorios.");
       return;
@@ -288,7 +287,6 @@ export default function CancionCRUD() {
                 <input
                   type="url"
                   className="form-control"
-                  required
                   value={form.imagenUrl}
                   onChange={(e) =>
                     setForm({ ...form, imagenUrl: e.target.value })

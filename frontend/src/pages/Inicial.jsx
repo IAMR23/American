@@ -3,7 +3,7 @@ import "../styles/inicial.css";
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import "../styles/botones.css";
+//import "../styles/botones.css";
 import "../styles/button.css";
 import "../styles/disco.css";
 import VideoPlayer from "../components/VideoPlayer";
@@ -21,7 +21,6 @@ import PlantTest from "../components/PlanTest";
 import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
 import RegistrationForm from "../components/RegistrationForm";
-
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -298,111 +297,113 @@ export default function Inicial() {
             }}
           />
         </div>
+        <div className="container-fluid">
+          <div className="row">
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center">
+              {getToken() && userRole === "admin" && (
+                <button
+                  className="boton2"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  Dashboard
+                </button>
+              )}
 
-        <div className="d-flex flex-row justify-content-center align-items-center w-100 flex-wrap gap-2">
-          <div className="d-flex flex-row flex-md-column flex-wrap justify-content-center gap-1">
-            {getToken() && userRole === "admin" && (
-              <button className="boton2" onClick={() => navigate("/dashboard")}>
-                Dashboard
-              </button>
-            )}
-
-            <button
-              className="boton1"
-              onClick={() => setSeccionActiva("buscador")}
-              disabled={!suscrito}
-            >
-              Buscador
-            </button>
-            <button
-              className="boton2"
-              onClick={() => setSeccionActiva("playlist")}
-              disabled={!suscrito}
-            >
-              PlayList
-            </button>
-            <button className="boton3">Lo más cantado</button>
-            <button
-              className="boton4"
-              onClick={() => setSeccionActiva("favoritos")}
-              disabled={!suscrito}
-            >
-              Favoritos
-            </button>
-            <button
-              onClick={() => navigate("/listaCanciones")}
-              className="boton5"
-              disabled={!suscrito}
-            >
-              Lista de Canciones
-            </button>
-            <button
-              className="boton6"
-              onClick={() => setSeccionActiva("sugerirCanciones")}
-              disabled={!suscrito}
-            >
-              Sugerir Canciones
-            </button>
-            {/* <button className="boton7">Scanner a Celular</button> */}
-          </div>
-
-          <div className="flex-grow-1"> {renderContenido()}</div>
-
-          <div className="d-flex flex-row flex-md-column flex-wrap justify-content-center gap-2">
-            {!getToken() && (
               <button
-                className="boton8"
-                onClick={() => setSeccionActiva("ingresar")}
+                className="boton1"
+                onClick={() => setSeccionActiva("buscador")}
+                disabled={!suscrito}
               >
-                Ingresar
+                Buscador
               </button>
-            )}
-            {!getToken() && (
               <button
-                className="boton7"
-                onClick={() => setSeccionActiva("registrar")}
+                className="boton2"
+                onClick={() => setSeccionActiva("playlist")}
+                disabled={!suscrito}
               >
-                Registrar
+                PlayList
               </button>
-            )}
-            <button
-              className="boton9"
-              onClick={() => setSeccionActiva("listadoPdf")}
-              disabled={!suscrito}
-            >
-              Listado PDF
-            </button>
-
-            <button className="boton10">Calificación</button>
-            <button
-              className="boton9"
-              onClick={() => setSeccionActiva("suscribir")}
-            >
-              Suscribir
-            </button>
-            <button
-              className="boton1"
-              onClick={() => setSeccionActiva("ayuda")}
-              disabled={!suscrito}
-            >
-              Ayuda
-            </button>
-            <button
-              className="boton2"
-              onClick={() => navigate("/publicaciones")}
-              disabled={!suscrito}
-            >
-              Galería Otros
-            </button>
-
-            {getToken() && (
-              <button className="boton3" onClick={cerrarSesion}>
-                Cerrar Sesión
+              <button className="boton3">Lo más cantado</button>
+              <button
+                className="boton4"
+                onClick={() => setSeccionActiva("favoritos")}
+                disabled={!suscrito}
+              >
+                Favoritos
               </button>
-            )}
+              <button
+                onClick={() => navigate("/listaCanciones")}
+                className="boton5"
+                disabled={!suscrito}
+              >
+                Lista de Canciones
+              </button>
+              <button
+                className="boton3"
+                onClick={() => setSeccionActiva("sugerirCanciones")}
+                disabled={!suscrito}
+              >
+                Sugerir Canciones
+              </button>
+              {/* <button className="boton7">Scanner a Celular</button> */}
+            </div>
+
+            <div className="col-12 col-md-8"> {renderContenido()}</div>
+
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center">
+              <div className="container-fluid"></div>
+              {!getToken() && (
+                <button
+                  className="boton8"
+                  onClick={() => setSeccionActiva("ingresar")}
+                >
+                  Ingresar
+                </button>
+              )}
+              {!getToken() && (
+                <button
+                  className="boton7"
+                  onClick={() => setSeccionActiva("registrar")}
+                >
+                  Registrar
+                </button>
+              )}
+              <button
+                className="boton9"
+                onClick={() => setSeccionActiva("listadoPdf")}
+                disabled={!suscrito}
+              >
+                Listado PDF
+              </button>
+              <button className="boton10">Calificación</button>
+              <button
+                className="boton9"
+                onClick={() => setSeccionActiva("suscribir")}
+              >
+                Suscribir
+              </button>
+              <button
+                className="boton1"
+                onClick={() => setSeccionActiva("ayuda")}
+                disabled={!suscrito}
+              >
+                Ayuda
+              </button>
+              <button
+                className="boton2"
+                onClick={() => navigate("/publicaciones")}
+                disabled={!suscrito}
+              >
+                Galería Otros
+              </button>
+              {getToken() && (
+                <button className="boton3" onClick={cerrarSesion}>
+                  Cerrar Sesión
+                </button>
+              )}
+            </div>
           </div>
         </div>
-
         {/* Cola dinámica */}
 
         <div className="d-flex flex-wrap justify-content-center gap-3 m-3">

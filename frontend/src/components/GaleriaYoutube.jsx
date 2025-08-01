@@ -11,7 +11,7 @@ import "../styles/Carrousel.css";
 import { useNavigate } from "react-router-dom";
 import VideoPlayer from "./VideoPlayer";
 import VideoPlayer2 from "./VideoPlayer2";
-const SONG_URL = `${API_URL}/song`;
+const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
 export default function GaleriaYoutube({
@@ -180,7 +180,7 @@ export default function GaleriaYoutube({
                   title="Agregar a playlist"
                   disabled={!isAuthenticated}
                 >
-                  <img src="./heart.png" alt="" width={"60px"} />
+                  <img src="./heart.png" alt="" width={"40px"} />
                 </button>
 
                 <button
@@ -189,7 +189,7 @@ export default function GaleriaYoutube({
                   title="Agregar a cola"
                   disabled={!isAuthenticated}
                 >
-                  <img src="./mas.png" alt="" width={"60px"} />
+                  <img src="./mas.png" alt="" width={"40px"} />
                 </button>
 
                 <button
@@ -206,12 +206,12 @@ export default function GaleriaYoutube({
               <div className="">
                 <div className="text-center text-black p-2 texto-superior">
                   <span className="fw-bold">
-                    {video.numero} - {video.titulo}
+                    {video.numero} - {video.artista}
                   </span>
                   <br />
-                  <small>{video.artista} -</small>
-                  <br />
-                  <small>{video.generos?.nombre || "Sin género"}</small>
+                  <small>
+                    {video.titulo} - {video.generos?.nombre || "Sin género"}{" "}
+                  </small>
                 </div>
               </div>
             </div>
@@ -243,8 +243,6 @@ export default function GaleriaYoutube({
           />
         </div>
       )}
-
-
     </div>
   );
 }

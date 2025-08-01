@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { getToken } from "../utils/auth";
 import { API_URL } from "../config";
+import { FaPlus } from "react-icons/fa";
 
-export default function PlaylistSelectorModal({ 
-  userId, 
-  songId, 
-  show, 
-  onClose, 
-  onAddToPlaylistSuccess 
+export default function PlaylistSelectorModal({
+  userId,
+  songId,
+  show,
+  onClose,
+  onAddToPlaylistSuccess,
 }) {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ export default function PlaylistSelectorModal({
         const res = await axios.get(`${API_URL}/t/playlist/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log(res.data)
+        console.log(res.data);
         setPlaylists(res.data || []);
       } catch (err) {
         setError("Error cargando playlists");
@@ -38,6 +39,39 @@ export default function PlaylistSelectorModal({
 
     fetchPlaylists();
   }, [show, userId]);
+
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault(); // Evita que recargue la página
+    if (newPlaylistName.trim()) {
+      onAdd(newPlaylistName.trim());
+      setNewPlaylistName("");
+    }
+  };
+
+  const onAdd = async (name) => {
+    const token = getToken();
+    try {
+      const res = await axios.post(
+        `${API_URL}/t/playlist`,
+        { nombre: name },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const nuevaPlaylist = res.data;
+
+      setPlaylists((prev) =>
+        Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
+      );
+    } catch (err) {
+      console.error(
+        "Error al crear playlist:",
+        err.response?.data || err.message
+      );
+      alert("No se pudo crear el playlist. Quizás ya existe.");
+    }
+  };
 
   const handleAddToPlaylist = async () => {
     if (!selectedPlaylistId) {
@@ -108,12 +142,38 @@ export default function PlaylistSelectorModal({
 
         <h3>Selecciona un playlist</h3>
 
+        <form className="input-group mb-3" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Nombre del nuevo playlist"
+            value={newPlaylistName}
+            onChange={(e) => setNewPlaylistName(e.target.value)}
+            aria-label="Nuevo playlist"
+            autoFocus
+          />
+          <button
+            className="btn btn-primary d-flex align-items-center justify-content-center"
+            type="submit"
+            title="Crear nuevo playlist"
+          >
+            <FaPlus />
+          </button>
+        </form>
+
         {loading && <p>Cargando playlists...</p>}
         {error && <p style={{ color: "red" }}>{error}</p>}
 
         {!loading && playlists.length === 0 && <p>No tienes playlists.</p>}
 
-        <ul style={{ listStyle: "none", padding: 0, maxHeight: "300px", overflowY: "auto" }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            maxHeight: "300px",
+            overflowY: "auto",
+          }}
+        >
           {playlists.map((playlist) => (
             <li key={playlist._id} style={{ marginBottom: "10px" }}>
               <label style={{ cursor: "pointer", userSelect: "none" }}>

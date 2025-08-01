@@ -15,7 +15,7 @@ const BuscadorTabla = () => {
       const headers = localStorage.getItem("token")
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
-      const res = await axios.get(SONG_URL, { headers });
+      const res = await axios.get(`${SONG_URL}/numero`, { headers });
       setData(res.data.canciones || res.data);
     } catch (err) {
       console.error("Error al obtener canciones", err);
@@ -45,10 +45,17 @@ const BuscadorTabla = () => {
 
   const datosFiltrados = data.filter(filtrar);
 
+  const nombresBonitos = {
+    numero: "Número",
+    artista: "Cantante",
+    titulo: "Canción",
+    generos: "Género",
+  };
+
   return (
     <div className="">
       <div className="d-flex align-items-center flex-wrap">
-        {["numero" , "titulo", "artista", "generos"].map((tipo) => (
+        {["numero", "artista", "titulo", "generos"].map((tipo) => (
           <button
             key={tipo}
             onClick={() => handleFiltroClick(tipo)}
@@ -56,7 +63,7 @@ const BuscadorTabla = () => {
               filtroActivo === tipo ? "btn-danger" : "btn-primary"
             }`}
           >
-            {tipo}
+            {nombresBonitos[tipo] || tipo}
           </button>
         ))}
 
@@ -74,8 +81,8 @@ const BuscadorTabla = () => {
           <thead>
             <tr>
               <th>Número</th>
-              <th>Título</th>
-              <th>Artista</th>
+              <th>Cantante</th>
+              <th>Canción</th>
               <th>Género</th>
             </tr>
           </thead>
@@ -83,8 +90,8 @@ const BuscadorTabla = () => {
             {datosFiltrados.map((fila) => (
               <tr key={fila._id}>
                 <td>{fila.numero}</td>
-                <td>{fila.titulo}</td>
                 <td>{fila.artista}</td>
+                <td>{fila.titulo}</td>
                 <td>{fila.generos?.nombre || "Sin género"}</td>
               </tr>
             ))}

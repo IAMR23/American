@@ -54,7 +54,7 @@ export default function VideoPlayer({
 
   const handleProgress = ({ playedSeconds }) => {
     const duration = playerRef.current?.getDuration?.();
-    if (duration && duration - playedSeconds <= 20) {
+    if (duration && duration - playedSeconds <= 30) {
       const next = playlist[currentIndex + 1];
       if (next) {
         setNextSongName(next.titulo || "Siguiente canción");
@@ -132,7 +132,6 @@ export default function VideoPlayer({
         margin: "auto",
         position: "relative",
         background: "#000",
-        width: "100%",
         height: isFullscreen ? "100vh" : "auto",
       }}
     >
@@ -187,11 +186,11 @@ export default function VideoPlayer({
 
         {showNextMessage && (
           <div
+            className="marquee"
             style={{
-              position: "absolute",
-              bottom: isFullscreen ? "100px" : "60px",
+              position: "absolute", // usa fixed para que sea relativo al viewport
+              top: "33%", // 1/3 de alto
               left: "50%",
-              transform: "translateX(-50%)",
               backgroundColor: "rgba(0,0,0,0.8)",
               color: "white",
               padding: "12px 20px",
@@ -200,7 +199,8 @@ export default function VideoPlayer({
               zIndex: 9999,
             }}
           >
-            🎶 Próxima canción: {nextSongName}
+ 
+            <div >🎶 Próxima canción: {nextSongName}</div>
           </div>
         )}
 

@@ -95,8 +95,8 @@
 .texto-superior {
   z-index: 20;
   position: relative;
-    pointer-events: none; /* permite hacer clic en elementos debajo */
-
+  pointer-events: none; /* permite hacer clic en elementos debajo */
+  font-weight: 900;
 }
 
 .tarjetas {
