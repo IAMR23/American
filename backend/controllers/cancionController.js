@@ -3,7 +3,15 @@ const mongoose = require("mongoose");
 
 const crearCancion = async (req, res) => {
   try {
-    const { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal } = req.body;
+    const {
+      numero,
+      titulo,
+      artista,
+      generos,
+      videoUrl,
+      imagenUrl,
+      visiblePrincipal,
+    } = req.body;
 
     const nuevaCancion = new Cancion({
       numero,
@@ -22,9 +30,23 @@ const crearCancion = async (req, res) => {
   }
 };
 
+const listarCancionesNumero = async (req, res) => {
+  try {
+    const canciones = await Cancion.find()
+      .sort({ numero: 1 }) // Orden ascendente por número
+      .populate("generos", "nombre");
+
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const listarCanciones = async (req, res) => {
   try {
-    const canciones = await Cancion.find().sort({ titulo: 1 }).populate("generos"  , "nombre"); // 1 para ascendente
+    const canciones = await Cancion.find()
+      .sort({ titulo: 1 })
+      .populate("generos", "nombre"); // 1 para ascendente
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -33,14 +55,14 @@ const listarCanciones = async (req, res) => {
 
 const listarCancionesArtista = async (req, res) => {
   try {
-    const canciones = await Cancion.find().sort({ artista: 1 }).populate("generos"  , "nombre"); // 1 para ascendente
+    const canciones = await Cancion.find()
+      .sort({ artista: 1 })
+      .populate("generos", "nombre"); // 1 para ascendente
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 const obtenerCancion = async (req, res) => {
   try {
@@ -55,11 +77,27 @@ const obtenerCancion = async (req, res) => {
 
 const actualizarCancion = async (req, res) => {
   try {
-    const { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal } = req.body;
+    const {
+      numero,
+      titulo,
+      artista,
+      generos,
+      videoUrl,
+      imagenUrl,
+      visiblePrincipal,
+    } = req.body;
 
     const cancionActualizada = await Cancion.findByIdAndUpdate(
       req.params.id,
-      { numero, titulo, artista, generos, videoUrl, imagenUrl, visiblePrincipal },
+      {
+        numero,
+        titulo,
+        artista,
+        generos,
+        videoUrl,
+        imagenUrl,
+        visiblePrincipal,
+      },
       { new: true }
     );
 
@@ -163,16 +201,14 @@ const getCancionesPaginadas = async (req, res) => {
 // Controlador para canciones visibles en principal
 const listarCancionesVisibles = async (req, res) => {
   try {
-    const cancionesVisibles = await Cancion.find({ visiblePrincipal: true }).populate("generos");
+    const cancionesVisibles = await Cancion.find({
+      visiblePrincipal: true,
+    }).populate("generos");
     res.json(cancionesVisibles);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
-
-
-
 
 module.exports = {
   crearCancion,
@@ -182,6 +218,7 @@ module.exports = {
   eliminarCancion,
   filtrarCanciones,
   getCancionesPaginadas,
-  listarCancionesVisibles, 
-  listarCancionesArtista
+  listarCancionesVisibles,
+  listarCancionesArtista,
+  listarCancionesNumero,
 };
