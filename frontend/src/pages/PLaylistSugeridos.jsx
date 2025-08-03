@@ -45,7 +45,7 @@ const PLaylistSugeridos = ({ playlists, onSelect, onAdd, onClose }) => {
       {!isValidArray || playlists.length === 0 ? (
         <p className="text-muted text-center">No tienes playlists aún.</p>
       ) : (
-        <ul className="list-group" style={{ maxHeight: "300px", overflowY: "auto" }}>
+        <ul className="list-group" style={{ maxHeight: "500px", overflowY: "auto" }}>
           {playlists.map((playlist, i) => (
             <li
               key={i}
@@ -61,7 +61,7 @@ const PLaylistSugeridos = ({ playlists, onSelect, onAdd, onClose }) => {
               </div>
 
               <Link
-                to={`/mis-playlist/${playlist._id}`}
+                to={`/playlistPopular/${playlist._id}`}
                 className="btn btn-outline-primary btn-sm"
               >
                 Ver Playlist

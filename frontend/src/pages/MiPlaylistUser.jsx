@@ -24,7 +24,7 @@ const MiPlaylistUser = () => {
       const token = localStorage.getItem("token");
 
       const response = await axios.get(
-        `${API_URL}/t1/playlist/canciones/${id}`,
+        `${API_URL}/t/playlist/canciones/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -58,7 +58,7 @@ const MiPlaylistUser = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        `${API_URL}/t1/playlist/${id}/addsong`,
+        `${API_URL}/t/playlist/${id}/addsong`,
         { songId: cancionId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -74,7 +74,7 @@ const MiPlaylistUser = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
-        `${API_URL}/t1/playlist/${id}/remove/${cancionId}`,
+        `${API_URL}/t/playlist/${id}/remove/${cancionId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -101,13 +101,13 @@ const MiPlaylistUser = () => {
       <div className="fondo container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
-            src="./icono.png"
+            src="/icono.png"
             alt="icono"
             style={{ width: "60px", height: "auto" }}
           />
           <img
             onClick={() => setSeccionActiva("video")}
-            src="./logo.png"
+            src="/logo.png"
             alt="logo"
             className="img-fluid"
             style={{
@@ -119,7 +119,7 @@ const MiPlaylistUser = () => {
           />
         </div>
         <div>
-          <h1>Playlist: {nombrePlaylist || "Cargando..."}</h1>
+          <h1 className="text-white">Playlist: {nombrePlaylist || "Cargando..."}</h1>
 
           <button className="btn btn-primary my-3" onClick={abrirModal}>
             Agregar Canciones
