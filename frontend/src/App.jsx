@@ -72,7 +72,6 @@ function App() {
                 <Route path="/playlist/:id" element={<MiPlaylist />} />
               </Route>
               <Route path="/mis-playlist/:id" element={<MiPlaylistUser />} />
-              <Route path="/mis-playlist-admin/:id" element={<MiPlaylistAdmin />} />
 
               {/* Son las funcionalidades de los botones */}
               <Route path="listacanciones" element={<ListaCanciones />} />

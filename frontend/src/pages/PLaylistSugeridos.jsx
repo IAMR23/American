@@ -1,31 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import { BsMusicNote } from "react-icons/bs";
 import { Link } from "react-router-dom";
-import axios from "axios";
-import { API_URL } from "../config";
 
-const token = localStorage.getItem("token");
-
-const axiosConfig = {
-  headers: { Authorization: `Bearer ${token}` },
-};
-
-const PLaylistSugeridos = ({ onSelect, onAdd, onClose }) => {
+const PLaylistSugeridos = ({ playlists, onSelect, onAdd, onClose }) => {
   const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [playlists, setPlaylists] = useState([]);
-  useEffect(() => {
-    fetchPlaylists();
-  }, []);
-
-  async function fetchPlaylists() {
-    try {
-      const res = await axios.get(`${API_URL}/t2/playlistpropia`, axiosConfig);
-      setPlaylists(res.data);
-    } catch (error) {
-      console.error("Error al cargar playlists:", error);
-    }
-  }
 
   const isValidArray = Array.isArray(playlists);
 
@@ -38,10 +17,7 @@ const PLaylistSugeridos = ({ onSelect, onAdd, onClose }) => {
   };
 
   return (
-    <div
-      className="bg-white p-4 rounded shadow-sm w-100"
-      style={{ maxWidth: "100%" }}
-    >
+    <div className="bg-white p-4 rounded shadow-sm w-100" style={{ maxWidth: "100%" }}>
       <div className="d-flex align-items-center mb-3">
         <BsMusicNote size={24} className="me-2 text-primary" />
         <h3 className="mb-0">Playlist Sugeridos</h3>
@@ -69,10 +45,7 @@ const PLaylistSugeridos = ({ onSelect, onAdd, onClose }) => {
       {!isValidArray || playlists.length === 0 ? (
         <p className="text-muted text-center">No tienes playlists aún.</p>
       ) : (
-        <ul
-          className="list-group"
-          style={{ maxHeight: "300px", overflowY: "auto" }}
-        >
+        <ul className="list-group" style={{ maxHeight: "300px", overflowY: "auto" }}>
           {playlists.map((playlist, i) => (
             <li
               key={i}

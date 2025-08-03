@@ -24,7 +24,7 @@ const MiPlaylistUser = () => {
       const token = localStorage.getItem("token");
 
       const response = await axios.get(
-        `${API_URL}/t2/playlist/canciones/${id}`,
+        `${API_URL}/t1/playlist/canciones/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -58,7 +58,7 @@ const MiPlaylistUser = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        `${API_URL}/t2/playlist/${id}/addsong`,
+        `${API_URL}/t1/playlist/${id}/addsong`,
         { songId: cancionId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -74,7 +74,7 @@ const MiPlaylistUser = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
-        `${API_URL}/t2/playlist/${id}/remove/${cancionId}`,
+        `${API_URL}/t1/playlist/${id}/remove/${cancionId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

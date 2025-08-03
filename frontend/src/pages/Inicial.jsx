@@ -26,6 +26,7 @@ export default function Inicial() {
   const [cola, setCola] = useState([]);
   const [userId, setUserId] = useState(null);
   const [playlists, setPlaylists] = useState([]);
+  const [playlistsPropia, setPlaylistsPropia] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [suscrito, setSuscrito] = useState(false);
@@ -62,10 +63,10 @@ export default function Inicial() {
       case "playlist":
         return (
           <PlaylistSugeridos
-            playlists={playlists}
+            playlists={playlistsPropia}
             onSelect={(playlist) => {
               setSelectedPlaylist(playlist);
-              cargarPlaylistACola(playlist._id);
+              cargarPlaylistPropiaACola(playlist._id);
               setSeccionActiva("video"); // 👈 esto lleva al VideoPlayer
               setShowModal(false);
             }}
@@ -176,6 +177,33 @@ export default function Inicial() {
     const token = getToken();
     if (!token || !userId) return;
 
+    const cargarDatosAdmin = async () => {
+      try {
+        const resPlaylistsPropia = await axios.get(
+          `${API_URL}/t2/playlistPropia`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setPlaylistsPropia(Array.isArray(resPlaylistsPropia.data) ? resPlaylistsPropia.data : []);
+      } catch (error) {
+        console.error("Error al cargar playlists", error);
+        setPlaylistsPropia([]);
+      }
+
+      try {
+        const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuscrito(resSub.data.suscrito === true);
+      } catch (error) {
+        console.warn("No estás suscrito o hubo un error al verificar.");
+        setSuscrito(false);
+      }
+
+      cargarCola();
+    };
+
     const cargarDatos = async () => {
       try {
         const resPlaylists = await axios.get(
@@ -204,9 +232,27 @@ export default function Inicial() {
     };
 
     cargarDatos();
+    cargarDatosAdmin(); 
   }, [userId]);
 
-  console.log(suscrito);
+    const cargarPlaylistPropiaACola = async (playlistId) => {
+    const token = getToken();
+    try {
+      const res = await axios.get(
+        `${API_URL}/t2/playlistPropia/canciones/${playlistId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const canciones = res.data.canciones || [];
+      setCola(canciones);
+      setModoReproduccion("playlist");
+      setPlaylistActualId(playlistId);
+    } catch (err) {
+      console.error("Error al cargar canciones del playlist", err);
+    }
+  };
+
 
   const cargarPlaylistACola = async (playlistId) => {
     const token = getToken();
