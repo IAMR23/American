@@ -11,6 +11,7 @@ const MiPlaylist = () => {
   const [error, setError] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
   const [busqueda, setBusqueda] = useState(""); // estado para el filtro
+  const [nombrePlaylist, setNombrePlaylist] = useState("");
 
   useEffect(() => {
     fetchCancionesDePlaylist();
@@ -29,6 +30,7 @@ const MiPlaylist = () => {
       );
 
       setCanciones(response.data.canciones || []);
+      setNombrePlaylist(response.data.nombre || ""); // 👈 aquí guardamos el nombre
     } catch (err) {
       console.error("Error al obtener canciones:", err);
       setError("No se pudieron cargar las canciones");
@@ -95,7 +97,7 @@ const MiPlaylist = () => {
 
   return (
     <div>
-      <h1>Playlist: {id}</h1>
+      <h1>Playlist: {nombrePlaylist || "Cargando..."}</h1>
 
       <button className="btn btn-primary my-3" onClick={abrirModal}>
         Agregar Canciones

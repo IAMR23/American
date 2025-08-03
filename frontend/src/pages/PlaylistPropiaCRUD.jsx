@@ -24,7 +24,7 @@ export default function PlaylistPropiaCRUD() {
   async function fetchPlaylists() {
     try {
       const res = await axios.get(
-        `${API_URL}/t2/playlistpropia/${getUserId()}`,
+        `${API_URL}/t2/playlistpropia`,
         axiosConfig
       );
       setPlaylists(res.data);

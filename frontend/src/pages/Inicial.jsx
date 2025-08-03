@@ -9,7 +9,7 @@ import "../styles/disco.css";
 import VideoPlayer from "../components/VideoPlayer";
 import { FaCompactDisc } from "react-icons/fa";
 import PlaylistSelector from "../components/PlaylistSelector";
-import FavoritosPage from "./FavoritosPage";
+import PlaylistSugeridos from "./PLaylistSugeridos";
 import { useNavigate } from "react-router-dom";
 import SolicitudesCancion from "./SolicitudCancion";
 import LoginForm from "../components/LoginForm";
@@ -41,16 +41,8 @@ export default function Inicial() {
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
-        return (
-          // <BuscadorCanciones
-          //   setCola={setCola}
-          //   cola={cola}
-          //   cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
-          //   onAgregarCancion={insertarCancion}
-          // />
-          <BuscadorTabla />
-        );
-      case "playlist":
+        return <BuscadorTabla />;
+      case "favoritos":
         return (
           <PlaylistSelector
             playlists={playlists}
@@ -67,10 +59,21 @@ export default function Inicial() {
       case "masCantado":
         return <MasCantado />;
 
-      case "favoritos":
-        return <FavoritosPage />;
-      case "listaCanciones":
-        return dirigir("/listaCanciones");
+      case "playlist":
+        return (
+          <PlaylistSugeridos
+            playlists={playlists}
+            onSelect={(playlist) => {
+              setSelectedPlaylist(playlist);
+              cargarPlaylistACola(playlist._id);
+              setSeccionActiva("video"); // 👈 esto lleva al VideoPlayer
+              setShowModal(false);
+            }}
+            onAdd={handleAddPlaylist}
+            onClose={() => setShowModal(false)}
+          />
+        );
+
       case "sugerirCanciones":
         return <SolicitudesCancion />;
       case "scanner":
@@ -123,10 +126,6 @@ export default function Inicial() {
     setUserId(null);
     navigate("/"); // O recarga la página si prefieres
     window.location.reload(); // Fuerza recarga total si quieres limpiar estados
-  };
-
-  const dirigir = (ubicacion) => {
-    navigate(ubicacion);
   };
 
   // Crear nuevo playlist
@@ -299,7 +298,7 @@ export default function Inicial() {
         </div>
         <div className="container-fluid">
           <div className="row">
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center">
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center">
               {getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
@@ -348,9 +347,12 @@ export default function Inicial() {
               {/* <button className="boton7">Scanner a Celular</button> */}
             </div>
 
-            <div className="col-12 col-md-8"> {renderContenido()}</div>
+            <div className="col-12 col-md-8  justify-content-center">
+              {" "}
+              {renderContenido()}
+            </div>
 
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center">
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center">
               <div className="container-fluid"></div>
               {!getToken() && (
                 <button

@@ -189,7 +189,7 @@ export default function VideoPlayer({
             className="marquee"
             style={{
               position: "absolute", // usa fixed para que sea relativo al viewport
-              top: "33%", // 1/3 de alto
+              top: "25%", 
               left: "50%",
               backgroundColor: "rgba(0,0,0,0.8)",
               color: "white",

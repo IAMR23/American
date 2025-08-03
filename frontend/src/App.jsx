@@ -6,13 +6,10 @@ import Footer from "./components/Footer";
 import Dashboard from "./pages/Dashboard";
 import LoginForm from "./components/LoginForm";
 import RegistrationForm from "./components/RegistrationForm";
-
 import Inicial from "./pages/Inicial";
-
 import AnunciosCRUD from "./pages/AnunciosCrud";
 import CancionesCRUD from "./pages/CancionesCrud";
 import GeneroCRUD from "./pages/GeneroCrud";
-import FavoritosPage from "./pages/FavoritosPage";
 import PromocionesPage from "./pages/PromocionesPage";
 import SidebarLayout from "./components/SidebarLayout";
 import UsuariosPage from "./pages/UsuariosPage";
@@ -30,6 +27,8 @@ import MasReproducidas from "./pages/MasReproducidas";
 import SolicitudesPage from "./components/SolicitudesPage";
 import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
 import MiPlaylist from "./pages/MiPlaylist";
+import MiPlaylistUser from "./pages/MiPlaylistUser";
+import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 
 function App() {
   // 🔹 Estado global de autenticación
@@ -71,9 +70,10 @@ function App() {
                 <Route path="solicitudes" element={<SolicitudesPage />} />
                 <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
                 <Route path="/playlist/:id" element={<MiPlaylist />} />
-
               </Route>
-              <Route path="favoritos" element={<FavoritosPage />} />
+              <Route path="/mis-playlist/:id" element={<MiPlaylistUser />} />
+              <Route path="/mis-playlist-admin/:id" element={<MiPlaylistAdmin />} />
+
               {/* Son las funcionalidades de los botones */}
               <Route path="listacanciones" element={<ListaCanciones />} />
               <Route path="test" element={<PublicacionesCrud />} />

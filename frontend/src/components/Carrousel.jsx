@@ -170,7 +170,7 @@ export default function Carrousel({
                   >
                     <div className="row mx-0">
                       {videosDelGrupo.map((video) => {
-                        const thumbnail = getYoutubeThumbnail(video.videoUrl);
+                        // const thumbnail = getYoutubeThumbnail(video.videoUrl);
 
                         return (
                           <div
@@ -183,7 +183,7 @@ export default function Carrousel({
                             }}
                           >
                             <img
-                              src={thumbnail}
+                              src={video.imagenUrl}
                               alt={`Miniatura de ${video.titulo}`}
                               className="img-fluid rounded"
                               onClick={() => setVideoSeleccionado(video)}
