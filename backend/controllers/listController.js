@@ -130,7 +130,6 @@ function createListController(Model) {
 
     async getCancionesDePlaylist(req, res) {
       const { playlistId } = req.params;
-
       try {
         const playlist = await Playlist.findById(playlistId).populate(
           "canciones"
