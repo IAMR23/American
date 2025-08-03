@@ -2,41 +2,40 @@ const express = require("express");
 const router = express.Router();
 
 const PlaylistPropia = require("../models/PlaylistPropia");
-const createListController = require("../controllers/listController");
+const createListControllerPropia = require("../controllers/listControllerPropia");
 const { authenticate } = require("../middleware/authMiddleware");
 
-const playlistController = createListController(PlaylistPropia);
+const listControllerPropia = createListControllerPropia(PlaylistPropia);
 
 //Playlist.jsauthMiddleware
 
-router.post("/playlistpropia", authenticate, playlistController.createPlaylist);
+router.post("/playlistpropia", authenticate, listControllerPropia.createPlaylist);
 router.get(
-  "/playlistpropia/:userId",
-  authenticate,
-  playlistController.getUserPlaylists
+  "/playlistpropia/",
+  listControllerPropia.getUserPlaylists
 );
 router.get(
   "/playlistpropia/canciones/:playlistId",
   authenticate,
-  playlistController.getCancionesDePlaylist
+  listControllerPropia.getCancionesDePlaylist
 );
 router.post(
   "/playlistpropia/:playlistId/addsong",
   authenticate,
-  playlistController.addCancionAPlaylist
+  listControllerPropia.addCancionAPlaylist
 );
-router.post("/playlistpropia/add", authenticate, playlistController.addSong);
+router.post("/playlistpropia/add", authenticate, listControllerPropia.addSong);
 router.delete(
   "/playlistpropia/:playlistId/remove/:songId",
   authenticate,
-  playlistController.removeSong
+  listControllerPropia.removeSong
 );
 router.delete(
   "/playlistpropia/:playlistId",
   authenticate,
-  playlistController.deletePlaylist
+  listControllerPropia.deletePlaylist
 );
 
-router.delete("/playlistpropia/clear/:userId", playlistController.clearList);
+router.delete("/playlistpropia/clear/:userId", listControllerPropia.clearList);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const Playlist = require("../models/Playlist");
+const PlaylistPropia = require("../models/PlaylistPropia");
 
 // controllers/listController.js
 function createListController(Model) {
@@ -44,9 +44,11 @@ function createListController(Model) {
     async removeSong(req, res) {
       const { playlistId, songId } = req.params;
       try {
-        const playlist = await Playlist.findById(playlistId);
+        const playlist = await PlaylistPropia.findById(playlistId);
         if (!playlist)
-          return res.status(404).json({ message: "Playlist no encontrada" });
+          return res
+            .status(404)
+            .json({ message: "PlaylistPropia no encontrada" });
 
         playlist.canciones = playlist.canciones.filter(
           (id) => id.toString() !== songId
@@ -85,14 +87,18 @@ function createListController(Model) {
       }
 
       try {
-        const existe = await Playlist.findOne({ user: userId, nombre });
+        const existe = await PlaylistPropia.findOne({ user: userId, nombre });
         if (existe) {
           return res
             .status(400)
             .json({ error: "Ya existe una playlist con ese nombre" });
         }
 
-        const nueva = new Playlist({ user: userId, nombre, canciones: [] });
+        const nueva = new PlaylistPropia({
+          user: userId,
+          nombre,
+          canciones: [],
+        });
         await nueva.save();
         res.status(201).json(nueva);
       } catch (err) {
@@ -103,10 +109,7 @@ function createListController(Model) {
 
     async getUserPlaylists(req, res) {
       try {
-        const userId = req.user._id; // Aquí obtienes el ID del usuario autenticado
-        const playlists = await Playlist.find({ user: userId }).populate(
-          "canciones"
-        );
+        const playlists = await PlaylistPropia.find().populate("canciones");
         res.status(200).json(playlists);
       } catch (error) {
         console.error("Error al obtener las playlists del usuario:", error);
@@ -118,7 +121,7 @@ function createListController(Model) {
       const userId = req.params.userId || req.user.id;
 
       try {
-        const playlists = await Playlist.find({ user: userId }).populate(
+        const playlists = await PlaylistPropia.find({ user: userId }).populate(
           "canciones"
         );
         res.status(200).json(playlists);
@@ -132,12 +135,14 @@ function createListController(Model) {
       const { playlistId } = req.params;
 
       try {
-        const playlist = await Playlist.findById(playlistId).populate(
+        const playlist = await PlaylistPropia.findById(playlistId).populate(
           "canciones"
         );
 
         if (!playlist) {
-          return res.status(404).json({ error: "Playlist no encontrada" });
+          return res
+            .status(404)
+            .json({ error: "PlaylistPropia no encontrada" });
         }
 
         res.status(200).json({
@@ -158,9 +163,11 @@ function createListController(Model) {
       }
 
       try {
-        const playlist = await Playlist.findById(playlistId);
+        const playlist = await PlaylistPropia.findById(playlistId);
         if (!playlist) {
-          return res.status(404).json({ error: "Playlist no encontrada" });
+          return res
+            .status(404)
+            .json({ error: "PlaylistPropia no encontrada" });
         }
 
         // Verificar si la canción ya existe en el playlist
@@ -189,19 +196,23 @@ function createListController(Model) {
 
       try {
         // Buscar la playlist y asegurarse que pertenece al usuario
-        const playlist = await Playlist.findOne({
+        const playlist = await PlaylistPropia.findOne({
           _id: playlistId,
           user: userId,
         });
 
         if (!playlist) {
-          return res.status(404).json({ error: "Playlist no encontrada" });
+          return res
+            .status(404)
+            .json({ error: "PlaylistPropia no encontrada" });
         }
 
         // Eliminar la playlist
-        await Playlist.deleteOne({ _id: playlistId });
+        await PlaylistPropia.deleteOne({ _id: playlistId });
 
-        res.status(200).json({ message: "Playlist eliminada correctamente" });
+        res
+          .status(200)
+          .json({ message: "PlaylistPropia eliminada correctamente" });
       } catch (error) {
         console.error("Error al eliminar la playlist:", error);
         res.status(500).json({ error: "Error del servidor" });
