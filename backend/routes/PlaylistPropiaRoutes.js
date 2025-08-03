@@ -9,11 +9,12 @@ const listControllerPropia = createListControllerPropia(PlaylistPropia);
 
 //Playlist.jsauthMiddleware
 
-router.post("/playlistpropia", authenticate, listControllerPropia.createPlaylist);
-router.get(
-  "/playlistpropia/",
-  listControllerPropia.getUserPlaylists
+router.post(
+  "/playlistpropia",
+  authenticate,
+  listControllerPropia.createPlaylist
 );
+router.get("/playlistpropia", listControllerPropia.getUserPlaylists);
 router.get(
   "/playlistpropia/canciones/:playlistId",
   authenticate,
