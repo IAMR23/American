@@ -13,6 +13,7 @@ const SolicitudesCancion = () => {
   const [cantanteEditado, setCantanteEditado] = useState("");
   const [cancionEditada, setCancionEditada] = useState("");
   const [userId, setUserId] = useState("");
+  const [vista, setVista] = useState("solicitar");
 
   const API_SOLICITUD = `${API_URL}/solicitud`;
 
@@ -92,142 +93,108 @@ const SolicitudesCancion = () => {
     <div className="container my-4 bg-dark p-4 rounded">
       <h2 className="mb-4 text-white">Solicitudes de Canciones</h2>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          crearSolicitud();
-        }}
-        className="row g-2 mb-3"
-      >
-        <div className="col-md-5">
-          <input
-            type="text"
-            className="form-control"
-            value={cantante}
-            onChange={(e) => setCantante(e.target.value)}
-            placeholder="Nombre del cantante"
-            required
-          />
-        </div>
-        <div className="col-md-5">
-          <input
-            type="text"
-            className="form-control"
-            value={cancion}
-            onChange={(e) => setCancion(e.target.value)}
-            placeholder="Nombre de la canción"
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <button type="submit" className="btn btn-light w-100">
-            Enviar
-          </button>
-        </div>
-      </form>
+      {/* Botones para alternar vista */}
+      <div className="mb-4 d-flex gap-2">
+        <button
+          className={`btn ${vista === "solicitar" ? "btn-danger" : "btn-primary"}`}
+          onClick={() => setVista("solicitar")}
+        >
+          Solicitar Canción
+        </button>
+        <button
+          className={`btn ${vista === "votar" ? "btn-danger" : "btn-primary"}`}
+          onClick={() => setVista("votar")}
+        >
+          Votar
+        </button>
+      </div>
 
-      <div
-        className="list-group"
-        style={{ maxHeight: "400px", overflowY: "auto" }}
-      >
-        {solicitudes.slice(0, 10).map((sol) => {
-          const yaVoto = sol.votos?.includes(userId);
-          return (
-            <div
-              key={sol._id}
-              className="list-group-item mb-3 border rounded shadow-sm d-flex justify-content-between align-items-start bg-light"
-            >
-              <div className="me-3 flex-grow-1">
-                <p className="mb-1 fw-bold">
-                  {sol.usuario?.nombre || "Desconocido"}
-                </p>
+      {/* Vista de solicitar */}
+      {vista === "solicitar" && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            crearSolicitud();
+          }}
+          className="row g-2 mb-3"
+        >
+          <div className="col-md-5">
+            <input
+              type="text"
+              className="form-control"
+              value={cantante}
+              onChange={(e) => setCantante(e.target.value)}
+              placeholder="Nombre del cantante"
+              required
+            />
+          </div>
+          <div className="col-md-5">
+            <input
+              type="text"
+              className="form-control"
+              value={cancion}
+              onChange={(e) => setCancion(e.target.value)}
+              placeholder="Nombre de la canción"
+              required
+            />
+          </div>
+          <div className="col-md-2">
+            <button type="submit" className="btn btn-light w-100">
+              Enviar
+            </button>
+          </div>
+        </form>
+      )}
 
-                {editandoId === sol._id ? (
-                  <>
-                    <div className="row g-2 mb-2">
-                      <div className="col-md-5">
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={cantanteEditado}
-                          onChange={(e) => setCantanteEditado(e.target.value)}
-                          placeholder="Editar cantante"
-                        />
-                      </div>
-                      <div className="col-md-5">
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={cancionEditada}
-                          onChange={(e) => setCancionEditada(e.target.value)}
-                          placeholder="Editar canción"
-                        />
-                      </div>
-                      <div className="col-md-2 d-flex gap-1">
-                        <button
-                          className="btn btn-success w-100"
-                          onClick={() => actualizarSolicitud(sol._id)}
-                        >
-                          Guardar
-                        </button>
-                        <button
-                          className="btn btn-secondary w-100"
-                          onClick={() => setEditandoId(null)}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
+      {/* Vista de votar */}
+      {vista === "votar" && (
+        <div
+          className="list-group"
+          style={{ maxHeight: "400px", overflowY: "auto" }}
+        >
+          {(() => {
+            const yaVotoEnAlgo = solicitudes.some(s => s.votos?.includes(userId)); // 👈 Detecta si ya votó en algo
+            return solicitudes.slice(0, 10).map((sol) => {
+              const yaVoto = sol.votos?.includes(userId);
+              return (
+                <div
+                  key={sol._id}
+                  className="list-group-item mb-3 border rounded shadow-sm d-flex justify-content-between align-items-start bg-light"
+                >
+                  <div className="me-3 flex-grow-1">
+                    <p className="mb-1 fw-bold">
+                      {sol.usuario?.nombre || "Desconocido"}
+                    </p>
+
                     <p className="mb-1">
                       <strong>Cantante:</strong> {sol.cantante} <br />
                       <strong>Canción:</strong> {sol.cancion}
                     </p>
-                  </>
-                )}
-              </div>
+                  </div>
 
-              <div className="d-flex flex-column align-items-end gap-2">
-                <button
-                  className="btn btn-outline-success btn-sm d-flex align-items-center"
-                  onClick={() => votarSolicitud(sol._id)}
-                  disabled={yaVoto}
-                  title={yaVoto ? "Ya votaste" : "Votar"}
-                >
-                  <FiThumbsUp className="me-1" />
-                  {sol.votos?.length || 0}
-                </button>
-
-                {(userId === sol.usuario || userId === sol.usuario?._id) &&
-                  editandoId !== sol._id && (
-                    <>
-                      <button
-                        className="btn btn-outline-primary btn-sm d-flex align-items-center"
-                        onClick={() => {
-                          setEditandoId(sol._id);
-                          setCantanteEditado(sol.cantante);
-                          setCancionEditada(sol.cancion);
-                        }}
-                        title="Editar"
-                      >
-                        <FiEdit size={18} />
-                      </button>
-                      <button
-                        className="btn btn-outline-danger btn-sm d-flex align-items-center"
-                        onClick={() => eliminarSolicitud(sol._id)}
-                        title="Eliminar"
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
-                    </>
-                  )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <div className="d-flex flex-column align-items-end gap-2">
+                    <button
+                      className="btn btn-outline-success btn-sm d-flex align-items-center"
+                      onClick={() => votarSolicitud(sol._id)}
+                      disabled={yaVoto || (yaVotoEnAlgo && !yaVoto)} // 👈 Regla de un solo voto
+                      title={
+                        yaVoto
+                          ? "Ya votaste esta canción"
+                          : yaVotoEnAlgo
+                          ? "Ya votaste por otra canción"
+                          : "Votar"
+                      }
+                    >
+                      <FiThumbsUp className="me-1" />
+                      {sol.votos?.length || 0}
+                    </button>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
     </div>
   );
 };

@@ -64,6 +64,7 @@ export default function Carrousel({
 
       const res = await axios.get(url, { headers, params });
       setVideos(res.data.canciones || res.data);
+      console.log("cds", res.data);
     } catch (err) {
       console.error("Error al cargar videos", err);
     }
@@ -143,6 +144,26 @@ export default function Carrousel({
     // lógica para reproducir el video...
   };
 
+  function dropboxUrlToRaw(url) {
+    try {
+      const urlObj = new URL(url);
+      // Verificamos si es URL de Dropbox
+      if (urlObj.hostname.includes("dropbox.com")) {
+        if (urlObj.searchParams.has("dl")) {
+          urlObj.searchParams.delete("dl");
+        }
+        urlObj.searchParams.set("raw", "1");
+        return urlObj.toString();
+      } else {
+        // No es Dropbox, devolvemos la URL normal
+        return url;
+      }
+    } catch (error) {
+      // Si no es URL válida, devolver original para evitar error
+      return url;
+    }
+  }
+
   return (
     <div>
       <div className="container-fluid px-0">
@@ -183,7 +204,7 @@ export default function Carrousel({
                             }}
                           >
                             <img
-                              src={video.imagenUrl}
+                              src={dropboxUrlToRaw(video.imagenUrl)}
                               alt={`Miniatura de ${video.titulo}`}
                               className="img-fluid rounded"
                               onClick={() => setVideoSeleccionado(video)}
@@ -225,7 +246,7 @@ export default function Carrousel({
                               className="video-btn play-btn"
                               onClick={async () => {
                                 await masReproducida(video._id);
-                                
+
                                 let index = cola.findIndex(
                                   (c) => c._id === video._id
                                 );

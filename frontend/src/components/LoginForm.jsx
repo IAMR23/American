@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/userServices";
-import { jwtDecode } from "jwt-decode";
+import {jwtDecode} from "jwt-decode"; // Sin llaves en jwtDecode
 import { AuthContext } from "../utils/AuthContext";
 
 function LoginForm({ onLoginSuccess }) {
@@ -9,6 +9,7 @@ function LoginForm({ onLoginSuccess }) {
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/ocultar contraseña
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -37,14 +38,12 @@ function LoginForm({ onLoginSuccess }) {
 
       localStorage.setItem("rol", userRole);
 
-      // ✅ Establece el estado de autenticación global
       setAuth({
         isAuthenticated: true,
         rol: userRole,
         userId: userId,
       });
 
-      // Redirigir según el rol
       if (userRole === "admin") {
         navigate("/dashboard");
       } else {
@@ -97,13 +96,26 @@ function LoginForm({ onLoginSuccess }) {
               </label>
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"} // Aquí se cambia el tipo
                 name="password"
                 value={credentials.password}
                 onChange={handleChange}
                 className="form-control"
                 required
               />
+            </div>
+
+            <div className="mb-3 form-check">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="showPassword"
+                checked={showPassword}
+                onChange={() => setShowPassword(!showPassword)}
+              />
+              <label className="form-check-label" htmlFor="showPassword">
+                Mostrar contraseña
+              </label>
             </div>
 
             <button

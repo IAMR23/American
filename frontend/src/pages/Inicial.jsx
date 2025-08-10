@@ -344,7 +344,7 @@ export default function Inicial() {
         </div>
         <div className="container-fluid">
           <div className="row">
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center">
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               {getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
@@ -378,27 +378,26 @@ export default function Inicial() {
               </button>
               <button
                 onClick={() => navigate("/listaCanciones")}
-                className="boton5"
+                className="boton7"
                 disabled={!suscrito}
               >
-                Lista de Canciones
+                Lista Canciones
               </button>
               <button
                 className="boton3"
                 onClick={() => setSeccionActiva("sugerirCanciones")}
                 disabled={!suscrito}
               >
-                Sugerir Canciones
+                Sugerir
               </button>
               {/* <button className="boton7">Scanner a Celular</button> */}
             </div>
 
-            <div className="col-12 col-md-8  justify-content-center">
-              {" "}
+            <div className="col-12 col-md-8   justify-content-center">
               {renderContenido()}
             </div>
 
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center">
+            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               <div className="container-fluid"></div>
               {!getToken() && (
                 <button

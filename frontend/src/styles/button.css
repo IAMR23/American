@@ -1,33 +1,37 @@
 .boton1 {
-  width: 250px;
+  width: 260px;
   height: 100px;
-  background-image: url("boton1.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("boton1.png");
   background-size: cover;
   background-color: transparent;
-  font-family: "Arial Black", "Impact", sans-serif;
-
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+
+  font-family: "Arial Black", "Impact", sans-serif;
+  font-size: 25px;
   font-weight: 900;
   color: black;
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1px white;
+
+  /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 }
 
 .boton1:active {
   transform: scale(0.95);
 }
 
+
 .boton2 {
-  width: 250px;
+  width: 260px;
   height: 90px;
   background-image: url("boton2.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -37,26 +41,27 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /*   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton2:active {
   transform: scale(0.95);
 }
 
 .boton3 {
-  width: 250px;
+  width: 290px;
   height: 100px;
   background-image: url("boton3.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -66,27 +71,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton3:active {
   transform: scale(0.95);
 }
 
 .boton4 {
-  width: 260px;
+  width: 310px;
   height: 95px;
   background-image: url("boton4.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -96,27 +102,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton4:active {
   transform: scale(0.95);
 }
 
 .boton5 {
-  width: 250px;
+  width: 280px;
   height: 100px;
   background-image: url("boton5.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -126,27 +133,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton5:active {
   transform: scale(0.95);
 }
 
 .boton6 {
-  width: 250px;
+  width: 260px;
   height: 100px;
   background-image: url("boton6.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -156,28 +164,29 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton6:active {
   transform: scale(0.95);
 }
 
 .boton7 {
-  width: 250px;
-  height: 100px;
+  width: 280px;
+  height: 90px;
   background-image: url("boton7.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
@@ -186,27 +195,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton7:active {
   transform: scale(0.95);
 }
 
 .boton8 {
-  width: 250px;
+  width: 260px;
   height: 100px;
   background-image: url("boton8.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -216,27 +226,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton8:active {
   transform: scale(0.95);
 }
 
 .boton9 {
-  width: 250px;
+  width: 260px;
   height: 100px;
   background-image: url("boton9.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -246,27 +257,28 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton9:active {
   transform: scale(0.95);
 }
 
 .boton10 {
-  width: 250px;
+  width: 260px;
   height: 100px;
   background-image: url("boton10.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
@@ -276,20 +288,21 @@
   background-position: center;
   border: none;
   cursor: pointer;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 900;
   color: black;
   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
 
-  text-shadow: 
-  1px 1px 0 white,
- -1px 1px 0 white,
-  1px -1px 0 white,
- -1px -1px 0 white,
-  2px 2px 2px rgba(0,0,0,0.5); /* sombra más oscura de fondo */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
 
-  -webkit-text-stroke: 1px white; /* Borde blanco */
-}
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
 
 .boton10:active {
   transform: scale(0.95);

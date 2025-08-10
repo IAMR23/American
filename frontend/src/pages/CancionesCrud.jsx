@@ -230,17 +230,7 @@ export default function CancionCRUD() {
                   }
                 />
               </div>
-              <div className="mb-3">
-                <label className="form-label">Título</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.titulo}
-                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                />
-              </div>
-              <div className="mb-3">
+                            <div className="mb-3">
                 <label className="form-label">Artista</label>
                 <input
                   type="text"
@@ -252,6 +242,17 @@ export default function CancionCRUD() {
                   }
                 />
               </div>
+              <div className="mb-3">
+                <label className="form-label">Canción</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  required
+                  value={form.titulo}
+                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                />
+              </div>
+
               <div className="mb-3">
                 <label className="form-label">Género</label>
                 <select

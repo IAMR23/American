@@ -153,7 +153,7 @@ export default function VideoPlayer({
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls
+          controls 
           playing
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}

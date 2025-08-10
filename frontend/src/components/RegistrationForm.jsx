@@ -9,6 +9,8 @@ function RegistrationForm() {
     confirmPassword: "",
   });
 
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -24,7 +26,6 @@ function RegistrationForm() {
     setError(null);
     setSuccess(null);
 
-    // Validar que las contraseñas coincidan antes de enviar
     if (formData.password !== formData.confirmPassword) {
       setError("Las contraseñas no coinciden.");
       setLoading(false);
@@ -33,7 +34,7 @@ function RegistrationForm() {
 
     try {
       const { nombre, email, password } = formData;
-      const response = await registerUser({ nombre, email, password });
+      await registerUser({ nombre, email, password });
       setSuccess("Usuario registrado exitosamente.");
       setFormData({
         nombre: "",
@@ -53,7 +54,10 @@ function RegistrationForm() {
 
   return (
     <div className="d-flex justify-content-center align-items-center">
-      <div className="card shadow bg-primary" style={{ maxWidth: "700px", width: "100%" }}>
+      <div
+        className="card shadow bg-primary"
+        style={{ maxWidth: "700px", width: "100%" }}
+      >
         <div className="card-body">
           <h2 className="card-title text-center mb-4 text-white">Registro</h2>
 
@@ -97,7 +101,7 @@ function RegistrationForm() {
               </label>
               <input
                 id="password"
-                type="password"
+                type={mostrarPassword ? "text" : "password"}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
@@ -112,7 +116,7 @@ function RegistrationForm() {
               </label>
               <input
                 id="confirmPassword"
-                type="password"
+                type={mostrarPassword ? "text" : "password"}
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
@@ -133,11 +137,20 @@ function RegistrationForm() {
               )}
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-dark w-100"
-              disabled={loading}
-            >
+            <div className="form-check mb-3">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="mostrarPassword"
+                checked={mostrarPassword}
+                onChange={() => setMostrarPassword(!mostrarPassword)}
+              />
+              <label className="form-check-label" htmlFor="mostrarPassword">
+                Mostrar Contraseña
+              </label>
+            </div>
+
+            <button type="submit" className="btn btn-dark w-100" disabled={loading}>
               {loading ? "Registrando..." : "Registrarse"}
             </button>
           </form>
