@@ -20,6 +20,6 @@ router.patch("/users/:id" , updateUser);
 router.get("/users/:id", getUserById);
 
 // Ruta para eliminar un usuario por su ID
-router.delete("/users/:id", deleteUser);
+router.delete("/user/:id", deleteUser);
 
 module.exports = router;
