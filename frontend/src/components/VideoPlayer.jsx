@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
+import { PitchDetector } from "pitchy";
 import "../styles/react-player.css";
 
 export default function VideoPlayer({
@@ -14,30 +15,101 @@ export default function VideoPlayer({
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [score, setScore] = useState(null); // ⭐ NUEVO: puntaje final
+  const [scoreCalculated, setScoreCalculated] = useState(false);
+
+
   const playerRef = useRef();
   const containerRef = useRef();
 
+  // Pitch detection refs
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const detectorRef = useRef(null);
+  const rafRef = useRef(null);
+  const userPitchesRef = useRef([]);
+
+  // Simulación de pitch de referencia (Hz)
+  const songReference = [440, 440, 466, 466, 440, 392, 392];
+
   const currentVideo = playlist[currentIndex];
 
+  // --- INICIAR MICRÓFONO ---
+  const startMic = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContextRef.current = new AudioContext();
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+
+    analyserRef.current = audioContextRef.current.createAnalyser();
+    analyserRef.current.fftSize = 2048;
+    source.connect(analyserRef.current);
+
+    detectorRef.current = PitchDetector.forFloat32Array(
+      analyserRef.current.fftSize
+    );
+    userPitchesRef.current = [];
+    capturePitch();
+  };
+
+  const capturePitch = () => {
+    const input = new Float32Array(analyserRef.current.fftSize);
+    analyserRef.current.getFloatTimeDomainData(input);
+
+    const [pitch, clarity] = detectorRef.current.findPitch(
+      input,
+      audioContextRef.current.sampleRate
+    );
+
+    if (clarity > 0.8) {
+      userPitchesRef.current.push(pitch);
+    }
+
+    rafRef.current = requestAnimationFrame(capturePitch);
+  };
+
+  const stopMic = () => {
+    cancelAnimationFrame(rafRef.current);
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
+  };
+
+  const calculateScore = () => {
+    const userPitches = userPitchesRef.current;
+    if (!userPitches.length) return 0;
+
+    let total = 0;
+    let count = Math.min(userPitches.length, songReference.length);
+
+    for (let i = 0; i < count; i++) {
+      let diff = Math.abs(userPitches[i] - songReference[i]);
+      if (diff < 5) total += 100;
+      else if (diff < 20) total += 70;
+      else total += 40;
+    }
+
+    return Math.round(total / count);
+  };
+
+  // --- FULLSCREEN REQUEST ---
   useEffect(() => {
     if (fullscreenRequested) {
       const el = containerRef.current;
-      if (el) {
-        if (!document.fullscreenElement) {
-          el.requestFullscreen?.();
-        }
+      if (el && !document.fullscreenElement) {
+        el.requestFullscreen?.();
       }
-      // Avisar al padre que ya manejó el fullscreen para no repetir
       if (onFullscreenHandled) onFullscreenHandled();
     }
   }, [fullscreenRequested, onFullscreenHandled]);
 
+  // --- LOOP INDEX ---
   useEffect(() => {
     if (currentIndex >= playlist.length) {
       setCurrentIndex(0);
     }
   }, [currentIndex, playlist.length, setCurrentIndex]);
 
+  // --- NAVIGATION ---
   const nextVideo = () => {
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -52,19 +124,33 @@ export default function VideoPlayer({
     }
   };
 
-  const handleProgress = ({ playedSeconds }) => {
-    const duration = playerRef.current?.getDuration?.();
-    if (duration && duration - playedSeconds <= 30) {
-      const next = playlist[currentIndex + 1];
-      if (next) {
-        setNextSongName(next.titulo || "Siguiente canción");
-        setShowNextMessage(true);
-      }
-    } else {
-      setShowNextMessage(false);
-    }
-  };
+  // --- PROGRESS ---
 
+
+const handleProgress = ({ playedSeconds }) => {
+  const duration = playerRef.current?.getDuration?.();
+  if (!duration) return;
+
+  // Mostrar mensaje próxima canción cuando quedan 30s
+  if (duration - playedSeconds <= 30) {
+    const next = playlist[currentIndex + 1];
+    if (next) {
+      setNextSongName(next.titulo || "Siguiente canción");
+      setShowNextMessage(true);
+    }
+  } else {
+    setShowNextMessage(false);
+  }
+
+  // Calcular score cuando quedan 20s, solo 1 vez
+  if (!scoreCalculated && duration - playedSeconds <= 45) {
+    const finalScore = calculateScore();
+    setScore(finalScore);
+    setScoreCalculated(true);
+  }
+};
+
+  // --- FULLSCREEN STATE ---
   useEffect(() => {
     const handleFullscreenChange = () => {
       const fsElement =
@@ -93,17 +179,23 @@ export default function VideoPlayer({
     }
   };
 
+  // --- EVENTOS DE KARAOKE ---
+  const handleSongStart = () => {
+    setScore(null);
+    setScoreCalculated(false);
+    startMic();
+  };
+
+  const handleSongEnd = () => {
+    stopMic();
+    const finalScore = calculateScore();
+    setScore(finalScore);
+    nextVideo();
+  };
+
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
-      <div
-        style={{
-          background: "#000",
-          color: "white",
-          padding: "20px",
-          textAlign: "center",
-          borderRadius: "10px",
-        }}
-      >
+      <div style={emptyStyle}>
         🎧 No hay canciones en la cola. Añade una desde el buscador o playlist.
       </div>
     );
@@ -111,15 +203,7 @@ export default function VideoPlayer({
 
   if (!currentVideo || !currentVideo.videoUrl) {
     return (
-      <div
-        style={{
-          background: "#000",
-          color: "white",
-          padding: "20px",
-          textAlign: "center",
-          borderRadius: "10px",
-        }}
-      >
+      <div style={emptyStyle}>
         ⚠️ Esta canción no tiene un video disponible para reproducir.
       </div>
     );
@@ -135,39 +219,21 @@ export default function VideoPlayer({
         height: isFullscreen ? "100vh" : "auto",
       }}
     >
-      {/* {!isFullscreen && (
-        <p
-          style={{
-            fontWeight: "bold",
-            textAlign: "center",
-            color: "white",
-            justifyContent: "center",
-          }}
-        >
-          💡 Mensaje del administrador: ¡Recuerda hidratarte!
-        </p>
-      )} */}
-
       <div style={{ position: "relative" }}>
         <ReactPlayer
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls 
+          controls
           playing
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
+          onPlay={handleSongStart}
           onProgress={handleProgress}
-          onEnded={nextVideo}
-          config={{
-            youtube: {
-              playerVars: {
-                fs: 0,
-              },
-            },
-          }}
+          onEnded={handleSongEnd}
         />
 
+        {/* Botones navegación */}
         <button
           onClick={prevVideo}
           disabled={currentIndex === 0}
@@ -175,7 +241,6 @@ export default function VideoPlayer({
         >
           ‹
         </button>
-
         <button
           onClick={nextVideo}
           disabled={currentIndex === playlist.length - 1}
@@ -184,47 +249,37 @@ export default function VideoPlayer({
           ›
         </button>
 
+        {/* Mensaje próxima canción */}
         {showNextMessage && (
-          <div
-            className="marquee"
-            style={{
-              position: "absolute", // usa fixed para que sea relativo al viewport
-              top: "25%", 
-              left: "50%",
-              backgroundColor: "rgba(0,0,0,0.8)",
-              color: "white",
-              padding: "12px 20px",
-              borderRadius: "12px",
-              fontSize: isFullscreen ? "24px" : "18px",
-              zIndex: 9999,
-            }}
-          >
- 
-            <div >🎶 Próxima canción: {nextSongName}</div>
+          <div style={nextSongStyle(isFullscreen)}>
+            🎶 Próxima canción: {nextSongName}
           </div>
         )}
 
-        <button
-          onClick={toggleFullscreen}
-          style={{
-            position: "absolute",
-            top: "40px",
-            right: "10px",
-            background: "rgba(255,255,255,0.2)",
-            color: "white",
-            border: "none",
-            padding: "8px 14px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
+        {/* Botón fullscreen */}
+        <button onClick={toggleFullscreen} style={fullscreenBtnStyle}>
           {isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
         </button>
+
+        {/* Modal puntaje */}
+        {score !== null && (
+          <div style={scoreModalStyle}>
+            🎤 Tu puntaje: <b>{score}</b> puntos
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+// --- ESTILOS ---
+const emptyStyle = {
+  background: "#000",
+  color: "white",
+  padding: "20px",
+  textAlign: "center",
+  borderRadius: "10px",
+};
 
 const navButtonStyle = (side, disabled) => ({
   position: "absolute",
@@ -243,3 +298,40 @@ const navButtonStyle = (side, disabled) => ({
   justifyContent: "center",
   cursor: disabled ? "not-allowed" : "pointer",
 });
+
+const nextSongStyle = (isFullscreen) => ({
+  position: "absolute",
+  top: "25%",
+  left: "50%",
+  backgroundColor: "rgba(0,0,0,0.8)",
+  color: "white",
+  padding: "12px 20px",
+  borderRadius: "12px",
+  fontSize: isFullscreen ? "24px" : "18px",
+  transform: "translateX(-50%)",
+});
+
+const fullscreenBtnStyle = {
+  position: "absolute",
+  top: "40px",
+  right: "10px",
+  background: "rgba(255,255,255,0.2)",
+  color: "white",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontSize: "14px",
+};
+
+const scoreModalStyle = {
+  position: "absolute",
+  bottom: "20px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "rgba(0,0,0,0.8)",
+  color: "white",
+  padding: "15px 30px",
+  borderRadius: "12px",
+  fontSize: "20px",
+};

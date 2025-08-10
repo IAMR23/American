@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/userServices";
-import {jwtDecode} from "jwt-decode"; // Sin llaves en jwtDecode
+import { jwtDecode } from "jwt-decode"; // Sin llaves en jwtDecode
 import { AuthContext } from "../utils/AuthContext";
 
 function LoginForm({ onLoginSuccess }) {
@@ -44,9 +44,7 @@ function LoginForm({ onLoginSuccess }) {
         userId: userId,
       });
 
-      if (userRole === "admin") {
-        navigate("/dashboard");
-      } else {
+      if (userRole === "admin" || userRole === "cantante") {
         navigate("/");
         onLoginSuccess();
       }
