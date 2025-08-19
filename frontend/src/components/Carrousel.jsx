@@ -166,21 +166,20 @@ export default function Carrousel({
 
   return (
     <div>
-      <div className="container-fluid px-0">
+      <div className="bg-dark">
         <div
           id="videoCarousel"
           className="carousel slide"
           data-bs-ride="carousel"
         >
           <div className="carousel-inner">
-            {Array.from({ length: Math.ceil(videos.length / 6) }).map(
+            {Array.from({ length: Math.ceil(videos.length / 5) }).map(
               (_, groupIndex) => {
                 const videosDelGrupo = videos.slice(
-                  groupIndex * 6,
-                  (groupIndex + 1) * 6
+                  groupIndex * 5,
+                  (groupIndex + 1) * 5
                 );
-
-                const placeholders = 6 - videosDelGrupo.length;
+                const placeholders = 5 - videosDelGrupo.length;
 
                 return (
                   <div
@@ -189,105 +188,103 @@ export default function Carrousel({
                       groupIndex === 0 ? "active" : ""
                     }`}
                   >
-                    <div className="row mx-0">
-                      {videosDelGrupo.map((video) => {
-                        // const thumbnail = getYoutubeThumbnail(video.videoUrl);
-
-                        return (
-                          <div
-                            key={video._id}
-                            className="col-2 mb-2 video-card"
+                    <div
+                      className="row mx-0"
+                      style={{
+                        display: "flex",
+                        gap: "15px", // espacio entre videos
+                        justifyContent: "center",
+                      }}
+                    >
+                      {videosDelGrupo.map((video) => (
+                        <div
+                          key={video._id}
+                          className="video-card"
+                          style={{
+                            flex: "0 0 18%",
+                            maxWidth: "18%",
+                            cursor: "pointer",
+                            position: "relative",
+                          }}
+                        >
+                          <img
+                            src={dropboxUrlToRaw(video.imagenUrl)}
+                            alt={`Miniatura de ${video.titulo}`}
+                            className="img-fluid rounded"
+                            onClick={() => setVideoSeleccionado(video)}
                             style={{
-                              position: "relative",
-                              cursor: "pointer",
-                              padding: "5px",
+                              width: "100%",
+                              height: "290px", // más alto = más rectangular
+                              objectFit: "cover",
+                              borderRadius: "8px",
                             }}
+                          />
+
+                          {/* Botones */}
+                          <button
+                            className="video-btn heart-btn"
+                            onClick={() => agregarAFavoritos(video._id)}
+                            title="Agregar a favoritos"
+                            disabled={!isAuthenticated}
                           >
-                            <img
-                              src={dropboxUrlToRaw(video.imagenUrl)}
-                              alt={`Miniatura de ${video.titulo}`}
-                              className="img-fluid rounded"
-                              onClick={() => setVideoSeleccionado(video)}
-                              style={{
-                                width: "100%",
-                                height: "200px",
-                                objectFit: "cover",
-                              }}
-                            />
+                            <BsHeart size={20} />
+                          </button>
+                          <button
+                            className="video-btn list-btn"
+                            onClick={() => agregarACola(video._id)}
+                            title="Agregar a cola"
+                            disabled={!isAuthenticated}
+                          >
+                            <BsList size={20} />
+                          </button>
+                          <button
+                            className="video-btn heart-btn"
+                            onClick={() => handleOpenModal(video._id)}
+                            title="Agregar a playlist"
+                            disabled={!isAuthenticated}
+                          >
+                            <BsHeart size={18} />
+                          </button>
+                          <button
+                            className="video-btn play-btn"
+                            onClick={async () => {
+                              await masReproducida(video._id);
+                              let index = cola.findIndex(
+                                (c) => c._id === video._id
+                              );
+                              if (index === -1 && onAgregarCancion) {
+                                await onAgregarCancion(video._id);
+                                index = cola.length;
+                              }
+                              if (onPlaySong && index !== -1) onPlaySong(index);
+                              else alert("No se pudo reproducir la canción.");
+                            }}
+                            title="Reproducir ahora"
+                          >
+                            <FaPlay size={24} />
+                          </button>
 
-                            <button
-                              className="video-btn heart-btn"
-                              onClick={() => agregarAFavoritos(video._id)}
-                              title="Agregar a favoritos"
-                              disabled={!isAuthenticated}
-                            >
-                              <BsHeart size={20} />
-                            </button>
-
-                            <button
-                              className="video-btn list-btn"
-                              onClick={() => agregarACola(video._id)}
-                              title="Agregar a cola"
-                              disabled={!isAuthenticated}
-                            >
-                              <BsList size={20} />
-                            </button>
-
-                            <button
-                              className="video-btn heart-btn"
-                              onClick={() => handleOpenModal(video._id)}
-                              title="Agregar a playlist"
-                              disabled={!isAuthenticated}
-                            >
-                              <BsHeart size={18} />
-                            </button>
-
-                            <button
-                              className="video-btn play-btn"
-                              onClick={async () => {
-                                await masReproducida(video._id);
-
-                                let index = cola.findIndex(
-                                  (c) => c._id === video._id
-                                );
-                                if (index === -1) {
-                                  if (onAgregarCancion) {
-                                    await onAgregarCancion(video._id);
-                                    index = cola.length;
-                                  }
-                                }
-                                if (onPlaySong && index !== -1) {
-                                  onPlaySong(index);
-                                } else {
-                                  alert("No se pudo reproducir la canción.");
-                                }
-                              }}
-                              title="Reproducir ahora"
-                            >
-                              <FaPlay size={24} />
-                            </button>
-
-                            <div className="d-flex flex-column mt-2">
-                              <span className="fw-bold text-light">
-                                {video.titulo}
-                              </span>
-                              <small className="text-light">
-                                {video.artista} -{" "}
-                                {video.generos?.nombre || "Sin género"}
-                              </small>
-                            </div>
+                          <div className="d-flex flex-column mt-2">
+                            <span className="fw-bold text-light">
+                              {video.titulo}
+                            </span>
+                            <small className="text-light">
+                              {video.artista} -{" "}
+                              {video.generos?.nombre || "Sin género"}
+                            </small>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
 
                       {/* Placeholders invisibles */}
                       {Array.from({ length: placeholders }).map((_, i) => (
                         <div
                           key={`placeholder-${i}`}
-                          className="col-2 mb-2"
                           style={{
+                            flex: "0 0 18%",
+                            maxWidth: "18%",
                             visibility: "hidden",
-                            height: "200px",
+                            height: "300px",
                           }}
                         />
                       ))}

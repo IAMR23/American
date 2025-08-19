@@ -145,7 +145,7 @@ const UsuariosPage = () => {
             <th className="py-2 px-4 border">Nombre</th>
             <th className="py-2 px-4 border">Email</th>
             <th className="py-2 px-4 border">Rol</th>
-            <th className="py-2 px-4 border">¿Suscrito?</th>
+            <th className="py-2 px-4 border">Activar</th>
             <th className="py-2 px-4 border">Inicio</th>
             <th className="py-2 px-4 border">Fin</th>
             <th className="py-2 px-4 border">Acción</th>

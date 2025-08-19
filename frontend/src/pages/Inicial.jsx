@@ -57,7 +57,7 @@ export default function Inicial() {
             onClose={() => setShowModal(false)}
           />
         );
-      case "masCantado":
+      case "ultimo":
         return <MasCantado />;
 
       case "playlist":
@@ -92,9 +92,6 @@ export default function Inicial() {
         return <PlantTest />;
       case "ayuda":
         return <AyudaPage />;
-      case "tv":
-        return <ScannerCelular />;
-
       case "video":
       default:
         return (
@@ -185,7 +182,9 @@ export default function Inicial() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setPlaylistsPropia(Array.isArray(resPlaylistsPropia.data) ? resPlaylistsPropia.data : []);
+        setPlaylistsPropia(
+          Array.isArray(resPlaylistsPropia.data) ? resPlaylistsPropia.data : []
+        );
       } catch (error) {
         console.error("Error al cargar playlists", error);
         setPlaylistsPropia([]);
@@ -232,10 +231,10 @@ export default function Inicial() {
     };
 
     cargarDatos();
-    cargarDatosAdmin(); 
+    cargarDatosAdmin();
   }, [userId]);
 
-    const cargarPlaylistPropiaACola = async (playlistId) => {
+  const cargarPlaylistPropiaACola = async (playlistId) => {
     const token = getToken();
     try {
       const res = await axios.get(
@@ -252,7 +251,6 @@ export default function Inicial() {
       console.error("Error al cargar canciones del playlist", err);
     }
   };
-
 
   const cargarPlaylistACola = async (playlistId) => {
     const token = getToken();
@@ -368,7 +366,12 @@ export default function Inicial() {
               >
                 PlayList
               </button>
-              <button className="boton3">Lo más cantado</button>
+              <button
+                className="boton3"
+                onClick={() => setSeccionActiva("ultimo")}
+              >
+                Lo último
+              </button>
               <button
                 className="boton4"
                 onClick={() => setSeccionActiva("favoritos")}
@@ -381,7 +384,7 @@ export default function Inicial() {
                 className="boton7"
                 disabled={!suscrito}
               >
-                Lista Canciones
+                Canciones
               </button>
               <button
                 className="boton3"
@@ -453,7 +456,8 @@ export default function Inicial() {
         </div>
         {/* Cola dinámica */}
 
-        <div className="d-flex flex-wrap justify-content-center gap-3 m-3">
+        <div className="d-flex flex-wrap justify-content-center align-items-center  gap-3 m-3">
+          <h2 className="text-white">Canciones a la cola </h2>
           {cola.map((cancion, index) => (
             <div
               key={index}
@@ -477,6 +481,24 @@ export default function Inicial() {
         </div>
 
         <AnunciosVisibles />
+      </div>
+
+      <div className=" fondo p-2">
+        <h1 className="p-2 text-white">Selección especial</h1>
+
+        <Carrousel
+          className="bg-dark"
+          setCola={setCola}
+          cola={cola}
+          cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+          onAgregarCancion={insertarCancion}
+          onPlaySong={handlePlaySong} // <-- Nuevo prop
+        />
+      </div>
+
+      <div className=" fondo p-2">
+        <h1 className="p-2 text-white">Las mas populares</h1>
+
         <Carrousel
           setCola={setCola}
           cola={cola}

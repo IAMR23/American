@@ -18,7 +18,6 @@ export default function VideoPlayer({
   const [score, setScore] = useState(null); // ⭐ NUEVO: puntaje final
   const [scoreCalculated, setScoreCalculated] = useState(false);
 
-
   const playerRef = useRef();
   const containerRef = useRef();
 
@@ -60,7 +59,10 @@ export default function VideoPlayer({
       audioContextRef.current.sampleRate
     );
 
-    if (clarity > 0.8) {
+    console.log("Pitch:", pitch.toFixed(2), "Hz, Clarity:", clarity.toFixed(2)); // ← aquí debug
+
+    if (clarity > 0.5) {
+      // bajo umbral para captar más tonos
       userPitchesRef.current.push(pitch);
     }
 
@@ -78,14 +80,23 @@ export default function VideoPlayer({
     const userPitches = userPitchesRef.current;
     if (!userPitches.length) return 0;
 
+    // Para prueba: referencia fija a 440Hz (La4)
+    const songReference = new Array(userPitches.length).fill(440);
+
     let total = 0;
-    let count = Math.min(userPitches.length, songReference.length);
+    let count = userPitches.length;
 
     for (let i = 0; i < count; i++) {
       let diff = Math.abs(userPitches[i] - songReference[i]);
-      if (diff < 5) total += 100;
-      else if (diff < 20) total += 70;
-      else total += 40;
+      if (userPitches[i] === 0) {
+        total += 40; // sin tono detectado
+      } else if (diff < 5) {
+        total += 100;
+      } else if (diff < 20) {
+        total += 70;
+      } else {
+        total += 40;
+      }
     }
 
     return Math.round(total / count);
@@ -126,29 +137,28 @@ export default function VideoPlayer({
 
   // --- PROGRESS ---
 
+  const handleProgress = ({ playedSeconds }) => {
+    const duration = playerRef.current?.getDuration?.();
+    if (!duration) return;
 
-const handleProgress = ({ playedSeconds }) => {
-  const duration = playerRef.current?.getDuration?.();
-  if (!duration) return;
-
-  // Mostrar mensaje próxima canción cuando quedan 30s
-  if (duration - playedSeconds <= 30) {
-    const next = playlist[currentIndex + 1];
-    if (next) {
-      setNextSongName(next.titulo || "Siguiente canción");
-      setShowNextMessage(true);
+    // Mostrar mensaje próxima canción cuando quedan 30s
+    if (duration - playedSeconds <= 30) {
+      const next = playlist[currentIndex + 1];
+      if (next) {
+        setNextSongName(next.titulo || "Siguiente canción");
+        setShowNextMessage(true);
+      }
+    } else {
+      setShowNextMessage(false);
     }
-  } else {
-    setShowNextMessage(false);
-  }
 
-  // Calcular score cuando quedan 20s, solo 1 vez
-  if (!scoreCalculated && duration - playedSeconds <= 45) {
-    const finalScore = calculateScore();
-    setScore(finalScore);
-    setScoreCalculated(true);
-  }
-};
+    // Calcular score cuando quedan 20s, solo 1 vez
+    if (!scoreCalculated && duration - playedSeconds <= 45) {
+      const finalScore = calculateScore();
+      setScore(finalScore);
+      setScoreCalculated(true);
+    }
+  };
 
   // --- FULLSCREEN STATE ---
   useEffect(() => {
@@ -224,7 +234,7 @@ const handleProgress = ({ playedSeconds }) => {
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls
+          controls = {false}  
           playing
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
@@ -252,7 +262,7 @@ const handleProgress = ({ playedSeconds }) => {
         {/* Mensaje próxima canción */}
         {showNextMessage && (
           <div style={nextSongStyle(isFullscreen)}>
-            🎶 Próxima canción: {nextSongName}
+            🎶 Próxima canción: {nextSongName} 🎶
           </div>
         )}
 
@@ -299,17 +309,19 @@ const navButtonStyle = (side, disabled) => ({
   cursor: disabled ? "not-allowed" : "pointer",
 });
 
+
 const nextSongStyle = (isFullscreen) => ({
   position: "absolute",
   top: "25%",
   left: "50%",
-  backgroundColor: "rgba(0,0,0,0.8)",
   color: "white",
   padding: "12px 20px",
   borderRadius: "12px",
-  fontSize: isFullscreen ? "24px" : "18px",
+  fontSize: isFullscreen ? "50px" : "38px",
   transform: "translateX(-50%)",
+  border: "5px solid black", // borde negro
 });
+
 
 const fullscreenBtnStyle = {
   position: "absolute",

@@ -11897,20 +11897,7 @@ body {
   letter-spacing: 1px;
 }
 
-h1, .h1,
-h2,
-.h2,
-h3,
-.h3,
-h4,
-.h4,
-h5,
-.h5,
-h6,
-.h6 {
-  text-transform: uppercase;
-  letter-spacing: 3px;
-}
+
 
 .text-secondary {
   color: #55595c !important;

@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
-import "../styles/Carrousel.css";
+import "../styles/listaCanciones.css";
 import { useNavigate } from "react-router-dom";
 import VideoPlayer from "./VideoPlayer";
 import VideoPlayer2 from "./VideoPlayer2";

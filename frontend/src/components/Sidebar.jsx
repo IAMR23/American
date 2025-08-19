@@ -53,7 +53,7 @@ export default function Sidebar() {
             <Link to="/mas-reproducidas" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
-                Mas reproducidas
+                Las mas cantadas
               </span>
             </Link>
           </li>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { FiEdit, FiTrash2, FiThumbsUp } from "react-icons/fi";
+import { FiThumbsUp } from "react-icons/fi";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 
@@ -9,11 +9,9 @@ const SolicitudesCancion = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [cantante, setCantante] = useState("");
   const [cancion, setCancion] = useState("");
-  const [editandoId, setEditandoId] = useState(null);
-  const [cantanteEditado, setCantanteEditado] = useState("");
-  const [cancionEditada, setCancionEditada] = useState("");
   const [userId, setUserId] = useState("");
   const [vista, setVista] = useState("solicitar");
+  const [yaSolicito, setYaSolicito] = useState(false); // 👈 Nuevo estado
 
   const API_SOLICITUD = `${API_URL}/solicitud`;
 
@@ -23,17 +21,23 @@ const SolicitudesCancion = () => {
       try {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
-        obtenerSolicitudes();
+        obtenerSolicitudes(decoded.userId);
       } catch (error) {
         console.error("Error al decodificar el token", error);
       }
     }
   }, []);
 
-  const obtenerSolicitudes = async () => {
+  const obtenerSolicitudes = async (idUsuario) => {
     try {
       const res = await axios.get(API_SOLICITUD);
       setSolicitudes(res.data);
+
+      // Verificar si el usuario ya tiene una solicitud creada
+      if (idUsuario) {
+        const existe = res.data.some(s => s.usuario?._id === idUsuario);
+        setYaSolicito(existe);
+      }
     } catch (error) {
       console.error("Error al obtener solicitudes", error);
     }
@@ -50,40 +54,16 @@ const SolicitudesCancion = () => {
       });
       setCantante("");
       setCancion("");
-      obtenerSolicitudes();
+      obtenerSolicitudes(userId);
     } catch (error) {
       console.error("Error al crear solicitud", error);
-    }
-  };
-
-  const eliminarSolicitud = async (id) => {
-    try {
-      await axios.delete(`${API_SOLICITUD}/${id}`);
-      obtenerSolicitudes();
-    } catch (error) {
-      console.error("Error al eliminar solicitud", error);
-    }
-  };
-
-  const actualizarSolicitud = async (id) => {
-    try {
-      await axios.put(`${API_SOLICITUD}/${id}`, {
-        cantante: cantanteEditado,
-        cancion: cancionEditada,
-      });
-      setEditandoId(null);
-      setCantanteEditado("");
-      setCancionEditada("");
-      obtenerSolicitudes();
-    } catch (error) {
-      console.error("Error al actualizar solicitud", error);
     }
   };
 
   const votarSolicitud = async (id) => {
     try {
       await axios.post(`${API_SOLICITUD}/${id}/votar`, { usuario: userId });
-      obtenerSolicitudes();
+      obtenerSolicitudes(userId);
     } catch (error) {
       alert(error.response?.data?.mensaje || "Error al votar");
     }
@@ -111,39 +91,45 @@ const SolicitudesCancion = () => {
 
       {/* Vista de solicitar */}
       {vista === "solicitar" && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            crearSolicitud();
-          }}
-          className="row g-2 mb-3"
-        >
-          <div className="col-md-5">
-            <input
-              type="text"
-              className="form-control"
-              value={cantante}
-              onChange={(e) => setCantante(e.target.value)}
-              placeholder="Nombre del cantante"
-              required
-            />
+        yaSolicito ? (
+          <div className="alert alert-info">
+            Ya has enviado una solicitud de canción.
           </div>
-          <div className="col-md-5">
-            <input
-              type="text"
-              className="form-control"
-              value={cancion}
-              onChange={(e) => setCancion(e.target.value)}
-              placeholder="Nombre de la canción"
-              required
-            />
-          </div>
-          <div className="col-md-2">
-            <button type="submit" className="btn btn-light w-100">
-              Enviar
-            </button>
-          </div>
-        </form>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              crearSolicitud();
+            }}
+            className="row g-2 mb-3"
+          >
+            <div className="col-md-5">
+              <input
+                type="text"
+                className="form-control"
+                value={cantante}
+                onChange={(e) => setCantante(e.target.value)}
+                placeholder="Nombre del cantante"
+                required
+              />
+            </div>
+            <div className="col-md-5">
+              <input
+                type="text"
+                className="form-control"
+                value={cancion}
+                onChange={(e) => setCancion(e.target.value)}
+                placeholder="Nombre de la canción"
+                required
+              />
+            </div>
+            <div className="col-md-2">
+              <button type="submit" className="btn btn-light w-100">
+                Enviar
+              </button>
+            </div>
+          </form>
+        )
       )}
 
       {/* Vista de votar */}
@@ -153,7 +139,7 @@ const SolicitudesCancion = () => {
           style={{ maxHeight: "400px", overflowY: "auto" }}
         >
           {(() => {
-            const yaVotoEnAlgo = solicitudes.some(s => s.votos?.includes(userId)); // 👈 Detecta si ya votó en algo
+            const yaVotoEnAlgo = solicitudes.some(s => s.votos?.includes(userId));
             return solicitudes.slice(0, 10).map((sol) => {
               const yaVoto = sol.votos?.includes(userId);
               return (
@@ -165,7 +151,6 @@ const SolicitudesCancion = () => {
                     <p className="mb-1 fw-bold">
                       {sol.usuario?.nombre || "Desconocido"}
                     </p>
-
                     <p className="mb-1">
                       <strong>Cantante:</strong> {sol.cantante} <br />
                       <strong>Canción:</strong> {sol.cancion}
@@ -176,7 +161,7 @@ const SolicitudesCancion = () => {
                     <button
                       className="btn btn-outline-success btn-sm d-flex align-items-center"
                       onClick={() => votarSolicitud(sol._id)}
-                      disabled={yaVoto || (yaVotoEnAlgo && !yaVoto)} // 👈 Regla de un solo voto
+                      disabled={yaVoto || (yaVotoEnAlgo && !yaVoto)}
                       title={
                         yaVoto
                           ? "Ya votaste esta canción"

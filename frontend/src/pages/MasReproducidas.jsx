@@ -38,7 +38,7 @@ export default function MasReproducidas() {
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h2 className=" mb-4">🎶 Top 10 Canciones Más Reproducidas</h2>
+      <h2 className=" mb-4">🎶 Top 10 Canciones Más cantadas</h2>
 
       <div className="mb-4">
         <ul className="list-group">

@@ -27,10 +27,9 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
         <input
           type="text"
           className="form-control"
-          placeholder="Nombre del nuevo playlist"
+          placeholder="Nombre"
           value={newPlaylistName}
           onChange={(e) => setNewPlaylistName(e.target.value)}
-          aria-label="Nuevo playlist"
           autoFocus
         />
         <button
@@ -64,7 +63,7 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
                 to={`/mis-playlist/${playlist._id}`}
                 className="btn btn-outline-primary btn-sm"
               >
-                Ver Playlist
+                Ver
               </Link>
             </li>
           ))}
