@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrusel Automático con Flechas</title>
+  <style>
+    .carousel-container {
+      width: 100%;
+      overflow: hidden;
+      padding: 10px 0;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .carousel {
+      display: flex;
+      transition: transform 0.8s ease-in-out;
+      gap: 10px;
+      justify-content: flex-start; /* importante para que los items empiecen desde el inicio */
+    }
+
+    .item {
+      flex: 0 0 calc(20% - 10px); /* 5 ítems visibles */
+      aspect-ratio: 16/9;
+      background: #007bff;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* flechas */
+    .arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      font-size: 2rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border-radius: 5px;
+      z-index: 10;
+    }
+
+    .arrow-left {
+      left: 10px;
+    }
+
+    .arrow-right {
+      right: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .carousel {
+        flex-direction: column;
+        transform: none !important;
+      }
+
+      .item {
+        flex: 1 1 auto;
+        width: 100%;
+      }
+
+      .arrow {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="carousel-container">
+    <button class="arrow arrow-left" id="prev">&#10094;</button>
+    <button class="arrow arrow-right" id="next">&#10095;</button>
+
+    <div class="carousel" id="carousel">
+      <div class="item">1</div>
+      <div class="item">2</div>
+      <div class="item">3</div>
+      
+      <div class="item">7</div>
+      <div class="item">8</div>
+      
+    </div>
+  </div>
+
+  <script>
+    const carousel = document.getElementById("carousel");
+    const items = carousel.children.length;
+    const visible = 5; // número de items visibles
+    let index = 0;
+
+    function updateCarousel() {
+      const offset = -(index * (100 / visible));
+      carousel.style.transform = `translateX(${offset}%)`;
+    }
+
+    function moveNext() {
+      index++;
+      if (index > items - visible) index = 0; // vuelve al inicio
+      updateCarousel();
+    }
+
+    function movePrev() {
+      index--;
+      if (index < 0) index = items - visible; // vuelve al final
+      updateCarousel();
+    }
+
+    document.getElementById("next").addEventListener("click", moveNext);
+    document.getElementById("prev").addEventListener("click", movePrev);
+
+    // movimiento automático cada 3 segundos
+    setInterval(moveNext, 3000);
+
+    // mostrar los primeros items al cargar
+    updateCarousel();
+  </script>
+</body>
+</html>

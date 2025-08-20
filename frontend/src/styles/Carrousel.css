@@ -1,10 +1,10 @@
-#videoCarousel {
+/* #videoCarousel {
   position: relative;
 }
 
 .carousel-control-prev,
 .carousel-control-next {
-  position: absolute; /* cambiar relative por absolute */
+  position: absolute; 
   top: 150%;
   transform: translateY(-50%);
   width: 40px;
@@ -25,7 +25,7 @@
 
 .carousel-control-next.boton-externo {
   right: -50px;
-}
+} */
 
 .video-btn {
   position: absolute;

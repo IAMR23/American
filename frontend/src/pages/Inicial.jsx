@@ -21,6 +21,7 @@ import PlantTest from "../components/PlanTest";
 import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
 import RegistrationForm from "../components/RegistrationForm";
+import MasReproducidas from "../components/MasReproducidas";
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -245,6 +246,8 @@ export default function Inicial() {
       );
       const canciones = res.data.canciones || [];
       setCola(canciones);
+      setCurrentIndex(0); // 👈 reinicia a la primera canción
+
       setModoReproduccion("playlist");
       setPlaylistActualId(playlistId);
     } catch (err) {
@@ -263,6 +266,7 @@ export default function Inicial() {
       );
       const canciones = res.data.canciones || [];
       setCola(canciones);
+      setCurrentIndex(0); // 👈 reinicia a la primera canción
       setModoReproduccion("playlist");
       setPlaylistActualId(playlistId);
     } catch (err) {
@@ -303,6 +307,7 @@ export default function Inicial() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCola(res.data?.canciones || []);
+      setCurrentIndex(0); // 👈 reinicia a la primera canción
       setModoReproduccion("cola");
       setPlaylistActualId(null);
     } catch (error) {
@@ -499,7 +504,7 @@ export default function Inicial() {
       <div className=" fondo p-2">
         <h1 className="p-2 text-white">Las mas populares</h1>
 
-        <Carrousel
+        <MasReproducidas
           setCola={setCola}
           cola={cola}
           cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
