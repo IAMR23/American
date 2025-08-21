@@ -28,6 +28,8 @@ import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
 import MiPlaylist from "./pages/MiPlaylist";
 import MiPlaylistUser from "./pages/MiPlaylistUser";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
+import UltimasSubidas from "./components/UltimasSubidas";
+import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
 
 function App() {
   const [auth, setAuth] = useState({ isAuthenticated: false, rol: null });
@@ -77,6 +79,7 @@ function App() {
               <Route path="/playlistPopular/:id" element={<MiPlaylistAdmin />} />
               <Route path="/mis-playlist/:id" element={<MiPlaylistUser />} />
               <Route path="listacanciones" element={<ListaCanciones />} />
+              <Route path="ultimas-subidas" element={<ListaCancionesUltimas />} />
               <Route path="test" element={<PublicacionesCrud />} />
               <Route index="/" element={<Inicial />} />
               <Route path="/planes" element={<PlanTest />} />

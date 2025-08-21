@@ -22,6 +22,7 @@ import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
 import RegistrationForm from "../components/RegistrationForm";
 import MasReproducidas from "../components/MasReproducidas";
+import UltimasSubidas from "../components/UltimasSubidas";
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -95,9 +96,7 @@ export default function Inicial() {
             onClose={() => setShowModal(false)}
           />
         );
-      case "ultimo":
-        return <MasCantado />;
-
+      
       case "playlist":
         return (
           <PlaylistSugeridos
@@ -410,7 +409,7 @@ export default function Inicial() {
               </button>
               <button
                 className="boton3"
-                onClick={() => setSeccionActiva("ultimo")}
+                onClick={() => navigate("/ultimas-subidas")}
               >
                 Lo último
               </button>
