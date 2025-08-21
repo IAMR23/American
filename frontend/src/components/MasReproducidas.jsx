@@ -11,7 +11,13 @@ import { FaPlay } from "react-icons/fa";
 
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
-export default function MasReproducidas({ setCola, onAgregarCancion }) {
+export default function MasReproducidas({
+  setCola,
+  cola,
+  cargarCola,
+  onAgregarCancion,
+  onPlaySong,
+}) {
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
@@ -160,6 +166,7 @@ export default function MasReproducidas({ setCola, onAgregarCancion }) {
               <img
                 src={dropboxUrlToRaw(video.imagenUrl)}
                 alt={`Miniatura de ${video.titulo}`}
+                loading="lazy"
               />
 
               {/* Botón corazón (arriba izquierda) */}
@@ -197,7 +204,7 @@ export default function MasReproducidas({ setCola, onAgregarCancion }) {
                 }}
                 title="Reproducir ahora"
               >
-                  <img src="./play.png" alt=""  />
+                <img src="./play.png" alt="" />
               </button>
             </div>
 
