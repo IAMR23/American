@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { BsHeart, BsList, BsPlug, BsPlus, BsPlusCircle } from "react-icons/bs";
-import { FaPlus } from "react-icons/fa";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
-import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import "../styles/listaCanciones.css";
-import { useNavigate } from "react-router-dom";
 import VideoPlayer from "./VideoPlayer";
 import VideoPlayer2 from "./VideoPlayer2";
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-export default function GaleriaYoutube({
+export default function Canciones({
   setCola,
   cola,
   cargarCola,

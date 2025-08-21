@@ -15,7 +15,8 @@ export default function VideoPlayer({
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [score, setScore] = useState(null); // ⭐ NUEVO: puntaje final
+  const [isPlaying, setIsPlaying] = useState(false); // 👈 control de reproducción
+  const [score, setScore] = useState(null);
   const [scoreCalculated, setScoreCalculated] = useState(false);
 
   const playerRef = useRef();
@@ -28,12 +29,9 @@ export default function VideoPlayer({
   const rafRef = useRef(null);
   const userPitchesRef = useRef([]);
 
-  // Simulación de pitch de referencia (Hz)
-  const songReference = [440, 440, 466, 466, 440, 392, 392];
-
   const currentVideo = playlist[currentIndex];
 
-  // --- INICIAR MICRÓFONO ---
+  // --- MICRÓFONO ---
   const startMic = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioContextRef.current = new AudioContext();
@@ -59,10 +57,7 @@ export default function VideoPlayer({
       audioContextRef.current.sampleRate
     );
 
-    console.log("Pitch:", pitch.toFixed(2), "Hz, Clarity:", clarity.toFixed(2)); // ← aquí debug
-
     if (clarity > 0.5) {
-      // bajo umbral para captar más tonos
       userPitchesRef.current.push(pitch);
     }
 
@@ -80,7 +75,6 @@ export default function VideoPlayer({
     const userPitches = userPitchesRef.current;
     if (!userPitches.length) return 0;
 
-    // Para prueba: referencia fija a 440Hz (La4)
     const songReference = new Array(userPitches.length).fill(440);
 
     let total = 0;
@@ -89,7 +83,7 @@ export default function VideoPlayer({
     for (let i = 0; i < count; i++) {
       let diff = Math.abs(userPitches[i] - songReference[i]);
       if (userPitches[i] === 0) {
-        total += 40; // sin tono detectado
+        total += 40;
       } else if (diff < 5) {
         total += 100;
       } else if (diff < 20) {
@@ -102,7 +96,7 @@ export default function VideoPlayer({
     return Math.round(total / count);
   };
 
-  // --- FULLSCREEN REQUEST ---
+  // --- FULLSCREEN ---
   useEffect(() => {
     if (fullscreenRequested) {
       const el = containerRef.current;
@@ -120,6 +114,17 @@ export default function VideoPlayer({
     }
   }, [currentIndex, playlist.length, setCurrentIndex]);
 
+  // --- CAMBIO DE CANCIÓN ---
+  useEffect(() => {
+    if (!currentVideo) return;
+    stopMic(); // parar lo anterior
+    setIsPlaying(false); // pausa primero
+    if (playerRef.current) {
+      playerRef.current.seekTo(0); // reinicia el tiempo
+    }
+    setIsPlaying(true); // ahora sí reproduce la nueva
+  }, [currentIndex]);
+
   // --- NAVIGATION ---
   const nextVideo = () => {
     if (currentIndex < playlist.length - 1) {
@@ -136,12 +141,10 @@ export default function VideoPlayer({
   };
 
   // --- PROGRESS ---
-
   const handleProgress = ({ playedSeconds }) => {
     const duration = playerRef.current?.getDuration?.();
     if (!duration) return;
 
-    // Mostrar mensaje próxima canción cuando quedan 30s
     if (duration - playedSeconds <= 30) {
       const next = playlist[currentIndex + 1];
       if (next) {
@@ -152,7 +155,6 @@ export default function VideoPlayer({
       setShowNextMessage(false);
     }
 
-    // Calcular score cuando quedan 20s, solo 1 vez
     if (!scoreCalculated && duration - playedSeconds <= 45) {
       const finalScore = calculateScore();
       setScore(finalScore);
@@ -189,7 +191,7 @@ export default function VideoPlayer({
     }
   };
 
-  // --- EVENTOS DE KARAOKE ---
+  // --- EVENTOS ---
   const handleSongStart = () => {
     setScore(null);
     setScoreCalculated(false);
@@ -203,6 +205,7 @@ export default function VideoPlayer({
     nextVideo();
   };
 
+  // --- RENDER ---
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
       <div style={emptyStyle}>
@@ -234,11 +237,12 @@ export default function VideoPlayer({
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls = {false}  
-          playing
+          controls={false}
+          playing={isPlaying}   // 👈 ahora controlado por estado
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
           onPlay={handleSongStart}
+          onPause={() => stopMic()} // si pausas, paras micrófono
           onProgress={handleProgress}
           onEnded={handleSongEnd}
         />
@@ -309,7 +313,6 @@ const navButtonStyle = (side, disabled) => ({
   cursor: disabled ? "not-allowed" : "pointer",
 });
 
-
 const nextSongStyle = (isFullscreen) => ({
   position: "absolute",
   top: "25%",
@@ -319,9 +322,8 @@ const nextSongStyle = (isFullscreen) => ({
   borderRadius: "12px",
   fontSize: isFullscreen ? "50px" : "38px",
   transform: "translateX(-50%)",
-  border: "5px solid black", // borde negro
+  border: "5px solid black",
 });
-
 
 const fullscreenBtnStyle = {
   position: "absolute",

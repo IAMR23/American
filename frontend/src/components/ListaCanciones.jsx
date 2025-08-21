@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../styles/inicial.css";
-import GaleriaYoutube from "../components/GaleriaYoutube";
+import Canciones from "./Canciones";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import "../styles/botones.css";
@@ -170,7 +170,7 @@ export default function ListaCanciones() {
           />
         </div>
       </div>
-      <GaleriaYoutube
+      <Canciones
         setCola={setCola}
         cola={cola}
         cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo

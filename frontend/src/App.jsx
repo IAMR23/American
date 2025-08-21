@@ -22,7 +22,6 @@ import PlanTest from "./components/PlanTest";
 import { AuthProvider } from "./utils/AuthContext";
 import { getToken } from "./utils/auth";
 import PublicacionesPage from "./pages/PublicacionesPage";
-import ReproductorPage from "./pages/ReproductorPage";
 import MasReproducidas from "./pages/MasReproducidas";
 import SolicitudesPage from "./components/SolicitudesPage";
 import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
