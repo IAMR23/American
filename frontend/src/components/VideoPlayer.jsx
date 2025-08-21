@@ -237,8 +237,8 @@ export default function VideoPlayer({
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls={false}
           playing={isPlaying}   // 👈 ahora controlado por estado
+          controls
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
           onPlay={handleSongStart}

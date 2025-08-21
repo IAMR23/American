@@ -36,8 +36,45 @@ export default function Inicial() {
   const [seccionActiva, setSeccionActiva] = useState("video");
   const navigate = useNavigate();
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
+    const token = getToken();
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.userId);
+        setUserRole(decoded.rol);
+        await cargarTodo(decoded.userId); // 👈 recarga data inmediatamente
+      } catch (err) {
+        console.error("Token inválido", err);
+      }
+    }
     setSeccionActiva("video");
+  };
+
+  const cargarTodo = async (userId) => {
+    const token = getToken();
+    if (!token || !userId) return;
+
+    try {
+      const resPlaylists = await axios.get(`${API_URL}/t/playlist/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPlaylists(Array.isArray(resPlaylists.data) ? resPlaylists.data : []);
+
+      const resPropia = await axios.get(`${API_URL}/t2/playlistPropia`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPlaylistsPropia(Array.isArray(resPropia.data) ? resPropia.data : []);
+
+      const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSuscrito(resSub.data.suscrito === true);
+
+      await cargarCola();
+    } catch (error) {
+      console.error("Error cargando datos", error);
+    }
   };
 
   const renderContenido = () => {
@@ -325,7 +362,7 @@ export default function Inicial() {
 
   return (
     <>
-      <div className="fondo container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
+      <div className="bg-primary container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
@@ -484,11 +521,11 @@ export default function Inicial() {
             </div>
           ))}
         </div>
-
-        <AnunciosVisibles />
       </div>
 
-      <div className=" fondo p-2">
+      <div className="fondo p-2">
+        <AnunciosVisibles />
+
         <h1 className="p-2 text-white">Selección especial</h1>
 
         <Carrousel
@@ -499,10 +536,8 @@ export default function Inicial() {
           onAgregarCancion={insertarCancion}
           onPlaySong={handlePlaySong} // <-- Nuevo prop
         />
-      </div>
 
-      <div className=" fondo p-2">
-        <h1 className="p-2 text-white">Las mas populares</h1>
+         <h1 className="p-2 text-white">Las mas populares</h1>
 
         <MasReproducidas
           setCola={setCola}
@@ -512,6 +547,8 @@ export default function Inicial() {
           onPlaySong={handlePlaySong} // <-- Nuevo prop
         />
       </div>
+
+   
     </>
   );
 }

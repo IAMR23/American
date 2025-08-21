@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { BsHeart, BsList } from "react-icons/bs";
 import { FaPlay, FaPlus } from "react-icons/fa";
@@ -20,13 +20,12 @@ export default function Carrousel({
   onPlaySong,
 }) {
   const [videos, setVideos] = useState([]);
-  const [videoSeleccionado, setVideoSeleccionado] = useState(null);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
-  const [filtros, setFiltros] = useState({
-    busqueda: "",
-    ordenFecha: "desc",
-  });
+
+  const carouselRef = useRef(null);
+  const visible = 5;
+  let index = useRef(0);
 
   // Autenticación segura
   let userId = null;
@@ -38,33 +37,17 @@ export default function Carrousel({
       userId = decoded.userId;
       isAuthenticated = true;
     }
-  } catch (error) {
+  } catch {
     console.warn("Usuario no autenticado");
   }
 
-  const handleOpenModal = (songId) => {
-    if (!isAuthenticated) {
-      alert("Inicia sesión para agregar a una playlist");
-      return;
-    }
-    setSelectedSongId(songId);
-    setShowPlaylistModal(true);
-  };
-
-  const fetchVideos = async (usarFiltro = false) => {
+  const fetchVideos = async () => {
     try {
       const headers = isAuthenticated
-        ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        ? { Authorization: `Bearer ${getToken()}` }
         : {};
-
-      const url = usarFiltro ? FILTRO_URL : SONG_URL;
-      const params = usarFiltro
-        ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha }
-        : {};
-
-      const res = await axios.get(url, { headers, params });
+      const res = await axios.get(SONG_URL, { headers });
       setVideos(res.data.canciones || res.data);
-      console.log("cds", res.data);
     } catch (err) {
       console.error("Error al cargar videos", err);
     }
@@ -74,16 +57,40 @@ export default function Carrousel({
     fetchVideos();
   }, []);
 
+  // Funciones del carrusel
+  const updateCarousel = () => {
+    if (!carouselRef.current) return;
+    const offset = -(index.current * (100 / visible));
+    carouselRef.current.style.transform = `translateX(${offset}%)`;
+  };
+
+  const moveNext = () => {
+    index.current++;
+    if (index.current > videos.length - visible) index.current = 0;
+    updateCarousel();
+  };
+
+  const movePrev = () => {
+    index.current--;
+    if (index.current < 0) index.current = videos.length - visible;
+    updateCarousel();
+  };
+
+  // Autoplay
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      if (filtros.busqueda.trim() !== "") {
-        fetchVideos(true);
-      } else {
-        fetchVideos();
-      }
-    }, 500);
-    return () => clearTimeout(delayDebounce);
-  }, [filtros.busqueda, filtros.ordenFecha]);
+    if (videos.length <= visible) return;
+    const interval = setInterval(moveNext, 5000);
+    return () => clearInterval(interval);
+  }, [videos]);
+
+  const handleOpenModal = (songId) => {
+    if (!isAuthenticated) {
+      alert("Inicia sesión para agregar a una playlist");
+      return;
+    }
+    setSelectedSongId(songId);
+    setShowPlaylistModal(true);
+  };
 
   const agregarAFavoritos = async (songId) => {
     if (!isAuthenticated) return alert("Inicia sesión para usar favoritos");
@@ -143,179 +150,89 @@ export default function Carrousel({
     await axios.post(`${API_URL}/song/${id}/reproducir`);
     // lógica para reproducir el video...
   };
-
-
   return (
-    <div>
-      <div className="bg-dark">
-        <div
-          id="videoCarousel"
-          className="carousel slide"
-          data-bs-ride="carousel"
-        >
-          <div className="carousel-inner">
-            {Array.from({ length: Math.ceil(videos.length / 5) }).map(
-              (_, groupIndex) => {
-                const videosDelGrupo = videos.slice(
-                  groupIndex * 5,
-                  (groupIndex + 1) * 5
-                );
-                const placeholders = 5 - videosDelGrupo.length;
+    <div className="carousel-container ">
+      <button className="arrow arrow-left" onClick={movePrev}>
+        &#10094;
+      </button>
+      <button className="arrow arrow-right" onClick={moveNext}>
+        &#10095;
+      </button>
 
-                return (
-                  <div
-                    key={groupIndex}
-                    className={`carousel-item ${
-                      groupIndex === 0 ? "active" : ""
-                    }`}
-                  >
-                    <div
-                      className="row mx-0"
-                      style={{
-                        display: "flex",
-                        gap: "15px", // espacio entre videos
-                        justifyContent: "center",
-                      }}
-                    >
-                      {videosDelGrupo.map((video) => (
-                        <div
-                          key={video._id}
-                          className="video-card"
-                          style={{
-                            flex: "0 0 18%",
-                            maxWidth: "18%",
-                            cursor: "pointer",
-                            position: "relative",
-                          }}
-                        >
-                          <img
-                            src={dropboxUrlToRaw(video.imagenUrl)}
-                            alt={`Miniatura de ${video.titulo}`}
-                            className="img-fluid rounded"
-                            onClick={() => setVideoSeleccionado(video)}
-                            style={{
-                              width: "100%",
-                              height: "290px", // más alto = más rectangular
-                              objectFit: "cover",
-                              borderRadius: "8px",
-                            }}
-                          />
+      <div className="carousel" ref={carouselRef}>
+        {videos.map((video) => (
+          <div key={video._id} className="item">
+            {/* Contenedor relativo */}
+            <div className="image-container">
+              <img
+                src={dropboxUrlToRaw(video.imagenUrl) || null}
+                alt={`Miniatura de ${video.titulo}`}
+                loading="lazy"
+                style={{
+                  width: "480px", // puedes ajustar aquí
+                  height: "270px", // mantener proporción 16:9
+                  objectFit: "cover",
+                  borderRadius: "12px",
+                }}
+              />
 
-                          {/* Botones */}
-                          <button
-                            className="video-btn heart-btn"
-                            onClick={() => agregarAFavoritos(video._id)}
-                            title="Agregar a favoritos"
-                            disabled={!isAuthenticated}
-                          >
-                            <BsHeart size={20} />
-                          </button>
-                          <button
-                            className="video-btn list-btn"
-                            onClick={() => agregarACola(video._id)}
-                            title="Agregar a cola"
-                            disabled={!isAuthenticated}
-                          >
-                            <BsList size={20} />
-                          </button>
-                          <button
-                            className="video-btn heart-btn"
-                            onClick={() => handleOpenModal(video._id)}
-                            title="Agregar a playlist"
-                            disabled={!isAuthenticated}
-                          >
-                            <BsHeart size={18} />
-                          </button>
-                          <button
-                            className="video-btn play-btn"
-                            onClick={async () => {
-                              await masReproducida(video._id);
-                              let index = cola.findIndex(
-                                (c) => c._id === video._id
-                              );
-                              if (index === -1 && onAgregarCancion) {
-                                await onAgregarCancion(video._id);
-                                index = cola.length;
-                              }
-                              if (onPlaySong && index !== -1) onPlaySong(index);
-                              else alert("No se pudo reproducir la canción.");
-                            }}
-                            title="Reproducir ahora"
-                          >
-                            <FaPlay size={24} />
-                          </button>
+              {/* Botón corazón (arriba izquierda) */}
+              <button
+                className="btn-heart"
+                onClick={() => handleOpenModal(video._id)}
+                title="Agregar a favoritos"
+                disabled={!isAuthenticated}
+              >
+                <img src="./heart.png" alt="" />
+              </button>
 
-                          <div className="d-flex flex-column mt-2">
-                            <span className="fw-bold text-light">
-                              {video.titulo}
-                            </span>
-                            <small className="text-light">
-                              {video.artista} -
-                              {video.generos?.nombre || "Sin género"}
-                            </small>
-                          </div>
-                        </div>
-                      ))}
+              {/* Botón lista (arriba derecha) */}
+              <button
+                className="btn-list"
+                onClick={() => agregarACola(video._id)}
+                title="Agregar a cola"
+                disabled={!isAuthenticated}
+              >
+                <img src="./mas.png" alt="" width={"40px"} />
+              </button>
 
-                      {/* Placeholders invisibles */}
-                      {Array.from({ length: placeholders }).map((_, i) => (
-                        <div
-                          key={`placeholder-${i}`}
-                          style={{
-                            flex: "0 0 18%",
-                            maxWidth: "18%",
-                            visibility: "hidden",
-                            height: "300px",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-            )}
+              {/* Botón play (centro) */}
+              <button
+                className="btn-play"
+                onClick={async () => {
+                  await masReproducida(video._id);
+                  let index = cola.findIndex((c) => c._id === video._id);
+                  if (index === -1 && onAgregarCancion) {
+                    await onAgregarCancion(video._id);
+                    index = cola.length;
+                  }
+                  if (onPlaySong && index !== -1) onPlaySong(index);
+                  else alert("No se pudo reproducir la canción.");
+                }}
+                title="Reproducir ahora"
+              >
+                <img src="./play.png" alt="" />
+              </button>
+            </div>
+
+            {/* Texto debajo */}
+            <span className="fw-bold text-light">{video.titulo}</span>
+            <small className="text-light">
+              {video.artista} - {video.generos?.nombre || "Sin género"}
+            </small>
           </div>
-
-          {videos.length > 5 && (
-            <>
-              <button
-                className="carousel-control-prev"
-                type="button"
-                data-bs-target="#videoCarousel"
-                data-bs-slide="prev"
-              >
-                <span
-                  className="carousel-control-prev-icon"
-                  aria-hidden="true"
-                ></span>
-                <span className="visually-hidden">Previous</span>
-              </button>
-              <button
-                className="carousel-control-next"
-                type="button"
-                data-bs-target="#videoCarousel"
-                data-bs-slide="next"
-              >
-                <span
-                  className="carousel-control-next-icon"
-                  aria-hidden="true"
-                ></span>
-                <span className="visually-hidden">Next</span>
-              </button>
-            </>
-          )}
-        </div>
-
-        {isAuthenticated && (
-          <PlaylistSelectorModal
-            show={showPlaylistModal}
-            onClose={() => setShowPlaylistModal(false)}
-            userId={userId}
-            songId={selectedSongId}
-            onAddToPlaylistSuccess={() => {}}
-          />
-        )}
+        ))}
       </div>
+
+      {isAuthenticated && (
+        <PlaylistSelectorModal
+          show={showPlaylistModal}
+          onClose={() => setShowPlaylistModal(false)}
+          userId={userId}
+          songId={selectedSongId}
+          onAddToPlaylistSuccess={() => {}}
+        />
+      )}
     </div>
   );
 }

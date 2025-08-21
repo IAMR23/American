@@ -30,30 +30,34 @@ import MiPlaylistUser from "./pages/MiPlaylistUser";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 
 function App() {
-  // 🔹 Estado global de autenticación
   const [auth, setAuth] = useState({ isAuthenticated: false, rol: null });
 
   useEffect(() => {
-    // 🔹 Verificar si hay un token guardado
     const token = getToken();
     if (token) {
       try {
         const decodedToken = jwtDecode(token);
-        setAuth({ isAuthenticated: true, rol: decodedToken.rol });
+
+        // 🔹 Verificar expiración del token
+        if (decodedToken.exp * 1000 < Date.now()) {
+          console.log("Token expirado, cerrando sesión...");
+          localStorage.removeItem("token");
+          setAuth({ isAuthenticated: false, rol: null });
+        } else {
+          setAuth({ isAuthenticated: true, rol: decodedToken.rol });
+        }
       } catch (error) {
         console.error("Error al decodificar el token", error);
-        localStorage.removeItem("token"); // Elimina el token si es inválido
+        localStorage.removeItem("token");
         setAuth({ isAuthenticated: false, rol: null });
       }
     }
   }, []);
-  //ccs
 
   return (
     <AuthProvider>
       <BrowserRouter>
         <div>
-          {/* 🔹 Pasamos auth y setAuth a Navbar para manejar autenticación */}
           <main className="flex-grow w-full ">
             <Routes>
               <Route path="/" element={<SidebarLayout />}>
@@ -72,14 +76,10 @@ function App() {
               </Route>
               <Route path="/playlistPopular/:id" element={<MiPlaylistAdmin />} />
               <Route path="/mis-playlist/:id" element={<MiPlaylistUser />} />
-
-              {/* Son las funcionalidades de los botones */}
               <Route path="listacanciones" element={<ListaCanciones />} />
               <Route path="test" element={<PublicacionesCrud />} />
-
               <Route index="/" element={<Inicial />} />
               <Route path="/planes" element={<PlanTest />} />
-              {/* 🔹 Pasamos setAuth a LoginForm para actualizar estado tras login */}
               <Route path="/login" element={<LoginForm setAuth={setAuth} />} />
               <Route path="/registro" element={<RegistrationForm />} />
               <Route path="/publicaciones" element={<PublicacionesPage />} />

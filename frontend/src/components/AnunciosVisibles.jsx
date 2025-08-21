@@ -23,10 +23,9 @@ const AnunciosVisibles = () => {
   if (anuncios.length === 0) return <p className="text-light"></p>;
 
   return (
-    <div className="bg-primary text-white py-2 w-100 overflow-hidden position-relative">
-      <div className="marquee d-flex fs-3">
-        {" "}
-        {/* <-- Tamaño aumentado con fs-4 */}
+    <div className="text-white py-2 w-100 overflow-hidden position-relative">
+      <div className="marquee d-flex fs-2">
+     
         {anuncios.map((anuncio, index) => (
           <div key={index} className="px-4">
             <strong>{anuncio.titulo}: </strong>

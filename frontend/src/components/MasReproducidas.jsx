@@ -78,7 +78,7 @@ export default function MasReproducidas({
   // Autoplay
   useEffect(() => {
     if (videos.length <= visible) return;
-    const interval = setInterval(moveNext, 3000);
+    const interval = setInterval(moveNext, 5000);
     return () => clearInterval(interval);
   }, [videos]);
 
@@ -164,7 +164,7 @@ export default function MasReproducidas({
             {/* Contenedor relativo */}
             <div className="image-container">
               <img
-                src={dropboxUrlToRaw(video.imagenUrl)}
+                src={dropboxUrlToRaw(video.imagenUrl) || null}
                 alt={`Miniatura de ${video.titulo}`}
                 loading="lazy"
                 style={{
@@ -178,7 +178,7 @@ export default function MasReproducidas({
               {/* Botón corazón (arriba izquierda) */}
               <button
                 className="btn-heart"
-                onClick={() => agregarAFavoritos(video._id)}
+                onClick={() => handleOpenModal(video._id)}
                 title="Agregar a favoritos"
                 disabled={!isAuthenticated}
               >
