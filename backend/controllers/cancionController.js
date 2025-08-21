@@ -210,6 +210,21 @@ const listarCancionesVisibles = async (req, res) => {
   }
 };
 
+
+// Listar canciones por últimas subidas
+const listarCancionesUltimas = async (req, res) => {
+  try {
+    const canciones = await Cancion.find()
+      .sort({ createdAt: -1 }) // -1 para descendente (más recientes primero)
+      .populate("generos", "nombre"); // opcional: traer solo el nombre del género
+
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 module.exports = {
   crearCancion,
   listarCanciones,
@@ -221,4 +236,5 @@ module.exports = {
   listarCancionesVisibles,
   listarCancionesArtista,
   listarCancionesNumero,
+  listarCancionesUltimas
 };
