@@ -167,6 +167,12 @@ export default function MasReproducidas({
                 src={dropboxUrlToRaw(video.imagenUrl)}
                 alt={`Miniatura de ${video.titulo}`}
                 loading="lazy"
+                style={{
+                  width: "480px", // puedes ajustar aquí
+                  height: "270px", // mantener proporción 16:9
+                  objectFit: "cover",
+                  borderRadius: "12px",
+                }}
               />
 
               {/* Botón corazón (arriba izquierda) */}

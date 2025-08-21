@@ -8,7 +8,18 @@ export function getYoutubeThumbnail(videoUrl) {
 
 
 export function dropboxUrlToRaw(url) {
-  const size = "w480" ; 
-  if (!url) return "";
-  return url.replace("?dl=0", "?raw=1") + `&size=${size}`;
+  try {
+    const urlObj = new URL(url);
+    if (urlObj.hostname.includes("dropbox.com")) {
+      if (urlObj.searchParams.has("dl")) {
+        urlObj.searchParams.delete("dl");
+      }
+      urlObj.searchParams.set("raw", "1");
+      return urlObj.toString().replace("www.dropbox.com", "dl.dropboxusercontent.com");
+    } else {
+      return url;
+    }
+  } catch (error) {
+    return url;
+  }
 }
