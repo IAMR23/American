@@ -6,7 +6,7 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import "../styles/listaCanciones.css";
 import VideoPlayer2 from "./VideoPlayer2";
-const SONG_URL = `${API_URL}/song/ordennumero`;
+const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
 export default function Canciones({
