@@ -6,7 +6,7 @@ const Cancion = require("../models/Cancion");
 
 router.post("/", authenticate, cancionController.crearCancion);
 router.get("/", cancionController.listarCanciones);
-router.get("/ordennumero", cancionController.listarCancionesNumero);
+router.get("/numero", cancionController.listarCancionesNumero);
 router.get("/ultsubidas", cancionController.listarCancionesUltimas);
 router.get("/artista", cancionController.listarCancionesArtista);
 router.get("/filtrar", cancionController.filtrarCanciones);
