@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title >Barra Deslizante Fullscreen</title>
+<style>
+
+
+  .contenedor {
+    width: 60%;
+    height: 50px;
+    background-color: #007BFF;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .texto {
+    white-space: nowrap;
+    position: absolute;
+    left: -100%;
+    font-size: 20px;
+    color: black;
+    animation: mover 10s linear infinite;
+  }
+
+  @keyframes mover {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  .pequeno {
+    height: 30px;
+  }
+
+  .pequeno .texto {
+    font-size: 14px;
+  }
+
+  /* Texto más grande para fullscreen */
+  .fullscreen .texto {
+    font-size: 40px;
+  }
+
+  .botones {
+    margin: 10px;
+  }
+
+ 
+</style>
+</head>
+<body>
+
+<div class="botones">
+  <button onclick="hacerNormal()">Normal</button>
+  <button onclick="hacerPequeno()">Pequeño</button>
+  <button onclick="activarFullscreen()">Pantalla Completa</button>
+</div>
+
+<div id="contenedor" class="contenedor">
+  <div class="texto test">Estas son mis palabras deslizantes!</div>
+</div>
+
+<script>
+const contenedor = document.getElementById('contenedor');
+
+function hacerNormal() {
+  contenedor.className = 'contenedor';
+}
+
+function hacerPequeno() {
+  contenedor.className = 'contenedor pequeno';
+}
+
+function activarFullscreen() {
+  if (contenedor.requestFullscreen) {
+    contenedor.requestFullscreen();
+  } else if (contenedor.webkitRequestFullscreen) { /* Safari */
+    contenedor.webkitRequestFullscreen();
+  } else if (contenedor.msRequestFullscreen) { /* IE11 */
+    contenedor.msRequestFullscreen();
+  }
+  contenedor.className = 'contenedor fullscreen';
+}
+</script>
+
+</body>
+</html>

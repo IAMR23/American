@@ -6,10 +6,10 @@ import { jwtDecode } from "jwt-decode";
 import "../styles/botones.css";
 import "../styles/disco.css";
 import { API_URL } from "../config";
-
 import { useNavigate } from "react-router-dom";
 import { getToken } from "../utils/auth";
 import UltimasSubidas from "./UltimasSubidas";
+import ToastModal from "./modal/ToastModal";
 
 export default function ListaCancionesUltimas() {
   const [cola, setCola] = useState([]);
@@ -17,6 +17,8 @@ export default function ListaCancionesUltimas() {
   const [playlists, setPlaylists] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [toastMensaje, setToastMensaje] = useState("");
+
   // Renderizado
   const [seccionActiva, setSeccionActiva] = useState("video");
   const navigate = useNavigate();
@@ -54,7 +56,7 @@ export default function ListaCancionesUltimas() {
         "Error al crear playlist:",
         err.response?.data || err.message
       );
-      alert("No se pudo crear el playlist. Quizás ya existe.");
+      setToastMensaje("No se pudo crear el playlist. Quizás ya existe.");
     }
   };
 
@@ -126,10 +128,10 @@ export default function ListaCancionesUltimas() {
 
       // Inserta localmente en ambos casos
       insertarEnColaDespuesActual(nuevaCancion);
-      alert("🎵 Canción agregada correctamente");
+      setToastMensaje("🎵 Canción agregada correctamente");
     } catch (err) {
       console.error("Error al insertar canción", err);
-      alert("No se pudo agregar la canción");
+      setToastMensaje("No se pudo agregar la canción");
     }
   };
 
@@ -176,6 +178,12 @@ export default function ListaCancionesUltimas() {
         cola={cola}
         cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
         onAgregarCancion={insertarCancion}
+      />
+
+      <ToastModal
+        mensaje={toastMensaje}
+        duracion={2000}
+        onClose={() => setToastMensaje("")}
       />
     </>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
 import { PitchDetector } from "pitchy";
 import "../styles/react-player.css";
+import BarraDeslizante from "./BarraDeslizante";
 
 export default function VideoPlayer({
   cola = [],
@@ -15,9 +16,15 @@ export default function VideoPlayer({
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false); // 👈 control de reproducción
+  const [isPlaying, setIsPlaying] = useState(false);
   const [score, setScore] = useState(null);
   const [scoreCalculated, setScoreCalculated] = useState(false);
+
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const [showControls, setShowControls] = useState(true);
+  const hideControlsTimeoutRef = useRef(null);
 
   const playerRef = useRef();
   const containerRef = useRef();
@@ -117,12 +124,12 @@ export default function VideoPlayer({
   // --- CAMBIO DE CANCIÓN ---
   useEffect(() => {
     if (!currentVideo) return;
-    stopMic(); // parar lo anterior
-    setIsPlaying(false); // pausa primero
+    stopMic();
+    setIsPlaying(false);
     if (playerRef.current) {
-      playerRef.current.seekTo(0); // reinicia el tiempo
+      playerRef.current.seekTo(0);
     }
-    setIsPlaying(true); // ahora sí reproduce la nueva
+    setIsPlaying(true);
   }, [currentIndex]);
 
   // --- NAVIGATION ---
@@ -142,10 +149,12 @@ export default function VideoPlayer({
 
   // --- PROGRESS ---
   const handleProgress = ({ playedSeconds }) => {
-    const duration = playerRef.current?.getDuration?.();
-    if (!duration) return;
+    setProgress(playedSeconds);
 
-    if (duration - playedSeconds <= 30) {
+    const dur = playerRef.current?.getDuration?.();
+    if (!dur) return;
+
+    if (dur - playedSeconds <= 40) {
       const next = playlist[currentIndex + 1];
       if (next) {
         setNextSongName(next.titulo || "Siguiente canción");
@@ -155,12 +164,51 @@ export default function VideoPlayer({
       setShowNextMessage(false);
     }
 
-    if (!scoreCalculated && duration - playedSeconds <= 45) {
+    if (!scoreCalculated && dur - playedSeconds <= 45) {
       const finalScore = calculateScore();
       setScore(finalScore);
       setScoreCalculated(true);
     }
   };
+
+  const handleSeek = (e) => {
+    const newTime = parseFloat(e.target.value);
+    playerRef.current.seekTo(newTime, "seconds");
+    setProgress(newTime);
+  };
+
+  const formatTime = (sec) => {
+    if (!sec || isNaN(sec)) return "00:00";
+    const minutes = Math.floor(sec / 60);
+    const seconds = Math.floor(sec % 60);
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  // --- CONTROLES AUTOMÁTICOS EN FULLSCREEN ---
+  const resetHideControlsTimer = () => {
+    setShowControls(true);
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+    if (isFullscreen) {
+      hideControlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = () => resetHideControlsTimer();
+    const container = containerRef.current;
+    container?.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      container?.removeEventListener("mousemove", handleMouseMove);
+      if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+    };
+  }, [isFullscreen]);
 
   // --- FULLSCREEN STATE ---
   useEffect(() => {
@@ -172,6 +220,8 @@ export default function VideoPlayer({
         document.msFullscreenElement;
 
       setIsFullscreen(!!fsElement);
+      if (!!fsElement) resetHideControlsTimer();
+      else setShowControls(true);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -237,14 +287,15 @@ export default function VideoPlayer({
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          playing={isPlaying}   // 👈 ahora controlado por estado
-          controls
+          playing={isPlaying}
+          controls={false}
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
           onPlay={handleSongStart}
-          onPause={() => stopMic()} // si pausas, paras micrófono
+          onPause={() => stopMic()}
           onProgress={handleProgress}
           onEnded={handleSongEnd}
+          onDuration={(d) => setDuration(d)}
         />
 
         {/* Botones navegación */}
@@ -263,23 +314,89 @@ export default function VideoPlayer({
           ›
         </button>
 
-        {/* Mensaje próxima canción */}
-        {showNextMessage && (
-          <div style={nextSongStyle(isFullscreen)}>
-            🎶 Próxima canción: {nextSongName} 🎶
+        {/* Barra de controles personalizada */}
+        {showControls && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "15px",
+              left: "0",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "10px",
+              padding: "0 15px",
+              color: "white",
+              transition: "opacity 0.3s",
+            }}
+          >
+            {/* Play/Pause */}
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                color: "white",
+                border: "none",
+                padding: "10px",
+                borderRadius: "50%",
+                cursor: "pointer",
+                fontSize: "20px",
+              }}
+            >
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+
+            {/* Tiempo transcurrido */}
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(progress)}
+            </span>
+
+            {/* Barra progreso */}
+            <input
+              type="range"
+              min={0}
+              max={duration}
+              step="0.1"
+              value={progress}
+              onChange={handleSeek}
+              style={{
+                flex: 1,
+                height: "6px",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            />
+
+            {/* Tiempo total */}
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(duration)}
+            </span>
+
+            {/* Fullscreen */}
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                color: "white",
+                border: "none",
+                padding: "8px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "16px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ⛶
+            </button>
           </div>
         )}
 
-        {/* Botón fullscreen */}
-        <button onClick={toggleFullscreen} style={fullscreenBtnStyle}>
-          {isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
-        </button>
-
-        {/* Modal puntaje */}
-        {score !== null && (
-          <div style={scoreModalStyle}>
-            🎤 Tu puntaje: <b>{score}</b> puntos
-          </div>
+        {showNextMessage && (
+          <BarraDeslizante
+            texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
+            isFullscreen={isFullscreen}
+          />
         )}
       </div>
     </div>
@@ -312,40 +429,3 @@ const navButtonStyle = (side, disabled) => ({
   justifyContent: "center",
   cursor: disabled ? "not-allowed" : "pointer",
 });
-
-const nextSongStyle = (isFullscreen) => ({
-  position: "absolute",
-  top: "25%",
-  left: "50%",
-  color: "white",
-  padding: "12px 20px",
-  borderRadius: "12px",
-  fontSize: isFullscreen ? "50px" : "38px",
-  transform: "translateX(-50%)",
-  border: "5px solid black",
-});
-
-const fullscreenBtnStyle = {
-  position: "absolute",
-  top: "40px",
-  right: "10px",
-  background: "rgba(255,255,255,0.2)",
-  color: "white",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontSize: "14px",
-};
-
-const scoreModalStyle = {
-  position: "absolute",
-  bottom: "20px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  background: "rgba(0,0,0,0.8)",
-  color: "white",
-  padding: "15px 30px",
-  borderRadius: "12px",
-  fontSize: "20px",
-};
