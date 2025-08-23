@@ -71,8 +71,6 @@ export default function Inicial() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSuscrito(resSub.data.suscrito === true);
-
-      await cargarCola();
     } catch (error) {
       console.error("Error cargando datos", error);
     }
@@ -96,7 +94,7 @@ export default function Inicial() {
             onClose={() => setShowModal(false)}
           />
         );
-      
+
       case "playlist":
         return (
           <PlaylistSugeridos
@@ -191,6 +189,10 @@ export default function Inicial() {
 
   // Cargar token y datos del usuario
 
+  useEffect(() => {
+    cargarCola();
+  }, []);
+
   // Primer efecto: decodifica y establece userId y rol
   useEffect(() => {
     const token = getToken();
@@ -236,8 +238,6 @@ export default function Inicial() {
         console.warn("No estás suscrito o hubo un error al verificar.");
         setSuscrito(false);
       }
-
-      cargarCola();
     };
 
     const cargarDatos = async () => {
@@ -263,10 +263,7 @@ export default function Inicial() {
         console.warn("No estás suscrito o hubo un error al verificar.");
         setSuscrito(false);
       }
-
-      cargarCola();
     };
-
     cargarDatos();
     cargarDatosAdmin();
   }, [userId]);
@@ -336,18 +333,23 @@ export default function Inicial() {
   };
 
   const cargarCola = async () => {
-    const token = getToken();
-    if (!token || !userId) return;
     try {
-      const res = await axios.get(`${API_URL}/t/cola/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCola(res.data?.canciones || []);
-      setCurrentIndex(0); // 👈 reinicia a la primera canción
-      setModoReproduccion("cola");
-      setPlaylistActualId(null);
-    } catch (error) {
-      console.error("Error al cargar la cola", error);
+      const res = await axios.get(`${API_URL}/song/visibles`);
+      // Si el endpoint devuelve un array directamente o dentro de { canciones: [...] }
+      const canciones = res.data.canciones || res.data;
+      console.log(res.data);
+      if (Array.isArray(canciones)) {
+        setCola(canciones);
+        setCurrentIndex(0);
+        setModoReproduccion("cola");
+      } else {
+        console.error(
+          "El endpoint no devolvió un array de canciones",
+          res.data
+        );
+      }
+    } catch (err) {
+      console.error("Error cargando canciones visibles", err);
     }
   };
 
@@ -357,6 +359,14 @@ export default function Inicial() {
     setCurrentIndex(index);
     setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
     setShouldFullscreen(true); // activar fullscreen en VideoPlayer
+  };
+
+  // COla
+  const MIN_ANTERIORES = 2;
+
+  const getColaVisible = () => {
+    const start = currentIndex - MIN_ANTERIORES;
+    return start > 0 ? cola.slice(start) : cola;
   };
 
   return (
@@ -499,26 +509,33 @@ export default function Inicial() {
 
         <div className="d-flex flex-wrap justify-content-center align-items-center  gap-3 m-3">
           <h2 className="text-white">Canciones a la cola </h2>
-          {cola.map((cancion, index) => (
-            <div
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className="song-icon position-relative"
-              style={{ cursor: "pointer" }}
-            >
-              <FaCompactDisc
-                size={40}
-                className={`mb-1 ${
-                  index === currentIndex ? "song-playing" : "text-primary"
-                }`}
-              />
-              <div className="custom-tooltip">
-                <strong>{cancion.titulo}</strong>
-                <br />
-                <small>{cancion.artista}</small>
+
+          {getColaVisible().map((cancion, idx) => {
+            const indexReal =
+              currentIndex - MIN_ANTERIORES > 0
+                ? idx + (currentIndex - MIN_ANTERIORES)
+                : idx;
+            return (
+              <div
+                key={indexReal}
+                onClick={() => setCurrentIndex(indexReal)}
+                className="song-icon position-relative"
+                style={{ cursor: "pointer" }}
+              >
+                <FaCompactDisc
+                  size={40}
+                  className={`mb-1 ${
+                    indexReal === currentIndex ? "song-playing" : "text-primary"
+                  }`}
+                />
+                <div className="custom-tooltip">
+                  <strong>{cancion.titulo}</strong>
+                  <br />
+                  <small>{cancion.artista}</small>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -536,7 +553,7 @@ export default function Inicial() {
           onPlaySong={handlePlaySong} // <-- Nuevo prop
         />
 
-         <h1 className="p-2 text-white">Las mas populares</h1>
+        <h1 className="p-2 text-white">Las mas populares</h1>
 
         <MasReproducidas
           setCola={setCola}
@@ -546,8 +563,6 @@ export default function Inicial() {
           onPlaySong={handlePlaySong} // <-- Nuevo prop
         />
       </div>
-
-   
     </>
   );
 }
