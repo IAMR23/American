@@ -11,7 +11,7 @@ const favoritoController = createListController(Favorito);
 const playlistController = createListController(Playlist);
 const colaController = createListController(Cola);
 
-// ejemplo: favoritoRoutes.js
+// ---------------- FAVORITOS ----------------
 router.post("/favoritos/add", authenticate, favoritoController.addSong);
 router.delete("/favoritos/remove", authenticate, favoritoController.removeSong);
 router.get("/favoritos/:userId", authenticate, favoritoController.getList);
@@ -21,16 +21,66 @@ router.delete(
   favoritoController.clearList
 );
 
-// ejemplo: ColaRoutes.js
-router.post("/cola/add", authenticate, colaController.addSong);
-router.delete("/cola/remove", colaController.removeSong);
-router.get("/cola/:userId", colaController.getList);
-router.delete("/cola/clear/:userId", colaController.clearList);
+// ---------------- COLA ----------------
 
-//Playlist.js
+// 🚀 aquí personalizamos add para emitir evento
+router.post("/cola/add", authenticate, async (req, res) => {
+  try {
+    const nuevaCancion = await Cola.create(req.body);
 
+    // Obtener instancia de Socket.io desde app
+    const io = req.app.get("io");
+
+    // Emitir evento global
+    io.emit("colaActualizada", nuevaCancion);
+
+    res.status(201).json(nuevaCancion);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/cola/remove", async (req, res) => {
+  try {
+    const { _id } = req.body;
+    const eliminada = await Cola.findByIdAndDelete(_id);
+
+    // Emitir evento cuando se elimina
+    const io = req.app.get("io");
+    io.emit("colaEliminada", eliminada);
+
+    res.json(eliminada);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/cola/:userId", async (req, res) => {
+  try {
+    const cola = await Cola.find({ userId: req.params.userId });
+    res.json(cola);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/cola/clear/:userId", async (req, res) => {
+  try {
+    const result = await Cola.deleteMany({ userId: req.params.userId });
+
+    // Emitir evento de limpieza
+    const io = req.app.get("io");
+    io.emit("colaLimpiada", { userId: req.params.userId });
+
+    res.json({ cleared: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------- PLAYLISTS ----------------
 router.post("/playlist", authenticate, playlistController.createPlaylist);
-router.get("/playlist/:userId", authenticate ,  playlistController.getUserPlaylists);
+router.get("/playlist/:userId", authenticate, playlistController.getUserPlaylists);
 router.get(
   "/playlist/canciones/:playlistId",
   authenticate,
