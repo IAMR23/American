@@ -23,6 +23,7 @@ import BuscadorTabla from "../components/BuscadorTabla";
 import RegistrationForm from "../components/RegistrationForm";
 import MasReproducidas from "../components/MasReproducidas";
 import UltimasSubidas from "../components/UltimasSubidas";
+import io from "socket.io-client";
 
 export default function Inicial() {
   const [cola, setCola] = useState([]);
@@ -32,6 +33,66 @@ export default function Inicial() {
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [suscrito, setSuscrito] = useState(false);
+  const socket = io(API_URL);
+
+    // Escuchar eventos de la cola en tiempo real
+  useEffect(() => {
+    // Inicializa la cola desde backend
+    const cargarColaInicial = async () => {
+      const token = getToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/t/cola/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setCola(data);
+      } catch (err) {
+        console.error("Error cargando cola inicial", err);
+      }
+    };
+
+    if (userId) cargarColaInicial();
+
+    // Eventos de socket
+    socket.on("colaActualizada", (nuevaCancion) => {
+      setCola((prev) => [...prev, nuevaCancion]);
+    });
+
+    socket.on("colaEliminada", (cancionEliminada) => {
+      setCola((prev) => prev.filter((c) => c._id !== cancionEliminada._id));
+    });
+
+    socket.on("colaLimpiada", () => {
+      setCola([]);
+    });
+
+    return () => {
+      socket.off("colaActualizada");
+      socket.off("colaEliminada");
+      socket.off("colaLimpiada");
+    };
+  }, [userId]);
+
+  const insertarCancion2 = async (songId) => {
+  const token = getToken();
+  if (!token) return;
+
+  try {
+    await fetch(`${API_URL}/t/cola/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ songId }),
+    });
+    // ⚠ No agregamos manualmente a state, lo hará el socket
+  } catch (err) {
+    console.error("Error agregando canción a la cola", err);
+  }
+};
+
 
   // Renderizado
   const [seccionActiva, setSeccionActiva] = useState("video");

@@ -10,6 +10,7 @@ services:
       - ./mongo-backups:/data/backup
     networks:
       - app-network
+      
 
   backend:
     build: ./backend
