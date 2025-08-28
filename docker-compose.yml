@@ -8,6 +8,8 @@ services:
     volumes:
       - mongo-data:/data/db
       - ./mongo-backups:/data/backup
+    networks:
+      - app-network
 
   backend:
     build: ./backend
@@ -22,7 +24,8 @@ services:
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
     depends_on:
       - mongo
-    # Espera 10 segundos antes de iniciar, para que Mongo esté listo
+    networks:
+      - app-network
     command: sh -c "sleep 10 && node index.js"
 
   frontend:
@@ -33,6 +36,12 @@ services:
       - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend
+    networks:
+      - app-network
 
 volumes:
   mongo-data:
+
+networks:
+  app-network:
+    driver: bridge
