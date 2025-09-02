@@ -6,6 +6,8 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import "../styles/listaCanciones.css";
 import VideoPlayer2 from "./VideoPlayer2";
+import { socket } from "../utils/socket"; // 👈 importamos socket compartido
+
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
@@ -51,7 +53,6 @@ export default function Canciones({
 
   const handleChange = (e) => {
     setMostrarReproductor(false);
-
     const { name, value } = e.target;
     setFiltros((prev) => ({ ...prev, [name]: value }));
   };
@@ -108,20 +109,27 @@ export default function Canciones({
       alert("Ocurrió un error al agregar a favoritos");
     }
   };
-  console.log(videos);
+
 
   const agregarACola = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
+  if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
 
-    try {
-      if (onAgregarCancion) {
-        await onAgregarCancion(songId);
-      }
-    } catch (error) {
-      console.error("Error al agregar a cola", error);
-      alert("No se pudo agregar la canción");
-    }
-  };
+  try {
+    const token = getToken();
+    const res = await axios.post(
+      `${API_URL}/t/cola/add`,
+      { userId, songId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    // Emite la actualización al socket
+    socket.emit("actualizarCola", { userId }); // el backend debería escuchar este evento
+
+  } catch (error) {
+    console.error("Error al agregar a cola", error);
+    alert("No se pudo agregar la canción");
+  }
+};
 
   const handleAddToPlaylist = async (playlistId) => {
     if (!isAuthenticated) return;
@@ -144,11 +152,13 @@ export default function Canciones({
       alert("No se pudo agregar la canción ❌");
     }
   };
+
   const [mostrarReproductor, setMostrarReproductor] = useState(false);
   const [videoActual, setVideoActual] = useState(null);
 
   return (
     <div className="p-2">
+      {/* Filtro */}
       <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
         <label className="caja-buscar" htmlFor="busqueda">
           Buscar por Artista:
@@ -164,11 +174,12 @@ export default function Canciones({
         </div>
       </div>
 
+      {/* Listado de videos */}
       <div className="tarjetas">
         {videos.map((video) => {
           return (
             <div key={video._id} className="bg-modificado">
-              <div className="">
+              <div>
                 <button
                   className="video-btn heart-btn"
                   onClick={() => handleOpenModal(video._id)}
@@ -198,7 +209,7 @@ export default function Canciones({
                 </button>
               </div>
 
-              <div className="">
+              <div>
                 <div className="text-center text-black p-2 texto-superior">
                   <span className="fw-bold">
                     {video.numero} - {video.artista}
@@ -214,7 +225,7 @@ export default function Canciones({
         })}
       </div>
 
-      {/* Modal solo si está autenticado */}
+      {/* Modal de playlists */}
       {isAuthenticated && (
         <PlaylistSelectorModal
           show={showPlaylistModal}
@@ -227,6 +238,7 @@ export default function Canciones({
         />
       )}
 
+      {/* Mini reproductor flotante */}
       {mostrarReproductor && (
         <div className="mini-player-flotante">
           <VideoPlayer2

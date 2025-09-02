@@ -35,12 +35,26 @@ export default function Inicial() {
   const [suscrito, setSuscrito] = useState(false);
   const socket = io(API_URL);
 
-    // Escuchar eventos de la cola en tiempo real
+  // CAMBIOS SOKET IO
+
+  const insertarEnColaDespuesActual = (nuevaCancion) => {
+    if (!nuevaCancion || !nuevaCancion._id) return; // ❌ evita insertar vacíos
+
+    setCola((prevCola) => {
+      const index =
+        currentIndex !== undefined ? currentIndex : prevCola.length - 1;
+      const nuevaCola = [...prevCola];
+      nuevaCola.splice(index + 1, 0, nuevaCancion);
+      return nuevaCola;
+    });
+  };
+
   useEffect(() => {
-    // Inicializa la cola desde backend
+    if (!userId) return;
+
+    // carga inicial desde backend
     const cargarColaInicial = async () => {
       const token = getToken();
-      if (!token) return;
       try {
         const res = await fetch(`${API_URL}/t/cola/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -51,21 +65,18 @@ export default function Inicial() {
         console.error("Error cargando cola inicial", err);
       }
     };
+    cargarColaInicial();
 
-    if (userId) cargarColaInicial();
-
-    // Eventos de socket
-    socket.on("colaActualizada", (nuevaCancion) => {
-      setCola((prev) => [...prev, nuevaCancion]);
+    // eventos socket
+    socket.on("colaActualizada", (colaActualizada) => {
+      setCola(colaActualizada.filter((c) => c && c._id));
     });
 
     socket.on("colaEliminada", (cancionEliminada) => {
       setCola((prev) => prev.filter((c) => c._id !== cancionEliminada._id));
     });
 
-    socket.on("colaLimpiada", () => {
-      setCola([]);
-    });
+    socket.on("colaLimpiada", () => setCola([]));
 
     return () => {
       socket.off("colaActualizada");
@@ -74,25 +85,17 @@ export default function Inicial() {
     };
   }, [userId]);
 
-  const insertarCancion2 = async (songId) => {
-  const token = getToken();
-  if (!token) return;
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    setUserId(null);
+    window.location.reload(); // Fuerza recarga total
+  };
 
-  try {
-    await fetch(`${API_URL}/t/cola/add`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ songId }),
-    });
-    // ⚠ No agregamos manualmente a state, lo hará el socket
-  } catch (err) {
-    console.error("Error agregando canción a la cola", err);
-  }
-};
-
+  useEffect(() => {
+    if (userId) {
+      socket.emit("join", userId);
+    }
+  }, [userId]);
 
   // Renderizado
   const [seccionActiva, setSeccionActiva] = useState("video");
@@ -206,21 +209,6 @@ export default function Inicial() {
 
   const [modoReproduccion, setModoReproduccion] = useState("cola"); // "cola" o "playlist"
   const [playlistActualId, setPlaylistActualId] = useState(null);
-
-  const insertarEnColaDespuesActual = (nuevaCancion) => {
-    setCola((prevCola) => {
-      const nuevaCola = [...prevCola];
-      nuevaCola.splice(currentIndex + 1, 0, nuevaCancion);
-      return nuevaCola;
-    });
-  };
-
-  const cerrarSesion = () => {
-    localStorage.removeItem("token");
-    setUserId(null);
-    navigate("/"); // O recarga la página si prefieres
-    window.location.reload(); // Fuerza recarga total si quieres limpiar estados
-  };
 
   // Crear nuevo playlist
   const handleAddPlaylist = async (name) => {
@@ -426,8 +414,10 @@ export default function Inicial() {
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-    const start = currentIndex - MIN_ANTERIORES;
-    return start > 0 ? cola.slice(start) : cola;
+    const start =
+      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+    const visibles = cola.slice(start);
+    return visibles.filter((c) => c && c._id); // solo canciones válidas
   };
 
   return (
@@ -571,32 +561,36 @@ export default function Inicial() {
         <div className="d-flex flex-wrap justify-content-center align-items-center  gap-3 m-3">
           <h2 className="text-white">Canciones a la cola </h2>
 
-          {getColaVisible().map((cancion, idx) => {
-            const indexReal =
-              currentIndex - MIN_ANTERIORES > 0
-                ? idx + (currentIndex - MIN_ANTERIORES)
-                : idx;
-            return (
-              <div
-                key={indexReal}
-                onClick={() => setCurrentIndex(indexReal)}
-                className="song-icon position-relative"
-                style={{ cursor: "pointer" }}
-              >
-                <FaCompactDisc
-                  size={40}
-                  className={`mb-1 ${
-                    indexReal === currentIndex ? "song-playing" : "text-primary"
-                  }`}
-                />
-                <div className="custom-tooltip">
-                  <strong>{cancion.titulo}</strong>
-                  <br />
-                  <small>{cancion.artista}</small>
+          {getColaVisible()
+            .filter((cancion) => cancion && cancion._id) // 👈 solo canciones válidas
+            .map((cancion, idx) => {
+              const indexReal =
+                currentIndex - MIN_ANTERIORES > 0
+                  ? idx + (currentIndex - MIN_ANTERIORES)
+                  : idx;
+              return (
+                <div
+                  key={indexReal}
+                  onClick={() => setCurrentIndex(indexReal)}
+                  className="song-icon position-relative"
+                  style={{ cursor: "pointer" }}
+                >
+                  <FaCompactDisc
+                    size={40}
+                    className={`mb-1 ${
+                      indexReal === currentIndex
+                        ? "song-playing"
+                        : "text-primary"
+                    }`}
+                  />
+                  <div className="custom-tooltip">
+                    <strong>{cancion.titulo}</strong>
+                    <br />
+                    <small>{cancion.artista}</small>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
 
