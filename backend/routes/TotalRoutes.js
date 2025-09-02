@@ -26,15 +26,19 @@ router.delete(
 // 🚀 aquí personalizamos add para emitir evento
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
-    const nuevaCancion = await Cola.create(req.body);
+    const { userId, ...cancionData } = req.body;
 
-    // Obtener instancia de Socket.io desde app
+    // Guardar canción en la cola
+    await Cola.create({ userId, ...cancionData });
+
+    // Buscar la cola actualizada de ese usuario
+    const colaActualizada = await Cola.find({ userId });
+
+    // Emitir solo al usuario dueño de la cola
     const io = req.app.get("io");
+    io.to(userId).emit("colaActualizada", colaActualizada);
 
-    // Emitir evento global
-    io.emit("colaActualizada", nuevaCancion);
-
-    res.status(201).json(nuevaCancion);
+    res.status(201).json(colaActualizada);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

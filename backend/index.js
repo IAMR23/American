@@ -28,23 +28,25 @@ const PORT = process.env.PORT || 5000;
 // ====================
 const allowedOrigins = [
   "https://american-karaoke.com", // frontend en producción
-  "http://localhost:3000"         // frontend en desarrollo
+  "http://localhost:5173", // frontend en desarrollo
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir requests sin origen (Postman, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("CORS no permitido: " + origin), false);
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permitir requests sin origen (Postman, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("CORS no permitido: " + origin), false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Necesario para preflight OPTIONS
 app.options("*", cors());
@@ -55,8 +57,8 @@ app.options("*", cors());
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 // Middleware
@@ -84,9 +86,14 @@ conectarDB()
     app.use("/suscripcion", suscripcionRoutes);
     app.use("/t2", playlistPropiaRoutes);
 
-    // Socket.io eventos básicos
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
+
+      // Cuando el frontend se conecte, le pasa su userId
+      socket.on("join", (userId) => {
+        socket.join(userId);
+        console.log(`Usuario ${userId} unido a su sala`);
+      });
 
       socket.on("disconnect", () => {
         console.log("🔴 Cliente desconectado:", socket.id);
