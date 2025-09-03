@@ -24,17 +24,16 @@ router.delete(
 // ---------------- COLA ----------------
 
 // 🚀 aquí personalizamos add para emitir evento
+
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
-    const { userId, ...cancionData } = req.body;
+    const userId = req.user.id; // viene del middleware authenticate
+    const { songId } = req.body;
 
-    // Guardar canción en la cola
-    await Cola.create({ userId, ...cancionData });
+    const nuevaCancion = await Cola.create({ userId, songId });
 
-    // Buscar la cola actualizada de ese usuario
     const colaActualizada = await Cola.find({ userId });
 
-    // Emitir solo al usuario dueño de la cola
     const io = req.app.get("io");
     io.to(userId).emit("colaActualizada", colaActualizada);
 
@@ -44,6 +43,7 @@ router.post("/cola/add", authenticate, async (req, res) => {
   }
 });
 
+
 router.delete("/cola/remove", async (req, res) => {
   try {
     const { _id } = req.body;
@@ -51,8 +51,7 @@ router.delete("/cola/remove", async (req, res) => {
 
     // Emitir evento cuando se elimina
     const io = req.app.get("io");
-    io.emit("colaEliminada", eliminada);
-
+    io.to(eliminada.userId).emit("colaEliminada", eliminada);
     res.json(eliminada);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -74,7 +73,7 @@ router.delete("/cola/clear/:userId", async (req, res) => {
 
     // Emitir evento de limpieza
     const io = req.app.get("io");
-    io.emit("colaLimpiada", { userId: req.params.userId });
+    io.to(req.params.userId).emit("colaLimpiada");
 
     res.json({ cleared: result.deletedCount });
   } catch (err) {
@@ -84,7 +83,11 @@ router.delete("/cola/clear/:userId", async (req, res) => {
 
 // ---------------- PLAYLISTS ----------------
 router.post("/playlist", authenticate, playlistController.createPlaylist);
-router.get("/playlist/:userId", authenticate, playlistController.getUserPlaylists);
+router.get(
+  "/playlist/:userId",
+  authenticate,
+  playlistController.getUserPlaylists
+);
 router.get(
   "/playlist/canciones/:playlistId",
   authenticate,

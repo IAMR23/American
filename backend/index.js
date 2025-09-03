@@ -30,7 +30,7 @@ const allowedOrigins = [
   "https://american-karaoke.com", // frontend en producción
   "http://localhost:5173", // frontend en desarrollo
 ];
-
+ 
 app.use(
   cors({
     origin: function (origin, callback) {
