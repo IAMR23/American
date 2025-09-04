@@ -1,9 +1,23 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import ReactPlayer from "react-player";
-import { API_URL } from "../config"
+import { API_URL } from "../config";
 
 const API_PUBLICACION = `${API_URL}/publicacion`;
+
+// Lista de botones con valor real y nombre visible
+const listaBotones = [
+  { value: "boton1", label: "Celeste" },
+  { value: "boton2", label: "Rojo" },
+  { value: "boton3", label: "Verde" },
+  { value: "boton4", label: "Rosado" },
+  { value: "boton5", label: "Cafe" },
+  { value: "boton6", label: "Verde" },
+  { value: "boton7", label: "Morado" },
+  { value: "boton8", label: "Gris" },
+  { value: "boton9", label: "Azul" },
+  { value: "boton10", label: "Rojo Oscuro" },
+];
 
 const PublicacionesCrud = () => {
   const [publicaciones, setPublicaciones] = useState([]);
@@ -14,10 +28,8 @@ const PublicacionesCrud = () => {
   const [editarId, setEditarId] = useState(null);
   const [formData, setFormData] = useState({
     titulo: "",
-    descripcion: "",
-    tipo: "",
+    boton: "",
     mediaUrl: "",
-    tipoMedia: "",
   });
 
   useEffect(() => {
@@ -42,19 +54,15 @@ const PublicacionesCrud = () => {
       setEditarId(pub._id);
       setFormData({
         titulo: pub.titulo,
-        descripcion: pub.descripcion,
-        tipo: pub.tipo,
+        boton: pub.boton || "",
         mediaUrl: pub.mediaUrl || "",
-        tipoMedia: pub.tipoMedia || "",
       });
     } else {
       setEditarId(null);
       setFormData({
         titulo: "",
-        descripcion: "",
-        tipo: "",
+        boton: "",
         mediaUrl: "",
-        tipoMedia: "",
       });
     }
     setModalVisible(true);
@@ -72,9 +80,9 @@ const PublicacionesCrud = () => {
   };
 
   const guardarPublicacion = async () => {
-    const { titulo, descripcion, tipo } = formData;
-    if (!titulo || !descripcion || !tipo) {
-      setError("Por favor completa los campos obligatorios");
+    const { titulo } = formData;
+    if (!titulo) {
+      setError("El título es obligatorio");
       return;
     }
 
@@ -109,8 +117,7 @@ const PublicacionesCrud = () => {
       <h2>Publicaciones</h2>
 
       <div className="text-end">
-        
-        <button className="btn btn-primary mb-3 " onClick={() => abrirModal()}>
+        <button className="btn btn-primary mb-3" onClick={() => abrirModal()}>
           Nueva Publicación
         </button>
       </div>
@@ -122,16 +129,14 @@ const PublicacionesCrud = () => {
         <thead className="table-dark">
           <tr>
             <th>Título</th>
-            <th>Descripción</th>
-            <th>Tipo</th>
-            <th>Media</th>
+            <th>Botón</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {publicaciones.length === 0 ? (
             <tr>
-              <td colSpan="5" className="text-center">
+              <td colSpan="3" className="text-center">
                 No hay publicaciones
               </td>
             </tr>
@@ -139,24 +144,9 @@ const PublicacionesCrud = () => {
             publicaciones.map((pub) => (
               <tr key={pub._id}>
                 <td>{pub.titulo}</td>
-                <td>{pub.descripcion}</td>
-                <td>{pub.tipo}</td>
-                <td style={{ maxWidth: "250px" }}>
-                  {pub.mediaUrl && pub.tipoMedia === "imagen" && (
-                    <img
-                      src={pub.mediaUrl}
-                      alt="Imagen"
-                      className="img-fluid rounded"
-                      style={{ maxHeight: "150px" }}
-                    />
-                  )}
-                  {pub.mediaUrl && pub.tipoMedia === "video" && (
-                    <ReactPlayer
-                      url={pub.mediaUrl}
-                      controls
-                      width="100%"
-                      height="150px"
-                    />
+                <td>
+                  {pub.boton && (
+                    <button className={pub.boton}></button>
                   )}
                 </td>
                 <td>
@@ -219,25 +209,20 @@ const PublicacionesCrud = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Descripción *</label>
-                  <textarea
-                    className="form-control"
-                    rows="2"
-                    name="descripcion"
-                    value={formData.descripcion}
+                  <label className="form-label">Botón</label>
+                  <select
+                    className="form-select"
+                    name="boton"
+                    value={formData.boton}
                     onChange={manejarCambio}
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Tipo *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="tipo"
-                    value={formData.tipo}
-                    onChange={manejarCambio}
-                  />
+                  >
+                    <option value="">-- Selecciona un color --</option>
+                    {listaBotones.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="mb-3">
@@ -249,44 +234,7 @@ const PublicacionesCrud = () => {
                     value={formData.mediaUrl}
                     onChange={manejarCambio}
                   />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Tipo de Media</label>
-                  <select
-                    className="form-select"
-                    name="tipoMedia"
-                    value={formData.tipoMedia}
-                    onChange={manejarCambio}
-                  >
-                    <option value="">-- Selecciona --</option>
-                    <option value="video">Video Musical</option>
-                    <option value="pdf">Libros y Revistas</option>
-                    <option value="mp3">Radio Novelas</option>
-                  </select>
-                </div>
-
-                {formData.mediaUrl && formData.tipoMedia === "imagen" && (
-                  <div className="text-center">
-                    <img
-                      src={formData.mediaUrl}
-                      alt="preview"
-                      className="img-fluid rounded"
-                      style={{ maxHeight: "150px" }}
-                    />
-                  </div>
-                )}
-
-                {formData.mediaUrl && formData.tipoMedia === "video" && (
-                  <div className="text-center mt-2">
-                    <ReactPlayer
-                      url={formData.mediaUrl}
-                      controls
-                      width="100%"
-                      height="200px"
-                    />
-                  </div>
-                )}
+                </div>             
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={cerrarModal}>

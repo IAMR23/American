@@ -3,10 +3,8 @@ const mongoose = require("mongoose");
 const publicacionSchema = new mongoose.Schema(
   {
     titulo: { type: String, required: true },
-    descripcion: { type: String, required: true },
-    tipo: { type: String, required: true },
+    boton: { type: String },
     mediaUrl: { type: String },
-    tipoMedia: { type: String, enum: ["video", "pdf" , "mp3"], default: null }, // <- NUEVO
   },
   { timestamps: true }
 );

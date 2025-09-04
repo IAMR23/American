@@ -1,12 +1,10 @@
-const axios = require('axios');
 const Publicacion = require('../models/Publicacion');
 
-
-
+// Crear publicación
 exports.crearPublicacion = async (req, res) => {
   try {
-    const { titulo, descripcion, tipo, mediaUrl  , tipoMedia} = req.body;
-    const nueva = new Publicacion({ titulo, descripcion, tipo, mediaUrl , tipoMedia });
+    const { titulo, boton, mediaUrl } = req.body;
+    const nueva = new Publicacion({ titulo, boton, mediaUrl });
     await nueva.save();
     res.status(201).json(nueva);
   } catch (error) {
@@ -14,6 +12,7 @@ exports.crearPublicacion = async (req, res) => {
   }
 };
 
+// Obtener todas las publicaciones
 exports.obtenerPublicaciones = async (req, res) => {
   try {
     const publicaciones = await Publicacion.find();
@@ -23,6 +22,7 @@ exports.obtenerPublicaciones = async (req, res) => {
   }
 };
 
+// Obtener publicación por ID
 exports.obtenerPublicacion = async (req, res) => {
   try {
     const publicacion = await Publicacion.findById(req.params.id);
@@ -33,13 +33,13 @@ exports.obtenerPublicacion = async (req, res) => {
   }
 };
 
+// Actualizar publicación
 exports.actualizarPublicacion = async (req, res) => {
   try {
-    const { titulo, descripcion, tipo, mediaUrl  , tipoMedia} = req.body;
-
+    const { titulo, boton, mediaUrl } = req.body;
     const actualizada = await Publicacion.findByIdAndUpdate(
       req.params.id,
-      { titulo, descripcion, tipo, mediaUrl  , tipoMedia },
+      { titulo, boton, mediaUrl },
       { new: true }
     );
     if (!actualizada) return res.status(404).json({ error: 'No encontrada' });
@@ -49,6 +49,7 @@ exports.actualizarPublicacion = async (req, res) => {
   }
 };
 
+// Eliminar publicación
 exports.eliminarPublicacion = async (req, res) => {
   try {
     const eliminada = await Publicacion.findByIdAndDelete(req.params.id);
@@ -59,12 +60,3 @@ exports.eliminarPublicacion = async (req, res) => {
   }
 };
 
-
-exports.obtenerPublicacionesVideo = async (req, res) => {
-  try {
-    const publicaciones = await Publicacion.find({ tipoMedia: "video" });
-    res.json(publicaciones);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
