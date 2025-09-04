@@ -298,29 +298,32 @@ export default function VideoPlayer({
           onEnded={handleSongEnd}
           onDuration={(d) => setDuration(d)}
         />
+
         {/* Botones navegación */}
+
         <img
-          src="/izq.png"
+          src="izq.png" // reemplaza con tu imagen
           alt="Anterior"
-          onClick={prevVideo}
+          onClick={currentIndex === 0 ? undefined : prevVideo}
           style={{
             ...navButtonStyle("left", currentIndex === 0),
             cursor: currentIndex === 0 ? "not-allowed" : "pointer",
             opacity: currentIndex === 0 ? 0.5 : 1,
           }}
         />
-        ‹
-      <img
-          src="/der.png"
-          alt="Anterior"
-          onClick={prevVideo}
+
+        <img
+          src="der.png" // reemplaza con tu imagen
+          alt="Siguiente"
+          onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
           style={{
-            ...navButtonStyle("right", currentIndex === 0),
-            cursor: currentIndex === 0 ? "not-allowed" : "pointer",
-            opacity: currentIndex === 0 ? 0.5 : 1,
+            ...navButtonStyle("right", currentIndex === playlist.length - 1),
+            cursor:
+              currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
+            opacity: currentIndex === playlist.length - 1 ? 0.5 : 1,
           }}
         />
-        ‹
+
         {/* Barra de controles personalizada */}
         {showControls && (
           <div
@@ -398,6 +401,7 @@ export default function VideoPlayer({
             </button>
           </div>
         )}
+
         {showNextMessage && (
           <BarraDeslizante
             texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
