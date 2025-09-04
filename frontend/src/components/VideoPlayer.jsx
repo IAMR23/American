@@ -206,7 +206,8 @@ export default function VideoPlayer({
 
     return () => {
       container?.removeEventListener("mousemove", handleMouseMove);
-      if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+      if (hideControlsTimeoutRef.current)
+        clearTimeout(hideControlsTimeoutRef.current);
     };
   }, [isFullscreen]);
 
@@ -297,23 +298,29 @@ export default function VideoPlayer({
           onEnded={handleSongEnd}
           onDuration={(d) => setDuration(d)}
         />
-
         {/* Botones navegación */}
-        <button
+        <img
+          src="/izq.png"
+          alt="Anterior"
           onClick={prevVideo}
-          disabled={currentIndex === 0}
-          style={navButtonStyle("left", currentIndex === 0)}
-        >
-          ‹
-        </button>
-        <button
-          onClick={nextVideo}
-          disabled={currentIndex === playlist.length - 1}
-          style={navButtonStyle("right", currentIndex === playlist.length - 1)}
-        >
-          ›
-        </button>
-
+          style={{
+            ...navButtonStyle("left", currentIndex === 0),
+            cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+            opacity: currentIndex === 0 ? 0.5 : 1,
+          }}
+        />
+        ‹
+      <img
+          src="/der.png"
+          alt="Anterior"
+          onClick={prevVideo}
+          style={{
+            ...navButtonStyle("right", currentIndex === 0),
+            cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+            opacity: currentIndex === 0 ? 0.5 : 1,
+          }}
+        />
+        ‹
         {/* Barra de controles personalizada */}
         {showControls && (
           <div
@@ -391,7 +398,6 @@ export default function VideoPlayer({
             </button>
           </div>
         )}
-
         {showNextMessage && (
           <BarraDeslizante
             texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
