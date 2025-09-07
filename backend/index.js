@@ -1,5 +1,5 @@
 const express = require("express");
-const http = require("http"); // <-- necesario para socket.io
+const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
@@ -27,20 +27,17 @@ const PORT = process.env.PORT || 5000;
 // 🔹 Configuración de CORS
 // ====================
 const allowedOrigins = [
-  "https://american-karaoke.com", // frontend en producción
-  "http://localhost:5173", // frontend en desarrollo
+  "https://american-karaoke.com",
+  "http://localhost:5173",
+  "http://192.168.1.33:5173",
 ];
- 
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Permitir requests sin origen (Postman, curl, etc.)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("CORS no permitido: " + origin), false);
-      }
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      else return callback(new Error("CORS no permitido: " + origin), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -48,8 +45,8 @@ app.use(
   })
 );
 
-// Necesario para preflight OPTIONS
 app.options("*", cors());
+app.use(express.json());
 
 // ====================
 // 🔹 Configuración de Socket.io
@@ -61,13 +58,12 @@ const io = new Server(server, {
   },
 });
 
-// Middleware
-app.use(express.json());
-
-// Guardar instancia de io en app (para usar en rutas)
+// Guardar instancia de io en app
 app.set("io", io);
 
-// Conectar DB y arrancar servidor
+// ====================
+// 🔹 Conectar DB y arrancar servidor
+// ====================
 conectarDB()
   .then(() => {
     console.log("Base de datos conectada");
@@ -86,13 +82,29 @@ conectarDB()
     app.use("/suscripcion", suscripcionRoutes);
     app.use("/t2", playlistPropiaRoutes);
 
+    // ====================
+    // 🔹 Socket.io events
+    // ====================
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
-      // Cuando el frontend se conecte, le pasa su userId
+      // Unirse a la sala del usuario
       socket.on("join", (userId) => {
         socket.join(userId);
         console.log(`Usuario ${userId} unido a su sala`);
+      });
+
+      // Cuando alguien cambia la canción
+      socket.on("cambiarCancion", ({ userId, index }) => {
+        console.log(`Usuario ${userId} cambió canción a índice ${index}`);
+        // Emitir a todos los demás clientes del mismo usuario
+        socket.to(userId).emit("cambiarCancionCliente", index);
+      });
+
+      // Actualizar cola completa
+      socket.on("actualizarCola", ({ userId, nuevaCola, indexActual }) => {
+        console.log(`Usuario ${userId} actualizó la cola`);
+        socket.to(userId).emit("colaActualizada", nuevaCola);
       });
 
       socket.on("disconnect", () => {
@@ -100,7 +112,6 @@ conectarDB()
       });
     });
 
-    // Iniciar servidor
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
     });

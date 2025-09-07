@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import LoginForm from "./components/LoginForm";
 import RegistrationForm from "./components/RegistrationForm";
 import Inicial from "./pages/Inicial";
+//import Home from "./pages/Home";
 import AnunciosCRUD from "./pages/AnunciosCrud";
 import CancionesCRUD from "./pages/CancionesCrud";
 import GeneroCRUD from "./pages/GeneroCrud";
@@ -82,6 +83,7 @@ function App() {
               <Route path="ultimas-subidas" element={<ListaCancionesUltimas />} />
               <Route path="test" element={<PublicacionesCrud />} />
               <Route index="/" element={<Inicial />} />
+              {/* <Route index="/" element={<Home />} /> */}
               <Route path="/planes" element={<PlanTest />} />
               <Route path="/login" element={<LoginForm setAuth={setAuth} />} />
               <Route path="/registro" element={<RegistrationForm />} />

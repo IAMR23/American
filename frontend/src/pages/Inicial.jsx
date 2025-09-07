@@ -3,7 +3,6 @@ import "../styles/inicial.css";
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-//import "../styles/botones.css";
 import "../styles/button.css";
 import "../styles/disco.css";
 import VideoPlayer from "../components/VideoPlayer";
@@ -33,12 +32,72 @@ export default function Inicial() {
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [suscrito, setSuscrito] = useState(false);
-  const socket = io(API_URL);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [modoReproduccion, setModoReproduccion] = useState("cola"); // "cola" o "playlist"
+  const [playlistActualId, setPlaylistActualId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [shouldFullscreen, setShouldFullscreen] = useState(false);
+  const [seccionActiva, setSeccionActiva] = useState("video");
+  const [socket, setSocket] = useState(null);
 
-  // CAMBIOS SOKET IO
+  const navigate = useNavigate();
+  const MIN_ANTERIORES = 2;
+
+  // FUNCIONES UTILES
+  const getColaVisible = () => {
+    const start =
+      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+    const visibles = cola.slice(start);
+    return visibles.filter((c) => c && c._id);
+  };
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      setUserId(decoded.userId);
+
+      const newSocket = io(API_URL);
+      setSocket(newSocket);
+
+      // Unirse a la sala del usuario
+      newSocket.emit("join", decoded.userId);
+
+      // Escuchar cambios de canción desde otros dispositivos
+      newSocket.on("cambiarCancionCliente", (index) => {
+        setCurrentIndex(index);
+      });
+
+      // Escuchar actualizaciones de la cola desde otros dispositivos
+      newSocket.on("colaActualizada", (colaActualizada) => {
+        setCola(colaActualizada.filter((c) => c && c._id));
+      });
+
+      return () => newSocket.disconnect();
+    } catch (err) {
+      console.error("Token inválido", err);
+    }
+  }, []);
+
+    // Cambiar canción actual y sincronizar
+  const reproducirCancion = (index) => {
+    setCurrentIndex(index);
+
+    if (socket && userId) {
+      socket.emit("cambiarCancion", { userId, index });
+    }
+  };
+
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    setUserId(null);
+    window.location.reload();
+  };
 
   const insertarEnColaDespuesActual = (nuevaCancion) => {
-    if (!nuevaCancion || !nuevaCancion._id) return; // ❌ evita insertar vacíos
+    if (!nuevaCancion || !nuevaCancion._id) return;
 
     setCola((prevCola) => {
       const index =
@@ -49,76 +108,29 @@ export default function Inicial() {
     });
   };
 
+  // CARGA INICIAL DE TOKEN Y DATOS
   useEffect(() => {
-    if (!userId) return;
-
-    // carga inicial desde backend
-    const cargarColaInicial = async () => {
-      const token = getToken();
-      try {
-        const res = await fetch(`${API_URL}/t/cola/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setCola(data);
-      } catch (err) {
-        console.error("Error cargando cola inicial", err);
-      }
-    };
-    cargarColaInicial();
-
-    // eventos socket
-    socket.on("colaActualizada", (colaActualizada) => {
-      setCola(colaActualizada.filter((c) => c && c._id));
-    });
-
-    socket.on("colaEliminada", (cancionEliminada) => {
-      setCola((prev) => prev.filter((c) => c._id !== cancionEliminada._id));
-    });
-
-    socket.on("colaLimpiada", () => setCola([]));
-
-    return () => {
-      socket.off("colaActualizada");
-      socket.off("colaEliminada");
-      socket.off("colaLimpiada");
-    };
-  }, [userId]);
-
-  const cerrarSesion = () => {
-    localStorage.removeItem("token");
-    setUserId(null);
-    window.location.reload(); // Fuerza recarga total
-  };
-
-  useEffect(() => {
-    if (userId) {
-      socket.emit("join", userId);
-    }
-  }, [userId]);
-
-  // Renderizado
-  const [seccionActiva, setSeccionActiva] = useState("video");
-  const navigate = useNavigate();
-
-  const handleLoginSuccess = async () => {
     const token = getToken();
     if (token) {
       try {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
         setUserRole(decoded.rol);
-        await cargarTodo(decoded.userId); // 👈 recarga data inmediatamente
       } catch (err) {
         console.error("Token inválido", err);
       }
     }
-    setSeccionActiva("video");
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    cargarTodo(userId);
+    cargarCola();
+  }, [userId]);
 
   const cargarTodo = async (userId) => {
     const token = getToken();
-    if (!token || !userId) return;
+    if (!token) return;
 
     try {
       const resPlaylists = await axios.get(`${API_URL}/t/playlist/${userId}`, {
@@ -140,200 +152,35 @@ export default function Inicial() {
     }
   };
 
-  const renderContenido = () => {
-    switch (seccionActiva) {
-      case "buscador":
-        return <BuscadorTabla />;
-      case "favoritos":
-        return (
-          <PlaylistSelector
-            playlists={playlists}
-            onSelect={(playlist) => {
-              setSelectedPlaylist(playlist);
-              cargarPlaylistACola(playlist._id);
-              setSeccionActiva("video"); // 👈 esto lleva al VideoPlayer
-              setShowModal(false);
-            }}
-            onAdd={handleAddPlaylist}
-            onClose={() => setShowModal(false)}
-          />
-        );
-
-      case "playlist":
-        return (
-          <PlaylistSugeridos
-            playlists={playlistsPropia}
-            onSelect={(playlist) => {
-              setSelectedPlaylist(playlist);
-              cargarPlaylistPropiaACola(playlist._id);
-              setSeccionActiva("video"); // 👈 esto lleva al VideoPlayer
-              setShowModal(false);
-            }}
-            onAdd={handleAddPlaylist}
-            onClose={() => setShowModal(false)}
-          />
-        );
-
-      case "sugerirCanciones":
-        return <SolicitudesCancion />;
-      case "scanner":
-        return <ScannerCelular />;
-
-      case "ingresar":
-        return <LoginForm onLoginSuccess={handleLoginSuccess} />;
-      case "registrar":
-        return <RegistrationForm />;
-      case "listadoPdf":
-        return <ListadoPDFCanciones />;
-      case "calificacion":
-        return <MasCantado />;
-      case "suscribir":
-        return <PlantTest />;
-      case "ayuda":
-        return <AyudaPage />;
-      case "video":
-      default:
-        return (
-          <VideoPlayer
-            cola={cola}
-            currentIndex={currentIndex}
-            setCurrentIndex={setCurrentIndex}
-            fullscreenRequested={shouldFullscreen}
-            onFullscreenHandled={() => setShouldFullscreen(false)} // callback para resetear
-          />
-        );
-    }
-  };
-
-  const [currentIndex, setCurrentIndex] = useState(0); // Añadir esto
-
-  const [modoReproduccion, setModoReproduccion] = useState("cola"); // "cola" o "playlist"
-  const [playlistActualId, setPlaylistActualId] = useState(null);
-
-  // Crear nuevo playlist
-  const handleAddPlaylist = async (name) => {
-    const token = getToken();
+  const cargarCola = async () => {
     try {
-      const res = await axios.post(
-        `${API_URL}/t/playlist`,
-        { nombre: name },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const nuevaPlaylist = res.data;
-
-      setPlaylists((prev) =>
-        Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
-      );
+      const res = await axios.get(`${API_URL}/song/visibles`);
+      const canciones = res.data.canciones || res.data;
+      if (Array.isArray(canciones)) {
+        setCola(canciones);
+        setCurrentIndex(0);
+        setModoReproduccion("cola");
+      }
     } catch (err) {
-      console.error(
-        "Error al crear playlist:",
-        err.response?.data || err.message
-      );
-      alert("No se pudo crear el playlist. Quizás ya existe.");
+      console.error("Error cargando canciones visibles", err);
     }
   };
 
-  const [userRole, setUserRole] = useState(null);
-
-  // Cargar token y datos del usuario
-
-  useEffect(() => {
-    cargarCola();
-  }, []);
-
-  // Primer efecto: decodifica y establece userId y rol
-  useEffect(() => {
-    const token = getToken();
-
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUserId(decoded.userId);
-        setUserRole(decoded.rol);
-      } catch (err) {
-        console.error("Token inválido", err);
-      }
-    }
-  }, []);
-
-  // Segundo efecto: una vez userId está listo, carga todo
-  useEffect(() => {
-    const token = getToken();
-    if (!token || !userId) return;
-
-    const cargarDatosAdmin = async () => {
-      try {
-        const resPlaylistsPropia = await axios.get(
-          `${API_URL}/t2/playlistPropia`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setPlaylistsPropia(
-          Array.isArray(resPlaylistsPropia.data) ? resPlaylistsPropia.data : []
-        );
-      } catch (error) {
-        console.error("Error al cargar playlists", error);
-        setPlaylistsPropia([]);
-      }
-
-      try {
-        const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSuscrito(resSub.data.suscrito === true);
-      } catch (error) {
-        console.warn("No estás suscrito o hubo un error al verificar.");
-        setSuscrito(false);
-      }
-    };
-
-    const cargarDatos = async () => {
-      try {
-        const resPlaylists = await axios.get(
-          `${API_URL}/t/playlist/${userId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setPlaylists(Array.isArray(resPlaylists.data) ? resPlaylists.data : []);
-      } catch (error) {
-        console.error("Error al cargar playlists", error);
-        setPlaylists([]);
-      }
-
-      try {
-        const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSuscrito(resSub.data.suscrito === true);
-      } catch (error) {
-        console.warn("No estás suscrito o hubo un error al verificar.");
-        setSuscrito(false);
-      }
-    };
-    cargarDatos();
-    cargarDatosAdmin();
-  }, [userId]);
-
+  // CARGAR PLAYLIST EN COLA
   const cargarPlaylistPropiaACola = async (playlistId) => {
     const token = getToken();
     try {
       const res = await axios.get(
         `${API_URL}/t2/playlistPropia/canciones/${playlistId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const canciones = res.data.canciones || [];
       setCola(canciones);
-      setCurrentIndex(0); // 👈 reinicia a la primera canción
-
+      setCurrentIndex(0);
       setModoReproduccion("playlist");
       setPlaylistActualId(playlistId);
     } catch (err) {
-      console.error("Error al cargar canciones del playlist", err);
+      console.error(err);
     }
   };
 
@@ -348,14 +195,15 @@ export default function Inicial() {
       );
       const canciones = res.data.canciones || [];
       setCola(canciones);
-      setCurrentIndex(0); // 👈 reinicia a la primera canción
+      setCurrentIndex(0);
       setModoReproduccion("playlist");
       setPlaylistActualId(playlistId);
     } catch (err) {
-      console.error("Error al cargar canciones del playlist", err);
+      console.error(err);
     }
   };
 
+  // INSERTAR CANCION
   const insertarCancion = async (songId) => {
     try {
       const token = getToken();
@@ -366,63 +214,130 @@ export default function Inicial() {
         await axios.post(
           `${API_URL}/t/cola/add`,
           { songId },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
       }
 
-      // Inserta localmente en ambos casos
       insertarEnColaDespuesActual(nuevaCancion);
+
+      // Emitir a otros clientes
+      if (socket) socket.emit("colaActualizada", [...cola, nuevaCancion]);
+
       alert("🎵 Canción agregada correctamente");
     } catch (err) {
-      console.error("Error al insertar canción", err);
+      console.error(err);
       alert("No se pudo agregar la canción");
     }
   };
 
-  const cargarCola = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/song/visibles`);
-      // Si el endpoint devuelve un array directamente o dentro de { canciones: [...] }
-      const canciones = res.data.canciones || res.data;
-      console.log(res.data);
-      if (Array.isArray(canciones)) {
-        setCola(canciones);
-        setCurrentIndex(0);
-        setModoReproduccion("cola");
-      } else {
-        console.error(
-          "El endpoint no devolvió un array de canciones",
-          res.data
+  const handlePlaySong = (index) => {
+    setCurrentIndex(index);
+    setSeccionActiva("video");
+    setShouldFullscreen(true);
+
+    // Emitir índice a otros clientes
+    if (socket) socket.emit("playIndex", index);
+  };
+
+  // RENDERIZADO DE SECCIONES
+  const renderContenido = () => {
+    switch (seccionActiva) {
+      case "buscador":
+        return <BuscadorTabla />;
+      case "favoritos":
+        return (
+          <PlaylistSelector
+            playlists={playlists}
+            onSelect={(playlist) => {
+              setSelectedPlaylist(playlist);
+              cargarPlaylistACola(playlist._id);
+              setSeccionActiva("video");
+              setShowModal(false);
+            }}
+            onAdd={handleAddPlaylist}
+            onClose={() => setShowModal(false)}
+          />
         );
-      }
-    } catch (err) {
-      console.error("Error cargando canciones visibles", err);
+      case "playlist":
+        return (
+          <PlaylistSugeridos
+            playlists={playlistsPropia}
+            onSelect={(playlist) => {
+              setSelectedPlaylist(playlist);
+              cargarPlaylistPropiaACola(playlist._id);
+              setSeccionActiva("video");
+              setShowModal(false);
+            }}
+            onAdd={handleAddPlaylist}
+            onClose={() => setShowModal(false)}
+          />
+        );
+      case "sugerirCanciones":
+        return <SolicitudesCancion />;
+      case "ingresar":
+        return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+      case "registrar":
+        return <RegistrationForm />;
+      case "listadoPdf":
+        return <ListadoPDFCanciones />;
+      case "calificacion":
+        return <MasReproducidas />;
+      case "suscribir":
+        return <PlantTest />;
+      case "ayuda":
+        return <AyudaPage />;
+      case "video":
+      default:
+        return (
+          <VideoPlayer
+            cola={cola}
+            currentIndex={currentIndex}
+            setCurrentIndex={reproducirCancion}
+            fullscreenRequested={shouldFullscreen}
+            onFullscreenHandled={() => setShouldFullscreen(false)}
+          />
+        );
     }
   };
 
-  const [shouldFullscreen, setShouldFullscreen] = useState(false);
-
-  const handlePlaySong = (index) => {
-    setCurrentIndex(index);
-    setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
-    setShouldFullscreen(true); // activar fullscreen en VideoPlayer
+  // CREAR PLAYLIST
+  const handleAddPlaylist = async (name) => {
+    const token = getToken();
+    try {
+      const res = await axios.post(
+        `${API_URL}/t/playlist`,
+        { nombre: name },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const nuevaPlaylist = res.data;
+      setPlaylists((prev) =>
+        Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
+      );
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+      alert("No se pudo crear el playlist. Quizás ya existe.");
+    }
   };
 
-  // COla
-  const MIN_ANTERIORES = 2;
-
-  const getColaVisible = () => {
-    const start =
-      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
-    const visibles = cola.slice(start);
-    return visibles.filter((c) => c && c._id); // solo canciones válidas
+  const handleLoginSuccess = async () => {
+    const token = getToken();
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.userId);
+        setUserRole(decoded.rol);
+        await cargarTodo(decoded.userId);
+      } catch (err) {
+        console.error("Token inválido", err);
+      }
+    }
+    setSeccionActiva("video");
   };
 
   return (
     <>
-      <div className="bg-primary container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
+      <div className="bg-primary container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
+        {/* Encabezado */}
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
@@ -435,13 +350,15 @@ export default function Inicial() {
             alt="logo"
             className="img-fluid"
             style={{
-              width: "80%", // 80% en móviles
-              maxWidth: "600px", // máximo ancho en pantallas grandes
+              width: "80%",
+              maxWidth: "600px",
               cursor: "pointer",
-              minWidth: "250px", // mínimo ancho para que no se vea muy pequeño en tablets
+              minWidth: "250px",
             }}
           />
         </div>
+
+        {/* Botones y contenido */}
         <div className="container-fluid">
           <div className="row">
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
@@ -453,7 +370,6 @@ export default function Inicial() {
                   Dashboard
                 </button>
               )}
-
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("buscador")}
@@ -495,30 +411,28 @@ export default function Inicial() {
               >
                 Sugerir
               </button>
-              {/* <button className="boton7">Scanner a Celular</button> */}
             </div>
 
-            <div className="col-12 col-md-8   justify-content-center">
+            <div className="col-12 col-md-8 justify-content-center">
               {renderContenido()}
             </div>
 
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
-              <div className="container-fluid"></div>
               {!getToken() && (
-                <button
-                  className="boton8"
-                  onClick={() => setSeccionActiva("ingresar")}
-                >
-                  Ingresar
-                </button>
-              )}
-              {!getToken() && (
-                <button
-                  className="boton7"
-                  onClick={() => setSeccionActiva("registrar")}
-                >
-                  Registrar
-                </button>
+                <>
+                  <button
+                    className="boton8"
+                    onClick={() => setSeccionActiva("ingresar")}
+                  >
+                    Ingresar
+                  </button>
+                  <button
+                    className="boton7"
+                    onClick={() => setSeccionActiva("registrar")}
+                  >
+                    Registrar
+                  </button>
+                </>
               )}
               <button
                 className="boton9"
@@ -556,66 +470,58 @@ export default function Inicial() {
             </div>
           </div>
         </div>
+
         {/* Cola dinámica */}
-
-        <div className="d-flex flex-wrap justify-content-center align-items-center  gap-3 m-3">
+        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
           <h2 className="text-white">Canciones a la cola </h2>
-
-          {getColaVisible()
-            .filter((cancion) => cancion && cancion._id) // 👈 solo canciones válidas
-            .map((cancion, idx) => {
-              const indexReal =
-                currentIndex - MIN_ANTERIORES > 0
-                  ? idx + (currentIndex - MIN_ANTERIORES)
-                  : idx;
-              return (
-                <div
-                  key={indexReal}
-                  onClick={() => setCurrentIndex(indexReal)}
-                  className="song-icon position-relative"
-                  style={{ cursor: "pointer" }}
-                >
-                  <FaCompactDisc
-                    size={40}
-                    className={`mb-1 ${
-                      indexReal === currentIndex
-                        ? "song-playing"
-                        : "text-primary"
-                    }`}
-                  />
-                  <div className="custom-tooltip">
-                    <strong>{cancion.titulo}</strong>
-                    <br />
-                    <small>{cancion.artista}</small>
-                  </div>
+          {getColaVisible().map((cancion, idx) => {
+            const indexReal =
+              currentIndex - MIN_ANTERIORES > 0
+                ? idx + (currentIndex - MIN_ANTERIORES)
+                : idx;
+            return (
+              <div
+                key={indexReal}
+                onClick={() => reproducirCancion(indexReal)}
+                className="song-icon position-relative"
+                style={{ cursor: "pointer" }}
+              >
+                <FaCompactDisc
+                  size={40}
+                  className={`mb-1 ${
+                    indexReal === currentIndex ? "song-playing" : "text-primary"
+                  }`}
+                />
+                <div className="custom-tooltip">
+                  <strong>{cancion.titulo}</strong>
+                  <br />
+                  <small>{cancion.artista}</small>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
       </div>
 
+      {/* Sección especial */}
       <div className="fondo p-2">
         <AnunciosVisibles />
-
         <h1 className="p-2 text-white">Selección especial</h1>
-
         <Carrousel
           className="bg-dark"
           setCola={setCola}
           cola={cola}
-          cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+          cargarCola={cargarCola}
           onAgregarCancion={insertarCancion}
-          onPlaySong={handlePlaySong} // <-- Nuevo prop
+          onPlaySong={handlePlaySong}
         />
-
         <h1 className="p-2 text-white">Las mas populares</h1>
-
         <MasReproducidas
           setCola={setCola}
           cola={cola}
-          cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+          cargarCola={cargarCola}
           onAgregarCancion={insertarCancion}
-          onPlaySong={handlePlaySong} // <-- Nuevo prop
+          onPlaySong={handlePlaySong}
         />
       </div>
     </>

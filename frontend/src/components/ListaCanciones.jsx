@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { getToken } from "../utils/auth";
 import UltimasSubidas from "./UltimasSubidas";
 import ToastModal from "./modal/ToastModal";
+import { io } from "socket.io-client";
 
 export default function ListaCanciones() {
   const [cola, setCola] = useState([]);
@@ -18,26 +19,23 @@ export default function ListaCanciones() {
   const [playlists, setPlaylists] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
-  // Renderizado
   const [seccionActiva, setSeccionActiva] = useState("video");
   const [toastMensaje, setToastMensaje] = useState("");
-
   const navigate = useNavigate();
-
-  const [currentIndex, setCurrentIndex] = useState(0); // Añadir esto
-
-  const [modoReproduccion, setModoReproduccion] = useState("cola"); // "cola" o "playlist"
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [modoReproduccion, setModoReproduccion] = useState("cola");
   const [playlistActualId, setPlaylistActualId] = useState(null);
+
+  const socket = io(API_URL);
 
   const insertarEnColaDespuesActual = (nuevaCancion) => {
     setCola((prevCola) => {
-      const nuevaCola = [...prevCola];
+      const nuevaCola = Array.isArray(prevCola) ? [...prevCola] : [];
       nuevaCola.splice(currentIndex + 1, 0, nuevaCancion);
       return nuevaCola;
     });
   };
 
-  // Crear nuevo playlist
   const handleAddPlaylist = async (name) => {
     const token = getToken();
     try {
@@ -46,38 +44,29 @@ export default function ListaCanciones() {
         { nombre: name },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const nuevaPlaylist = res.data;
-
       setPlaylists((prev) =>
         Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
       );
     } catch (err) {
-      console.error(
-        "Error al crear playlist:",
-        err.response?.data || err.message
-      );
+      console.error("Error al crear playlist:", err.response?.data || err.message);
       setToastMensaje("No se pudo crear el playlist. Quizás ya existe.");
     }
   };
 
-  // Cargar token y datos del usuario
   useEffect(() => {
     const token = getToken();
-
     if (token) {
       try {
         const decoded = jwtDecode(token);
         const userIdDecoded = decoded.userId;
         setUserId(userIdDecoded);
+
         const cargarPlaylists = async () => {
           try {
-            const res = await axios.get(
-              `${API_URL}/t/playlist/${userIdDecoded}`,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
+            const res = await axios.get(`${API_URL}/t/playlist/${userIdDecoded}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
             setPlaylists(Array.isArray(res.data) ? res.data : []);
           } catch (error) {
             console.error("Error al cargar playlists", error);
@@ -93,16 +82,28 @@ export default function ListaCanciones() {
     }
   }, [userId]);
 
+  useEffect(() => {
+    socket.on("colaActualizada", (data) => {
+      const nuevaCola = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.nuevaCola)
+        ? data.nuevaCola
+        : [];
+      setCola(nuevaCola);
+    });
+
+    return () => {
+      socket.off("colaActualizada");
+    };
+  }, []);
+
   const cargarPlaylistACola = async (playlistId) => {
     const token = getToken();
     try {
-      const res = await axios.get(
-        `${API_URL}/t/playlist/canciones/${playlistId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const canciones = res.data.canciones || [];
+      const res = await axios.get(`${API_URL}/t/playlist/canciones/${playlistId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const canciones = Array.isArray(res.data?.canciones) ? res.data.canciones : [];
       setCola(canciones);
       setModoReproduccion("playlist");
       setPlaylistActualId(playlistId);
@@ -121,13 +122,10 @@ export default function ListaCanciones() {
         await axios.post(
           `${API_URL}/t/cola/add`,
           { songId },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
       }
 
-      // Inserta localmente en ambos casos
       insertarEnColaDespuesActual(nuevaCancion);
       setToastMensaje("🎵 Canción agregada correctamente");
     } catch (err) {
@@ -143,7 +141,8 @@ export default function ListaCanciones() {
       const res = await axios.get(`${API_URL}/t/cola/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setCola(res.data?.canciones || []);
+      const canciones = Array.isArray(res.data?.canciones) ? res.data.canciones : [];
+      setCola(canciones);
       setModoReproduccion("cola");
       setPlaylistActualId(null);
     } catch (error) {
@@ -153,23 +152,19 @@ export default function ListaCanciones() {
 
   return (
     <>
-      <div className="p-3 ">
+      <div className="p-3">
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3 p-2">
-          <img
-            src="./icono.png"
-            alt="icono"
-            style={{ width: "60px", height: "auto" }}
-          />
+          <img src="./icono.png" alt="icono" style={{ width: "60px", height: "auto" }} />
           <img
             onClick={() => navigate("/")}
             src="./logo.png"
             alt="logo"
             className="img-fluid"
             style={{
-              width: "80%", // 80% en móviles
-              maxWidth: "600px", // máximo ancho en pantallas grandes
+              width: "80%",
+              maxWidth: "600px",
               cursor: "pointer",
-              minWidth: "250px", // mínimo ancho para que no se vea muy pequeño en tablets
+              minWidth: "250px",
             }}
           />
         </div>
@@ -177,15 +172,14 @@ export default function ListaCanciones() {
       <Canciones
         setCola={setCola}
         cola={cola}
-        cargarCola={cargarCola} // puedes ajustar si necesitas recargar desde hijo
+        cargarCola={cargarCola}
         onAgregarCancion={insertarCancion}
       />
- <ToastModal
+      <ToastModal
         mensaje={toastMensaje}
         duracion={2000}
         onClose={() => setToastMensaje("")}
       />
-  
     </>
   );
 }

@@ -25,23 +25,27 @@ router.delete(
 
 // 🚀 aquí personalizamos add para emitir evento
 
+
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
-    const userId = req.user.id; // viene del middleware authenticate
+    const userId = req.user.id;
     const { songId } = req.body;
 
     const nuevaCancion = await Cola.create({ userId, songId });
 
+    // Traer la cola actualizada
     const colaActualizada = await Cola.find({ userId });
 
+    // Emitir a todos los clientes conectados a la misma sala
     const io = req.app.get("io");
-    io.to(userId).emit("colaActualizada", colaActualizada);
+    io.to(userId).emit("colaActualizada", { nuevaCola: colaActualizada, indexActual: 0 });
 
     res.status(201).json(colaActualizada);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 router.delete("/cola/remove", async (req, res) => {
