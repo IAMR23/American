@@ -8,7 +8,7 @@ export default function useSocket(userId, onColaActualizada, onCambiarCancion) {
   useEffect(() => {
     if (!userId) return;
 
-    const newSocket = io(API_URL, { transports: ["websocket"] });
+    const newSocket = io("https://american-karaoke.com/api", { transports: ["websocket"] });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
