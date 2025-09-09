@@ -38,22 +38,22 @@ export default function VideoPlayer({
 
   const currentVideo = playlist[currentIndex];
 
-  // --- MICRÓFONO ---
-  const startMic = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioContextRef.current = new AudioContext();
-    const source = audioContextRef.current.createMediaStreamSource(stream);
+  // // --- MICRÓFONO ---
+  // const startMic = async () => {
+  //   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //   audioContextRef.current = new AudioContext();
+  //   const source = audioContextRef.current.createMediaStreamSource(stream);
 
-    analyserRef.current = audioContextRef.current.createAnalyser();
-    analyserRef.current.fftSize = 2048;
-    source.connect(analyserRef.current);
+  //   analyserRef.current = audioContextRef.current.createAnalyser();
+  //   analyserRef.current.fftSize = 2048;
+  //   source.connect(analyserRef.current);
 
-    detectorRef.current = PitchDetector.forFloat32Array(
-      analyserRef.current.fftSize
-    );
-    userPitchesRef.current = [];
-    capturePitch();
-  };
+  //   detectorRef.current = PitchDetector.forFloat32Array(
+  //     analyserRef.current.fftSize
+  //   );
+  //   userPitchesRef.current = [];
+  //   capturePitch();
+  // };
 
   const capturePitch = () => {
     const input = new Float32Array(analyserRef.current.fftSize);
@@ -246,7 +246,7 @@ export default function VideoPlayer({
   const handleSongStart = () => {
     setScore(null);
     setScoreCalculated(false);
-    startMic();
+    // startMic();
   };
 
   const handleSongEnd = () => {
