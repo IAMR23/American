@@ -1,56 +1,67 @@
 import { useState, useEffect } from "react";
 import "../styles/inicial.css";
-import AnunciosVisibles from "../components/AnunciosVisibles";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import "../styles/button.css";
 import "../styles/disco.css";
-import VideoPlayer from "../components/VideoPlayer";
 import { FaCompactDisc } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
+
+import AnunciosVisibles from "../components/AnunciosVisibles";
+import VideoPlayer from "../components/VideoPlayer";
 import PlaylistSelector from "../components/PlaylistSelector";
 import PlaylistSugeridos from "./PLaylistSugeridos";
-import { useNavigate } from "react-router-dom";
 import SolicitudesCancion from "./SolicitudCancion";
 import LoginForm from "../components/LoginForm";
+import RegistrationForm from "../components/RegistrationForm";
 import ListadoPDFCanciones from "../components/ListadoPDFCanciones";
 import AyudaPage from "./AyudaPage";
-import { API_URL } from "../config";
-import { getToken } from "../utils/auth";
 import PlantTest from "../components/PlanTest";
 import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
-import RegistrationForm from "../components/RegistrationForm";
 import MasReproducidas from "../components/MasReproducidas";
-import UltimasSubidas from "../components/UltimasSubidas";
-import io from "socket.io-client";
+
+import { getToken } from "../utils/auth";
+import { jwtDecode } from "jwt-decode";
+
+import useSocket from "../utils/useSocket";
+import useCola from "../utils/useCola";
+import usePlaylists from "../utils/usePlaylists";
 
 export default function Inicial() {
-  const [cola, setCola] = useState([]);
-  const [userId, setUserId] = useState(null);
-  const [playlists, setPlaylists] = useState([]);
-  const [playlistsPropia, setPlaylistsPropia] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
-  const [suscrito, setSuscrito] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [modoReproduccion, setModoReproduccion] = useState("cola"); // "cola" o "playlist"
-  const [playlistActualId, setPlaylistActualId] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const [shouldFullscreen, setShouldFullscreen] = useState(false);
-  const [seccionActiva, setSeccionActiva] = useState("video");
-  const [socket, setSocket] = useState(null);
-
   const navigate = useNavigate();
-  const MIN_ANTERIORES = 2;
+  const [userId, setUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [seccionActiva, setSeccionActiva] = useState("video");
+  const [shouldFullscreen, setShouldFullscreen] = useState(false);
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
-  // FUNCIONES UTILES
-  const getColaVisible = () => {
-    const start =
-      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
-    const visibles = cola.slice(start);
-    return visibles.filter((c) => c && c._id);
-  };
+  // ------------------ Hooks personalizados ------------------
+  const {
+    cola,
+    setCola,
+    currentIndex,
+    setCurrentIndex,
+    modoReproduccion,
+    setModoReproduccion,
+    getColaVisible,
+    cargarCola,
+    reproducirCancion,
+    insertarEnColaDespuesActual,
+  } = useCola();
 
+  const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
+    usePlaylists(userId);
+
+  const { socket, emitirCola, emitirCambiarCancion } = useSocket(
+    userId,
+    (colaActualizada) => {
+      console.log("CP1"  ,colaActualizada);
+      setCola(colaActualizada.filter((c) => c && c._id));
+    },
+    (index) => setCurrentIndex(index)
+  );
+
+  // ------------------ Manejo de token ------------------
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -58,58 +69,21 @@ export default function Inicial() {
     try {
       const decoded = jwtDecode(token);
       setUserId(decoded.userId);
-
-      const newSocket = io(API_URL);
-      setSocket(newSocket);
-
-      // Unirse a la sala del usuario
-      newSocket.emit("join", decoded.userId);
-
-      // Escuchar cambios de canción desde otros dispositivos
-      newSocket.on("cambiarCancionCliente", (index) => {
-        setCurrentIndex(index);
-      });
-
-      // Escuchar actualizaciones de la cola desde otros dispositivos
-      newSocket.on("colaActualizada", (colaActualizada) => {
-        setCola(colaActualizada.filter((c) => c && c._id));
-      });
-
-      return () => newSocket.disconnect();
+      setUserRole(decoded.rol);
+      console.log("Usuario autenticado:", decoded.userId);
     } catch (err) {
       console.error("Token inválido", err);
     }
   }, []);
 
-    // Cambiar canción actual y sincronizar
-  const reproducirCancion = (index) => {
-    setCurrentIndex(index);
-
-    if (socket && userId) {
-      socket.emit("cambiarCancion", { userId, index });
-    }
-  };
-
-  const cerrarSesion = () => {
-    localStorage.removeItem("token");
-    setUserId(null);
-    window.location.reload();
-  };
-
-  const insertarEnColaDespuesActual = (nuevaCancion) => {
-    if (!nuevaCancion || !nuevaCancion._id) return;
-
-    setCola((prevCola) => {
-      const index =
-        currentIndex !== undefined ? currentIndex : prevCola.length - 1;
-      const nuevaCola = [...prevCola];
-      nuevaCola.splice(index + 1, 0, nuevaCancion);
-      return nuevaCola;
-    });
-  };
-
-  // CARGA INICIAL DE TOKEN Y DATOS
+  // ------------------ Cargar cola inicial ------------------
   useEffect(() => {
+    const token = getToken();
+    if (!token) cargarCola();
+  }, []);
+
+  // ------------------ Funciones ------------------
+  const handleLoginSuccess = async () => {
     const token = getToken();
     if (token) {
       try {
@@ -120,109 +94,41 @@ export default function Inicial() {
         console.error("Token inválido", err);
       }
     }
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-    cargarTodo(userId);
-    cargarCola();
-  }, [userId]);
-
-  const cargarTodo = async (userId) => {
-    const token = getToken();
-    if (!token) return;
-
-    try {
-      const resPlaylists = await axios.get(`${API_URL}/t/playlist/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPlaylists(Array.isArray(resPlaylists.data) ? resPlaylists.data : []);
-
-      const resPropia = await axios.get(`${API_URL}/t2/playlistPropia`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPlaylistsPropia(Array.isArray(resPropia.data) ? resPropia.data : []);
-
-      const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSuscrito(resSub.data.suscrito === true);
-    } catch (error) {
-      console.error("Error cargando datos", error);
-    }
+    setSeccionActiva("video");
   };
 
-  const cargarCola = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/song/visibles`);
-      const canciones = res.data.canciones || res.data;
-      if (Array.isArray(canciones)) {
-        setCola(canciones);
-        setCurrentIndex(0);
-        setModoReproduccion("cola");
-      }
-    } catch (err) {
-      console.error("Error cargando canciones visibles", err);
-    }
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    setUserId(null);
+    setUserRole(null);
+    window.location.reload();
   };
 
-  // CARGAR PLAYLIST EN COLA
-  const cargarPlaylistPropiaACola = async (playlistId) => {
-    const token = getToken();
-    try {
-      const res = await axios.get(
-        `${API_URL}/t2/playlistPropia/canciones/${playlistId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const canciones = res.data.canciones || [];
-      setCola(canciones);
-      setCurrentIndex(0);
-      setModoReproduccion("playlist");
-      setPlaylistActualId(playlistId);
-    } catch (err) {
-      console.error(err);
-    }
+  const handlePlaySong = (index) => {
+    reproducirCancion(index, emitirCambiarCancion);
+    setSeccionActiva("video");
+    setShouldFullscreen(true);
   };
 
-  const cargarPlaylistACola = async (playlistId) => {
-    const token = getToken();
-    try {
-      const res = await axios.get(
-        `${API_URL}/t/playlist/canciones/${playlistId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const canciones = res.data.canciones || [];
-      setCola(canciones);
-      setCurrentIndex(0);
-      setModoReproduccion("playlist");
-      setPlaylistActualId(playlistId);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // INSERTAR CANCION
   const insertarCancion = async (songId) => {
     try {
       const token = getToken();
-      const res = await axios.get(`${API_URL}/song/${songId}`);
-      const nuevaCancion = res.data;
+      const res = await fetch(`${API_URL}/song/${songId}`);
+      const nuevaCancion = await res.json();
 
       if (modoReproduccion === "cola") {
-        await axios.post(
-          `${API_URL}/t/cola/add`,
-          { songId },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await fetch(`${API_URL}/t/cola/add`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ songId }),
+        });
       }
 
-      insertarEnColaDespuesActual(nuevaCancion);
-
-      // Emitir a otros clientes
-      if (socket) socket.emit("colaActualizada", [...cola, nuevaCancion]);
-
+      insertarEnColaDespuesActual(nuevaCancion, emitirCola);
+      console.log("CP");
       alert("🎵 Canción agregada correctamente");
     } catch (err) {
       console.error(err);
@@ -230,16 +136,28 @@ export default function Inicial() {
     }
   };
 
-  const handlePlaySong = (index) => {
-    setCurrentIndex(index);
-    setSeccionActiva("video");
-    setShouldFullscreen(true);
+  const cargarPlaylistACola = async (playlistId, esPropia = false) => {
+    const token = getToken();
+    try {
+      const url = esPropia
+        ? `${API_URL}/t2/playlistPropia/canciones/${playlistId}`
+        : `${API_URL}/t/playlist/canciones/${playlistId}`;
 
-    // Emitir índice a otros clientes
-    if (socket) socket.emit("playIndex", index);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const canciones = data.canciones || [];
+
+      setCola(canciones);
+      setCurrentIndex(0);
+      setModoReproduccion("playlist");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // RENDERIZADO DE SECCIONES
+  // ------------------ Renderizado de secciones ------------------
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
@@ -252,10 +170,8 @@ export default function Inicial() {
               setSelectedPlaylist(playlist);
               cargarPlaylistACola(playlist._id);
               setSeccionActiva("video");
-              setShowModal(false);
             }}
             onAdd={handleAddPlaylist}
-            onClose={() => setShowModal(false)}
           />
         );
       case "playlist":
@@ -264,12 +180,10 @@ export default function Inicial() {
             playlists={playlistsPropia}
             onSelect={(playlist) => {
               setSelectedPlaylist(playlist);
-              cargarPlaylistPropiaACola(playlist._id);
+              cargarPlaylistACola(playlist._id, true);
               setSeccionActiva("video");
-              setShowModal(false);
             }}
             onAdd={handleAddPlaylist}
-            onClose={() => setShowModal(false)}
           />
         );
       case "sugerirCanciones":
@@ -280,8 +194,6 @@ export default function Inicial() {
         return <RegistrationForm />;
       case "listadoPdf":
         return <ListadoPDFCanciones />;
-      case "calificacion":
-        return <MasReproducidas />;
       case "suscribir":
         return <PlantTest />;
       case "ayuda":
@@ -292,7 +204,7 @@ export default function Inicial() {
           <VideoPlayer
             cola={cola}
             currentIndex={currentIndex}
-            setCurrentIndex={reproducirCancion}
+            setCurrentIndex={(i) => reproducirCancion(i, emitirCambiarCancion)}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
           />
@@ -300,44 +212,11 @@ export default function Inicial() {
     }
   };
 
-  // CREAR PLAYLIST
-  const handleAddPlaylist = async (name) => {
-    const token = getToken();
-    try {
-      const res = await axios.post(
-        `${API_URL}/t/playlist`,
-        { nombre: name },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const nuevaPlaylist = res.data;
-      setPlaylists((prev) =>
-        Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
-      );
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      alert("No se pudo crear el playlist. Quizás ya existe.");
-    }
-  };
-
-  const handleLoginSuccess = async () => {
-    const token = getToken();
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUserId(decoded.userId);
-        setUserRole(decoded.rol);
-        await cargarTodo(decoded.userId);
-      } catch (err) {
-        console.error("Token inválido", err);
-      }
-    }
-    setSeccionActiva("video");
-  };
-
+  // ------------------ Render principal ------------------
   return (
     <>
       <div className="bg-primary container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
-        {/* Encabezado */}
+        {/* Header */}
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
@@ -358,9 +237,10 @@ export default function Inicial() {
           />
         </div>
 
-        {/* Botones y contenido */}
+        {/* Botones laterales y contenido */}
         <div className="container-fluid">
           <div className="row">
+            {/* Lateral izquierda */}
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               {getToken() && userRole === "admin" && (
                 <button
@@ -413,10 +293,12 @@ export default function Inicial() {
               </button>
             </div>
 
+            {/* Contenido central */}
             <div className="col-12 col-md-8 justify-content-center">
               {renderContenido()}
             </div>
 
+            {/* Lateral derecha */}
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               {!getToken() && (
                 <>
@@ -473,16 +355,16 @@ export default function Inicial() {
 
         {/* Cola dinámica */}
         <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
-          <h2 className="text-white">Canciones a la cola </h2>
+          <h2 className="text-white">Canciones a la cola</h2>
           {getColaVisible().map((cancion, idx) => {
             const indexReal =
-              currentIndex - MIN_ANTERIORES > 0
-                ? idx + (currentIndex - MIN_ANTERIORES)
-                : idx;
+              currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
             return (
               <div
                 key={indexReal}
-                onClick={() => reproducirCancion(indexReal)}
+                onClick={() =>
+                  reproducirCancion(indexReal, emitirCambiarCancion)
+                }
                 className="song-icon position-relative"
                 style={{ cursor: "pointer" }}
               >
@@ -515,7 +397,7 @@ export default function Inicial() {
           onAgregarCancion={insertarCancion}
           onPlaySong={handlePlaySong}
         />
-        <h1 className="p-2 text-white">Las mas populares</h1>
+        <h1 className="p-2 text-white">Las más populares</h1>
         <MasReproducidas
           setCola={setCola}
           cola={cola}
