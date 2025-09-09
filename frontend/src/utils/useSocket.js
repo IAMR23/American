@@ -8,12 +8,13 @@ export default function useSocket(userId, onColaActualizada, onCambiarCancion) {
   useEffect(() => {
     if (!userId) return;
 
-    const newSocket = io(API_URL);
+    const newSocket = io(API_URL, { transports: ["websocket"] });
     setSocket(newSocket);
 
-    console.log("Socket conectado para usuario:", userId);
-
-    newSocket.emit("join", userId);
+    newSocket.on("connect", () => {
+      console.log("Socket conectado:", newSocket.id);
+      newSocket.emit("join", userId); // unirse a la sala cuando la conexión está lista
+    });
 
     newSocket.on("colaActualizada", (colaActualizada) => {
       console.log("Socket: Cola actualizada recibida", colaActualizada);
