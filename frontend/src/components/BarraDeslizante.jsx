@@ -18,9 +18,11 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
           whiteSpace: "nowrap",
           display: "inline-block",
           padding: "10px",
-          color: "gray",
+          color: "white",
           fontWeight: "bold",
           fontSize: fontSize,
+              WebkitTextStroke: "2px gray", // borde gris
+
           animation: "mover 10s linear infinite",
         }}
       >

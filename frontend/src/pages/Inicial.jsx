@@ -26,6 +26,7 @@ import { jwtDecode } from "jwt-decode";
 import useSocket from "../utils/useSocket";
 import useCola from "../utils/useCola";
 import usePlaylists from "../utils/usePlaylists";
+import CelularPage from "./CelularPage";
 
 export default function Inicial() {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ export default function Inicial() {
   const { socket, emitirCola, emitirCambiarCancion } = useSocket(
     userId,
     (colaActualizada) => {
-      console.log("CP1"  ,colaActualizada);
+      console.log("CP1", colaActualizada);
       setCola(colaActualizada.filter((c) => c && c._id));
     },
     (index) => setCurrentIndex(index)
@@ -198,6 +199,8 @@ export default function Inicial() {
         return <PlantTest />;
       case "ayuda":
         return <AyudaPage />;
+      case "Celular":
+        return <CelularPage />;
       case "video":
       default:
         return (
@@ -290,6 +293,13 @@ export default function Inicial() {
                 disabled={!suscrito}
               >
                 Sugerir
+              </button>
+              <button
+                className="boton2"
+                onClick={() => setSeccionActiva("Celular")}
+                disabled={!suscrito}
+              >
+                Celular
               </button>
             </div>
 

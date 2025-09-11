@@ -3,10 +3,10 @@ import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
-const API_URL = `${API_URL2}/song`;
+const API_URL = `${API_URL2}/song/masreproducidas`;
 const GENEROS_URL = `${API_URL2}/genero`;
 
-export default function CancionCRUD() {
+export default function EditarMasReproducidas() {
   const [canciones, setCanciones] = useState([]);
   const [generos, setGeneros] = useState([]);
   const [form, setForm] = useState({
@@ -27,7 +27,7 @@ export default function CancionCRUD() {
 
   const fetchCanciones = async () => {
     try {
-      const res = await axios.get(`${API_URL}/numero`, { headers });
+      const res = await axios.get(`${API_URL}`, { headers });
       setCanciones(res.data);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
@@ -132,14 +132,8 @@ export default function CancionCRUD() {
 
   return (
     <div className="p-2">
-      <h2>Gestión de Canciones</h2>
-      <button
-        className="btn btn-primary mb-3"
-        onClick={() => handleOpenModal()}
-      >
-        + Crear Canción
-      </button>
-
+      <h2>Canciones mas cantadas</h2>
+  
       {canciones.length === 0 && <p>No hay canciones registradas.</p>}
       <table className="table table-striped table-bordered">
         <thead className="thead-dark">
@@ -148,7 +142,6 @@ export default function CancionCRUD() {
             <th>Título</th>
             <th>Artista</th>
             <th>Género</th>
-            <th>Video</th>
             <th>Imagen</th>
             <th>Visible Principal</th>
             <th>Acciones</th>
@@ -161,11 +154,7 @@ export default function CancionCRUD() {
               <td>{cancion.titulo}</td>
               <td>{cancion.artista}</td>
               <td>{cancion.generos?.nombre || "Sin género"}</td>
-              <td>
-                <a href={cancion.videoUrl} target="_blank" rel="noreferrer">
-                  Ver Video
-                </a>
-              </td>
+             
               <td>
                 {cancion.imagenUrl ? (
                   <img

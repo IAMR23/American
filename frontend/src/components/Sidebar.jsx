@@ -57,6 +57,15 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
+             <li>
+            <Link to="/editar-mas-reproducidas" className="nav-link px-0 align-middle">
+              <i className="fs-4 bi-table"></i>
+              <span className="ms-1 d-none d-sm-inline text-light">
+                Editar las mas cantadas
+              </span>
+            </Link>
+          </li>
+
 
           <li>
             <Link to="/usuarios" className="nav-link px-0 align-middle">

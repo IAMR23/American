@@ -31,6 +31,7 @@ import MiPlaylistUser from "./pages/MiPlaylistUser";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 import UltimasSubidas from "./components/UltimasSubidas";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
+import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 
 function App() {
   const [auth, setAuth] = useState({ isAuthenticated: false, rol: null });
@@ -73,6 +74,7 @@ function App() {
                 <Route path="productos" element={<Productos />} />
                 <Route path="producto/:id" element={<ProductoDetalle />} />
                 <Route path="/mas-reproducidas" element={<MasReproducidas />} />
+                <Route path="/editar-mas-reproducidas" element={<EditarMasReproducidas />} />
                 <Route path="solicitudes" element={<SolicitudesPage />} />
                 <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
                 <Route path="/playlist/:id" element={<MiPlaylist />} />

@@ -429,7 +429,6 @@ const navButtonStyle = (side, disabled) => ({
   transform: "translateY(-50%)",
   width: "50px",
   height: "50px",
-  background: "rgba(0,0,0,0.5)",
   color: "white",
   border: "none",
   borderRadius: "50%",
