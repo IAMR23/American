@@ -23,7 +23,7 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
-// ====================API_URL
+// ====================
 // 🔹 Configuración de CORS
 // ====================
 const allowedOrigins = [
@@ -37,7 +37,7 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      else return callback(new Error("CORS no permitido: " + origin), false);
+      return callback(new Error("CORS no permitido: " + origin), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -55,7 +55,10 @@ const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true, // necesario si hay cookies o headers de autenticación
   },
+  transports: ["websocket", "polling"], // fallback seguro
+  allowEIO3: true, // si el cliente es legacy
 });
 
 // Guardar instancia de io en app
@@ -88,23 +91,19 @@ conectarDB()
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
-      // Unirse a la sala del usuario
       socket.on("join", (userId) => {
         socket.join(userId);
         console.log(`Usuario ${userId} unido a su sala`);
       });
 
-      // Cuando alguien cambia la canción
       socket.on("cambiarCancion", ({ userId, index }) => {
         console.log(`Usuario ${userId} cambió canción a índice ${index}`);
-        // Emitir a todos los demás clientes del mismo usuario
         socket.to(userId).emit("cambiarCancionCliente", index);
       });
 
-      // Actualizar cola completa
       socket.on("actualizarCola", ({ userId, nuevaCola, indexActual }) => {
         console.log(`Usuario ${userId} actualizó la cola`);
-        socket.to(userId).emit("colaActualizada", nuevaCola);
+        socket.to(userId).emit("colaActualizada", { nuevaCola, indexActual });
       });
 
       socket.on("disconnect", () => {
