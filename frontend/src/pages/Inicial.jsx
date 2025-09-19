@@ -9,7 +9,7 @@ import { API_URL } from "../config";
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistSelector from "../components/PlaylistSelector";
-import PlaylistSugeridos from "./PLaylistSugeridos";
+import PlaylistSugeridos from "./PLaylistSugeridos"; // corregido
 import SolicitudesCancion from "./SolicitudCancion";
 import LoginForm from "../components/LoginForm";
 import RegistrationForm from "../components/RegistrationForm";
@@ -23,7 +23,7 @@ import MasReproducidas from "../components/MasReproducidas";
 import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 
-import useSocket from "../utils/useSocket";
+import useSocket from "../hooks/useSocket";
 import useCola from "../utils/useCola";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
@@ -56,7 +56,6 @@ export default function Inicial() {
   const { socket, emitirCola, emitirCambiarCancion } = useSocket(
     userId,
     (colaActualizada) => {
-      console.log("CP1", colaActualizada);
       setCola(colaActualizada.filter((c) => c && c._id));
     },
     (index) => setCurrentIndex(index)
@@ -82,6 +81,23 @@ export default function Inicial() {
     const token = getToken();
     if (!token) cargarCola();
   }, []);
+
+  // ------------------ Suscripción al socket ------------------
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleColaActualizada = ({ nuevaCola, indexActual }) => {
+      setCola(nuevaCola.filter((c) => c && c._id)); // solo canciones válidas
+      setCurrentIndex(indexActual);
+    };
+
+    socket.on("colaActualizada", handleColaActualizada);
+
+    return () => {
+      socket.off("colaActualizada", handleColaActualizada);
+    };
+  }, [socket]);
 
   // ------------------ Funciones ------------------
   const handleLoginSuccess = async () => {
@@ -114,7 +130,9 @@ export default function Inicial() {
   const insertarCancion = async (songId) => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/song/${songId}`);
+      const res = await fetch(`${API_URL}/song/${songId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const nuevaCancion = await res.json();
 
       if (modoReproduccion === "cola") {
@@ -129,7 +147,6 @@ export default function Inicial() {
       }
 
       insertarEnColaDespuesActual(nuevaCancion, emitirCola);
-      console.log("CP");
       alert("🎵 Canción agregada correctamente");
     } catch (err) {
       console.error(err);

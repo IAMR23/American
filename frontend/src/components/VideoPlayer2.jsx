@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
+import { PitchDetector } from "pitchy";
 import "../styles/react-player.css";
+import BarraDeslizante from "./BarraDeslizante";
 
 export default function VideoPlayer2({
   cola = [],
@@ -14,30 +16,123 @@ export default function VideoPlayer2({
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [score, setScore] = useState(null);
+  const [scoreCalculated, setScoreCalculated] = useState(false);
+
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const [showControls, setShowControls] = useState(true);
+  const hideControlsTimeoutRef = useRef(null);
+
   const playerRef = useRef();
   const containerRef = useRef();
 
+  // Pitch detection refs
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const detectorRef = useRef(null);
+  const rafRef = useRef(null);
+  const userPitchesRef = useRef([]);
+
   const currentVideo = playlist[currentIndex];
 
+  // // --- MICRÓFONO ---
+  // const startMic = async () => {
+  //   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //   audioContextRef.current = new AudioContext();
+  //   const source = audioContextRef.current.createMediaStreamSource(stream);
+
+  //   analyserRef.current = audioContextRef.current.createAnalyser();
+  //   analyserRef.current.fftSize = 2048;
+  //   source.connect(analyserRef.current);
+
+  //   detectorRef.current = PitchDetector.forFloat32Array(
+  //     analyserRef.current.fftSize
+  //   );
+  //   userPitchesRef.current = [];
+  //   capturePitch();
+  // };
+
+  const capturePitch = () => {
+    const input = new Float32Array(analyserRef.current.fftSize);
+    analyserRef.current.getFloatTimeDomainData(input);
+
+    const [pitch, clarity] = detectorRef.current.findPitch(
+      input,
+      audioContextRef.current.sampleRate
+    );
+
+    if (clarity > 0.5) {
+      userPitchesRef.current.push(pitch);
+    }
+
+    rafRef.current = requestAnimationFrame(capturePitch);
+  };
+
+  const stopMic = () => {
+    cancelAnimationFrame(rafRef.current);
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
+  };
+
+  const calculateScore = () => {
+    const userPitches = userPitchesRef.current;
+    if (!userPitches.length) return 0;
+
+    const songReference = new Array(userPitches.length).fill(440);
+
+    let total = 0;
+    let count = userPitches.length;
+
+    for (let i = 0; i < count; i++) {
+      let diff = Math.abs(userPitches[i] - songReference[i]);
+      if (userPitches[i] === 0) {
+        total += 40;
+      } else if (diff < 5) {
+        total += 100;
+      } else if (diff < 20) {
+        total += 70;
+      } else {
+        total += 40;
+      }
+    }
+
+    return Math.round(total / count);
+  };
+
+  // --- FULLSCREEN ---
   useEffect(() => {
     if (fullscreenRequested) {
       const el = containerRef.current;
-      if (el) {
-        if (!document.fullscreenElement) {
-          el.requestFullscreen?.();
-        }
+      if (el && !document.fullscreenElement) {
+        el.requestFullscreen?.();
       }
-      // Avisar al padre que ya manejó el fullscreen para no repetir
       if (onFullscreenHandled) onFullscreenHandled();
     }
   }, [fullscreenRequested, onFullscreenHandled]);
 
+  // --- LOOP INDEX ---
   useEffect(() => {
     if (currentIndex >= playlist.length) {
       setCurrentIndex(0);
     }
   }, [currentIndex, playlist.length, setCurrentIndex]);
 
+  // --- CAMBIO DE CANCIÓN ---
+  useEffect(() => {
+    if (!currentVideo) return;
+    stopMic();
+    setIsPlaying(false);
+    if (playerRef.current) {
+      playerRef.current.seekTo(0);
+    }
+    setIsPlaying(true);
+  }, [currentIndex]);
+
+  // --- NAVIGATION ---
   const nextVideo = () => {
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -52,9 +147,14 @@ export default function VideoPlayer2({
     }
   };
 
+  // --- PROGRESS ---
   const handleProgress = ({ playedSeconds }) => {
-    const duration = playerRef.current?.getDuration?.();
-    if (duration && duration - playedSeconds <= 20) {
+    setProgress(playedSeconds);
+
+    const dur = playerRef.current?.getDuration?.();
+    if (!dur) return;
+
+    if (dur - playedSeconds <= 40) {
       const next = playlist[currentIndex + 1];
       if (next) {
         setNextSongName(next.titulo || "Siguiente canción");
@@ -63,8 +163,55 @@ export default function VideoPlayer2({
     } else {
       setShowNextMessage(false);
     }
+
+    if (!scoreCalculated && dur - playedSeconds <= 45) {
+      const finalScore = calculateScore();
+      setScore(finalScore);
+      setScoreCalculated(true);
+    }
   };
 
+  const handleSeek = (e) => {
+    const newTime = parseFloat(e.target.value);
+    playerRef.current.seekTo(newTime, "seconds");
+    setProgress(newTime);
+  };
+
+  const formatTime = (sec) => {
+    if (!sec || isNaN(sec)) return "00:00";
+    const minutes = Math.floor(sec / 60);
+    const seconds = Math.floor(sec % 60);
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  // --- CONTROLES AUTOMÁTICOS EN FULLSCREEN ---
+  const resetHideControlsTimer = () => {
+    setShowControls(true);
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+    if (isFullscreen) {
+      hideControlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = () => resetHideControlsTimer();
+    const container = containerRef.current;
+    container?.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      container?.removeEventListener("mousemove", handleMouseMove);
+      if (hideControlsTimeoutRef.current)
+        clearTimeout(hideControlsTimeoutRef.current);
+    };
+  }, [isFullscreen]);
+
+  // --- FULLSCREEN STATE ---
   useEffect(() => {
     const handleFullscreenChange = () => {
       const fsElement =
@@ -74,6 +221,8 @@ export default function VideoPlayer2({
         document.msFullscreenElement;
 
       setIsFullscreen(!!fsElement);
+      if (!!fsElement) resetHideControlsTimer();
+      else setShowControls(true);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -93,17 +242,24 @@ export default function VideoPlayer2({
     }
   };
 
+  // --- EVENTOS ---
+  const handleSongStart = () => {
+    setScore(null);
+    setScoreCalculated(false);
+    // startMic();
+  };
+
+  const handleSongEnd = () => {
+    stopMic();
+    const finalScore = calculateScore();
+    setScore(finalScore);
+    nextVideo();
+  };
+
+  // --- RENDER ---
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
-      <div
-        style={{
-          background: "#000",
-          color: "white",
-          padding: "20px",
-          textAlign: "center",
-          borderRadius: "10px",
-        }}
-      >
+      <div style={emptyStyle}>
         🎧 No hay canciones en la cola. Añade una desde el buscador o playlist.
       </div>
     );
@@ -111,15 +267,7 @@ export default function VideoPlayer2({
 
   if (!currentVideo || !currentVideo.videoUrl) {
     return (
-      <div
-        style={{
-          background: "#000",
-          color: "white",
-          padding: "20px",
-          textAlign: "center",
-          borderRadius: "10px",
-        }}
-      >
+      <div style={emptyStyle}>
         ⚠️ Esta canción no tiene un video disponible para reproducir.
       </div>
     );
@@ -132,99 +280,147 @@ export default function VideoPlayer2({
         margin: "auto",
         position: "relative",
         background: "#000",
-        width: "100%",
         height: isFullscreen ? "100vh" : "auto",
       }}
     >
-      {/* {!isFullscreen && (
-        <p
-          style={{
-            fontWeight: "bold",
-            textAlign: "center",
-            color: "white",
-            justifyContent: "center",
-          }}
-        >
-          💡 Mensaje del administrador: ¡Recuerda hidratarte!
-        </p>
-      )} */}
-
       <div style={{ position: "relative" }}>
         <ReactPlayer
           className="react-player"
           ref={playerRef}
           url={currentVideo.videoUrl || ""}
-          controls
-          playing
+          playing={isPlaying}
+          controls={false}
           width="100%"
-          height={isFullscreen ? "100vh" : "100%"}
+          height={isFullscreen ? "100vh" : "85vh"}
+          onPlay={handleSongStart}
+          onPause={() => stopMic()}
           onProgress={handleProgress}
-          onEnded={nextVideo}
-          config={{
-            youtube: {
-              playerVars: {
-                fs: 0,
-              },
-            },
+          onEnded={handleSongEnd}
+          onDuration={(d) => setDuration(d)}
+        />
+
+        {/* Botones navegación */}
+
+        <img
+          src="izq.png" // reemplaza con tu imagen
+          alt="Anterior"
+          onClick={currentIndex === 0 ? undefined : prevVideo}
+          style={{
+            ...navButtonStyle("left", currentIndex === 0),
+            cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+            opacity: currentIndex === 0 ? 0.5 : 1,
           }}
         />
 
-        <button
-          onClick={prevVideo}
-          disabled={currentIndex === 0}
-          style={navButtonStyle("left", currentIndex === 0)}
-        >
-          ‹
-        </button>
+        <img
+          src="der.png" // reemplaza con tu imagen
+          alt="Siguiente"
+          onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
+          style={{
+            ...navButtonStyle("right", currentIndex === playlist.length - 1),
+            cursor:
+              currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
+            opacity: currentIndex === playlist.length - 1 ? 0.5 : 1,
+          }}
+        />
 
-        <button
-          onClick={nextVideo}
-          disabled={currentIndex === playlist.length - 1}
-          style={navButtonStyle("right", currentIndex === playlist.length - 1)}
-        >
-          ›
-        </button>
-
-        {showNextMessage && (
+        {/* Barra de controles personalizada */}
+        {showControls && (
           <div
             style={{
               position: "absolute",
-              bottom: isFullscreen ? "100px" : "60px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "rgba(0,0,0,0.8)",
+              bottom: "15px",
+              left: "0",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "10px",
+              padding: "0 15px",
               color: "white",
-              padding: "12px 20px",
-              borderRadius: "12px",
-              fontSize: isFullscreen ? "24px" : "18px",
-              zIndex: 9999,
+              transition: "opacity 0.3s",
             }}
           >
-            🎶 Próxima canción: {nextSongName}
+            {/* Play/Pause */}
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                color: "white",
+                border: "none",
+                padding: "10px",
+                borderRadius: "50%",
+                cursor: "pointer",
+                fontSize: "20px",
+              }}
+            >
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+
+            {/* Tiempo transcurrido */}
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(progress)}
+            </span>
+
+            {/* Barra progreso */}
+            <input
+              type="range"
+              min={0}
+              max={duration}
+              step="0.1"
+              value={progress}
+              onChange={handleSeek}
+              style={{
+                flex: 1,
+                height: "6px",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            />
+
+            {/* Tiempo total */}
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(duration)}
+            </span>
+
+            {/* Fullscreen */}
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                color: "white",
+                border: "none",
+                padding: "8px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "16px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ⛶
+            </button>
           </div>
         )}
 
-        <button
-          onClick={toggleFullscreen}
-          style={{
-            position: "absolute",
-            top: "40px",
-            right: "10px",
-            background: "rgba(255,255,255,0.2)",
-            color: "white",
-            border: "none",
-            padding: "8px 14px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          {isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
-        </button>
+        {showNextMessage && (
+          <BarraDeslizante
+            texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
+            isFullscreen={isFullscreen}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+// --- ESTILOS ---
+const emptyStyle = {
+  background: "#000",
+  color: "white",
+  padding: "20px",
+  textAlign: "center",
+  borderRadius: "10px",
+};
 
 const navButtonStyle = (side, disabled) => ({
   position: "absolute",
@@ -233,7 +429,6 @@ const navButtonStyle = (side, disabled) => ({
   transform: "translateY(-50%)",
   width: "50px",
   height: "50px",
-  background: "rgba(0,0,0,0.5)",
   color: "white",
   border: "none",
   borderRadius: "50%",

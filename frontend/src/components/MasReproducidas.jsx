@@ -168,8 +168,8 @@ export default function MasReproducidas({
                 alt={`Miniatura de ${video.titulo}`}
                 loading="lazy"
                 style={{
-                  width: "480px", // puedes ajustar aquí
-                  height: "270px", // mantener proporción 16:9
+                  width: window.innerWidth < 768 ? "400px" : "480px", // <768px es móvil
+                  height: window.innerWidth < 768 ? "270px" : "288px", // mantener proporción 16:9
                   objectFit: "cover",
                   borderRadius: "12px",
                 }}

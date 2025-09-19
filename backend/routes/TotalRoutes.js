@@ -25,28 +25,50 @@ router.delete(
 
 // 🚀 aquí personalizamos add para emitir evento
 
-
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const { songId } = req.body;
 
-    const nuevaCancion = await Cola.create({ userId, songId });
+    // Buscar si ya existe una cola para este usuario
+    let colaUsuario = await Cola.findOne({ user: userId });
 
-    // Traer la cola actualizada
-    const colaActualizada = await Cola.find({ userId });
+    if (!colaUsuario) {
+      // Si no existe, crear una nueva cola
+      colaUsuario = await Cola.create({
+        user: userId,
+        canciones: [songId]
+      });
+    } else {
+      // Si existe, agregar la canción al array
+      colaUsuario.canciones.push(songId);
+      await colaUsuario.save();
+    }
+
+    // Traer la cola actualizada CON la información completa de las canciones
+    const colaActualizada = await Cola.findOne({ user: userId })
+      .populate('canciones') // Popula todas las canciones del array
+      .populate('user'); // También popula la info del usuario si la necesitas
+
 
     // Emitir a todos los clientes conectados a la misma sala
     const io = req.app.get("io");
-    io.to(userId).emit("colaActualizada", { nuevaCola: colaActualizada, indexActual: 0 });
+    io.to(userId).emit("colaActualizada", { 
+      nuevaCola: colaActualizada.canciones, // Solo enviar el array de canciones
+      indexActual: 0 
+    });
 
-    res.status(201).json(colaActualizada);
+    res.status(201).json({
+      message: "Canción agregada a la cola",
+      cola: colaActualizada.canciones,
+      totalCanciones: colaActualizada.canciones.length
+    });
+
   } catch (err) {
+    console.error("Error al agregar canción a la cola:", err);
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 router.delete("/cola/remove", async (req, res) => {
   try {
