@@ -9,7 +9,7 @@ import { API_URL } from "../config";
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import VideoPlayer from "../components/VideoPlayer";
 import PlaylistSelector from "../components/PlaylistSelector";
-import PlaylistSugeridos from "./PLaylistSugeridos"; // corregido
+import PlaylistSugeridos from "./PLaylistSugeridos";
 import SolicitudesCancion from "./SolicitudCancion";
 import LoginForm from "../components/LoginForm";
 import RegistrationForm from "../components/RegistrationForm";
@@ -53,12 +53,15 @@ export default function Inicial() {
   const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
     usePlaylists(userId);
 
+  // Función callback para manejar cambios de canción remotos
+  const handleCancionCambiadaRemota = (index) => {
+    console.log("Canción cambiada remotamente al índice:", index);
+    setCurrentIndex(index);
+  };
+
   const { socket, emitirCola, emitirCambiarCancion } = useSocket(
     userId,
-    (colaActualizada) => {
-      setCola(colaActualizada.filter((c) => c && c._id));
-    },
-    (index) => setCurrentIndex(index)
+    handleCancionCambiadaRemota
   );
 
   // ------------------ Manejo de token ------------------
@@ -83,12 +86,11 @@ export default function Inicial() {
   }, []);
 
   // ------------------ Suscripción al socket ------------------
-
   useEffect(() => {
     if (!socket) return;
 
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
-      setCola(nuevaCola.filter((c) => c && c._id)); // solo canciones válidas
+      setCola(nuevaCola.filter((c) => c && c._id));
       setCurrentIndex(indexActual);
     };
 
@@ -107,6 +109,13 @@ export default function Inicial() {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
         setUserRole(decoded.rol);
+
+        // LIMPIAR LA COLA AL HACER LOGIN
+        setCola([]);
+        setCurrentIndex(0);
+        setModoReproduccion("cola");
+
+        console.log("Cola limpiada después del login");
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -118,6 +127,12 @@ export default function Inicial() {
     localStorage.removeItem("token");
     setUserId(null);
     setUserRole(null);
+
+    // LIMPIAR LA COLA AL CERRAR SESIÓN
+    setCola([]);
+    setCurrentIndex(0);
+    setModoReproduccion("cola");
+
     window.location.reload();
   };
 
@@ -125,6 +140,12 @@ export default function Inicial() {
     reproducirCancion(index, emitirCambiarCancion);
     setSeccionActiva("video");
     setShouldFullscreen(true);
+  };
+
+  // Función mejorada para cambiar canción con sincronización
+  const handleCambiarCancion = (index) => {
+    setCurrentIndex(index);
+    emitirCambiarCancion(index);
   };
 
   const insertarCancion = async (songId) => {
@@ -224,7 +245,7 @@ export default function Inicial() {
           <VideoPlayer
             cola={cola}
             currentIndex={currentIndex}
-            setCurrentIndex={(i) => reproducirCancion(i, emitirCambiarCancion)}
+            setCurrentIndex={handleCambiarCancion}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
           />
@@ -389,9 +410,7 @@ export default function Inicial() {
             return (
               <div
                 key={indexReal}
-                onClick={() =>
-                  reproducirCancion(indexReal, emitirCambiarCancion)
-                }
+                onClick={() => handleCambiarCancion(indexReal)}
                 className="song-icon position-relative"
                 style={{ cursor: "pointer" }}
               >

@@ -33,14 +33,12 @@ export default function Canciones() {
     console.warn("Usuario no autenticado");
   }
 
-  // 🔹 Socket centralizado
+  // Suscribirse a eventos de la cola
+
   const { socket, isConnected, emitEvent, onEvent } = useSocket();
 
-  // Suscribirse a eventos de la cola
   useEffect(() => {
-    if (!socket || !isConnected) return;  
-
-    console.log("🎧 Suscribiéndose a eventos de cola...");
+    if (!socket || !isConnected) return;
 
     const unsubscribeCola = onEvent("colaActualizada", (data) => {
       console.log("📥 Cola actualizada:", data);
@@ -63,7 +61,8 @@ export default function Canciones() {
 
   // Abrir modal de playlist
   const handleOpenModal = (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a una playlist");
+    if (!isAuthenticated)
+      return alert("Inicia sesión para agregar a una playlist");
     setSelectedSongId(songId);
     setShowPlaylistModal(true);
   };
@@ -78,9 +77,13 @@ export default function Canciones() {
   // Cargar videos
   const fetchVideos = async (usarFiltro = false) => {
     try {
-      const headers = isAuthenticated ? { Authorization: `Bearer ${getToken()}` } : {};
+      const headers = isAuthenticated
+        ? { Authorization: `Bearer ${getToken()}` }
+        : {};
       const url = usarFiltro ? FILTRO_URL : SONG_URL;
-      const params = usarFiltro ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha } : {};
+      const params = usarFiltro
+        ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha }
+        : {};
       const res = await axios.get(url, { headers, params });
       setVideos(res.data.canciones || res.data);
     } catch (err) {
@@ -88,7 +91,9 @@ export default function Canciones() {
     }
   };
 
-  useEffect(() => { fetchVideos(); }, []);
+  useEffect(() => {
+    fetchVideos();
+  }, []);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -102,7 +107,11 @@ export default function Canciones() {
   const agregarAFavoritos = async (songId) => {
     if (!isAuthenticated) return alert("Inicia sesión para usar favoritos");
     try {
-      await axios.post(`${API_URL}/t/favoritos/add`, { songId }, { headers: { Authorization: `Bearer ${getToken()}` } });
+      await axios.post(
+        `${API_URL}/t/favoritos/add`,
+        { songId },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
       alert("Canción agregada a favoritos");
     } catch (err) {
       console.error("Error al agregar a favoritos", err);
@@ -111,6 +120,7 @@ export default function Canciones() {
   };
 
   // Agregar a la cola
+
   const agregarACola = async (songId) => {
     if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
 
@@ -123,9 +133,12 @@ export default function Canciones() {
 
       console.log("✅ Respuesta del servidor:", res.data);
 
-      const eventSent = emitEvent("actualizarCola", { userId, songId });
-      alert(eventSent ? "Canción agregada a la cola ✅" : "Canción agregada a la cola (sin sincronización en tiempo real)");
-
+      if (socket && socket.connected) {
+        socket.emit("actualizarCola", { userId, songId });
+        alert("Canción agregada a la cola ✅");
+      } else {
+        alert("Canción agregada a la cola (sin sincronización en tiempo real)");
+      }
     } catch (err) {
       console.error("❌ Error al agregar a cola:", err.response?.data || err);
       alert("No se pudo agregar la canción");
@@ -136,7 +149,11 @@ export default function Canciones() {
   const handleAddToPlaylist = async (playlistId) => {
     if (!isAuthenticated) return;
     try {
-      await axios.post(`${API_URL}/t/playlist/cancion`, { playlistId, songId: selectedSongId }, { headers: { Authorization: `Bearer ${getToken()}` } });
+      await axios.post(
+        `${API_URL}/t/playlist/cancion`,
+        { playlistId, songId: selectedSongId },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
       alert("Canción agregada al playlist ✅");
       setShowPlaylistModal(false);
     } catch (err) {
@@ -149,9 +166,17 @@ export default function Canciones() {
     <div className="p-2">
       {/* Filtro */}
       <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-        <label className="caja-buscar" htmlFor="busqueda">Buscar por Artista:</label>
+        <label className="caja-buscar" htmlFor="busqueda">
+          Buscar por Artista:
+        </label>
         <div className="buscar-2">
-          <input type="text" name="busqueda" value={filtros.busqueda} onChange={handleChange} className="buscar text-center text-dark bg-light" />
+          <input
+            type="text"
+            name="busqueda"
+            value={filtros.busqueda}
+            onChange={handleChange}
+            className="buscar text-center text-dark bg-light"
+          />
         </div>
       </div>
 
@@ -160,23 +185,43 @@ export default function Canciones() {
         {videos.map((video) => (
           <div key={video._id} className="bg-modificado">
             <div>
-              <button className="video-btn heart-btn" onClick={() => handleOpenModal(video._id)} title="Agregar a playlist" disabled={!isAuthenticated}>
+              <button
+                className="video-btn heart-btn"
+                onClick={() => handleOpenModal(video._id)}
+                title="Agregar a playlist"
+                disabled={!isAuthenticated}
+              >
                 <img src="./heart.png" alt="" width="40px" />
               </button>
 
-              <button className="video-btn list-btn" onClick={() => agregarACola(video._id)} title="Agregar a cola" disabled={!isAuthenticated}>
+              <button
+                className="video-btn list-btn"
+                onClick={() => agregarACola(video._id)}
+                title="Agregar a cola"
+                disabled={!isAuthenticated}
+              >
                 <img src="./mas.png" alt="" width="40px" />
               </button>
 
-              <button className="video-btn play-btn" onClick={() => { setVideoActual(video); setMostrarReproductor(true); }}>
+              <button
+                className="video-btn play-btn"
+                onClick={() => {
+                  setVideoActual(video);
+                  setMostrarReproductor(true);
+                }}
+              >
                 <img src="./play.png" alt="" width="60px" />
               </button>
             </div>
 
             <div className="text-center text-black p-2 texto-superior">
-              <span className="fw-bold">{video.numero} - {video.artista}</span>
+              <span className="fw-bold">
+                {video.numero} - {video.artista}
+              </span>
               <br />
-              <small>{video.titulo} - {video.generos?.nombre || "Sin género"}</small>
+              <small>
+                {video.titulo} - {video.generos?.nombre || "Sin género"}
+              </small>
             </div>
           </div>
         ))}
@@ -189,7 +234,9 @@ export default function Canciones() {
           onClose={() => setShowPlaylistModal(false)}
           userId={userId}
           songId={selectedSongId}
-          onAddToPlaylistSuccess={() => console.log("Canción agregada correctamente")}
+          onAddToPlaylistSuccess={() =>
+            console.log("Canción agregada correctamente")
+          }
         />
       )}
 

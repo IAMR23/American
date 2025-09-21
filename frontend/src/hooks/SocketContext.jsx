@@ -31,7 +31,8 @@ export const SocketProvider = ({ children }) => {
       socketRef.current.disconnect();
     }
 
-    const newSocket = io("https://american-karaoke.com", {
+  //  const newSocket = io("https://american-karaoke.com", {
+    const newSocket = io(API_URL, {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       withCredentials: true,

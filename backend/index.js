@@ -98,7 +98,7 @@ conectarDB()
 
       socket.on("cambiarCancion", ({ userId, index }) => {
         console.log(`Usuario ${userId} cambió canción a índice ${index}`);
-        socket.to(userId).emit("cambiarCancionCliente", index);
+        socket.to(userId).emit("cambiarCancion", { index, userId });
       });
 
       socket.on("actualizarCola", ({ userId, nuevaCola, indexActual }) => {
