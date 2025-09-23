@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import useSocket from "../hooks/useSocket"; // Ahora solo accede al contexto
 import "../styles/listaCanciones.css";
+import Logo from "../components/Logo";
+import PlaylistSelectorModal from "../components/PlaylistSelectorModal";
+import { useParams } from "react-router-dom";
 
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-export default function Canciones() {
+export default function MiPlaylistUser2() {
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [filtros, setFiltros] = useState({ busqueda: "", ordenFecha: "desc" });
   const [videoActual, setVideoActual] = useState(null);
+  const [nombrePlaylist, setNombrePlaylist] = useState("");
+
+  const { id } = useParams();
 
   // Autenticación segura
   let userId = null;
@@ -73,30 +78,32 @@ export default function Canciones() {
   };
 
   // Cargar videos
-  const fetchVideos = async (usarFiltro = false) => {
+  const fetchCancionesDePlaylist = async () => {
     try {
-      const headers = isAuthenticated
-        ? { Authorization: `Bearer ${getToken()}` }
-        : {};
-      const url = usarFiltro ? FILTRO_URL : SONG_URL;
-      const params = usarFiltro
-        ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha }
-        : {};
-      const res = await axios.get(url, { headers, params });
-      setVideos(res.data.canciones || res.data);
+      const token = localStorage.getItem("token");
+
+      const response = await axios.get(
+        `${API_URL}/t/playlist/canciones/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setVideos(response.data.canciones || []);
+      setNombrePlaylist(response.data.nombre || ""); // 👈 aquí guardamos el nombre
     } catch (err) {
-      console.error("Error al cargar videos", err);
+      console.error("Error al obtener canciones:", err);
     }
   };
 
   useEffect(() => {
-    fetchVideos();
+    fetchCancionesDePlaylist();
   }, []);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
-      if (filtros.busqueda.trim() !== "") fetchVideos(true);
-      else fetchVideos();
+      if (filtros.busqueda.trim() !== "") fetchCancionesDePlaylist(true);
+      else fetchCancionesDePlaylist();
     }, 500);
     return () => clearTimeout(debounce);
   }, [filtros.busqueda, filtros.ordenFecha]);
@@ -161,82 +168,75 @@ export default function Canciones() {
   };
 
   return (
-    <div className="p-2">
-      {/* Filtro */}
-      <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-        <label className="caja-buscar" htmlFor="busqueda">
-          Buscar por Artista:
-        </label>
-        <div className="buscar-2">
-          <input
-            type="text"
-            name="busqueda"
-            value={filtros.busqueda}
-            onChange={handleChange}
-            className="buscar text-center text-dark bg-light"
-          />
+    <>
+      <Logo />
+      <div className="p-2">
+        {/* Filtro */}
+        <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
+          <h1 className="">
+            Playlist: {nombrePlaylist || "Cargando..."}
+          </h1>
         </div>
-      </div>
 
-      {/* Listado de videos */}
-      <div className="tarjetas">
-        {videos.map((video) => (
-          <div key={video._id} className="bg-modificado">
-            <div>
-              <button
-                className="video-btn heart-btn"
-                onClick={() => handleOpenModal(video._id)}
-                title="Agregar a playlist"
-                disabled={!isAuthenticated}
-              >
-                <img src="./heart.png" alt="" width="40px" />
-              </button>
+        {/* Listado de videos */}
+        <div className="tarjetas">
+          {videos.map((video) => (
+            <div key={video._id} className="bg-modificado">
+              <div>
+                <button
+                  className="video-btn heart-btn"
+                  onClick={() => handleOpenModal(video._id)}
+                  title="Agregar a playlist"
+                  disabled={!isAuthenticated}
+                >
+                  <img src="/heart.png" alt="" width="40px" />
+                </button>
 
-              <button
-                className="video-btn list-btn"
-                onClick={() => agregarACola(video._id)}
-                title="Agregar a cola"
-                disabled={!isAuthenticated}
-              >
-                <img src="./mas.png" alt="" width="40px" />
-              </button>
+                <button
+                  className="video-btn list-btn"
+                  onClick={() => agregarACola(video._id)}
+                  title="Agregar a cola"
+                  disabled={!isAuthenticated}
+                >
+                  <img src="/mas.png" alt="" width="40px" />
+                </button>
 
-              <button
-                className="video-btn play-btn"
-                onClick={() => {
-                  setVideoActual(video);
-                }}
-              >
-                <img src="./play.png" alt="" width="60px" />
-              </button>
+                <button
+                  className="video-btn play-btn"
+                  onClick={() => {
+                    setVideoActual(video);
+                  }}
+                >
+                  <img src="/play.png" alt="" width="60px" />
+                </button>
+              </div>
+
+              <div className="text-center text-black p-2 texto-superior">
+                <span className="fw-bold">
+                  {video.numero} - {video.artista}
+                </span>
+                <br />
+                <small>
+                  {video.titulo} - {video.generos?.nombre || "Sin género"}
+                </small>
+              </div>
             </div>
+          ))}
+        </div>
 
-            <div className="text-center text-black p-2 texto-superior">
-              <span className="fw-bold">
-                {video.numero} - {video.artista}
-              </span>
-              <br />
-              <small>
-                {video.titulo} - {video.generos?.nombre || "Sin género"}
-              </small>
-            </div>
-          </div>
-        ))}
+        {/* Modal de playlists */}
+        {isAuthenticated && (
+          <PlaylistSelectorModal
+            show={showPlaylistModal}
+            onClose={() => setShowPlaylistModal(false)}
+            userId={userId}
+            songId={selectedSongId}
+            onAddToPlaylistSuccess={() =>
+              console.log("Canción agregada correctamente")
+            }
+          />
+        )}
       </div>
-
-      {/* Modal de playlists */}
-      {isAuthenticated && (
-        <PlaylistSelectorModal
-          show={showPlaylistModal}
-          onClose={() => setShowPlaylistModal(false)}
-          userId={userId}
-          songId={selectedSongId}
-          onAddToPlaylistSuccess={() =>
-            console.log("Canción agregada correctamente")
-          }
-        />
-      )}
-
-    </div>
+    </>
   );
 }

@@ -27,7 +27,7 @@ import MasReproducidas from "./pages/MasReproducidas";
 import SolicitudesPage from "./components/SolicitudesPage";
 import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
 import MiPlaylist from "./pages/MiPlaylist";
-import MiPlaylistUser from "./pages/MiPlaylistUser";
+import MiPlaylistUser2 from "./pages/MiPlaylistUser2";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 import UltimasSubidas from "./components/UltimasSubidas";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
@@ -91,7 +91,7 @@ function App() {
                   path="/playlistPopular/:id"
                   element={<MiPlaylistAdmin />}
                 />
-                <Route path="/mis-playlist/:id" element={<MiPlaylistUser />} />
+                <Route path="/mis-playlist/:id" element={<MiPlaylistUser2 />} />
                 <Route path="listacanciones" element={<ListaCanciones />} />
                 <Route
                   path="ultimas-subidas"

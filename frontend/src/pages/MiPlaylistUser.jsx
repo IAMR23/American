@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import "../styles/inicial.css";
+import "../styles/listaCanciones.css";
+import Logo from "../components/Logo";
+import { jwtDecode } from "jwt-decode";
+import { getToken } from "../utils/auth";
 
 const MiPlaylistUser = () => {
   const { id } = useParams();
@@ -13,7 +17,19 @@ const MiPlaylistUser = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [busqueda, setBusqueda] = useState(""); // estado para el filtro
   const [nombrePlaylist, setNombrePlaylist] = useState("");
+  let userId = null;
 
+  let isAuthenticated = false;
+  try {
+    const token = getToken();
+    if (token) {
+      const decoded = jwtDecode(token);
+      userId = decoded.userId;
+      isAuthenticated = true;
+    }
+  } catch {
+    console.warn("Usuario no autenticado");
+  }
   useEffect(() => {
     fetchCancionesDePlaylist();
   }, [id]);
@@ -73,12 +89,9 @@ const MiPlaylistUser = () => {
   const eliminarCancionDePlaylist = async (cancionId) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `${API_URL}/t/playlist/${id}/remove/${cancionId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.delete(`${API_URL}/t/playlist/${id}/remove/${cancionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       fetchCancionesDePlaylist(); // actualizar lista
     } catch (err) {
@@ -99,27 +112,11 @@ const MiPlaylistUser = () => {
   return (
     <>
       <div className="fondo container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
-        <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
-          <img
-            src="/icono.png"
-            alt="icono"
-            style={{ width: "60px", height: "auto" }}
-          />
-          <img
-            onClick={() => setSeccionActiva("video")}
-            src="/logo.png"
-            alt="logo"
-            className="img-fluid"
-            style={{
-              width: "80%", // 80% en móviles
-              maxWidth: "600px", // máximo ancho en pantallas grandes
-              cursor: "pointer",
-              minWidth: "250px", // mínimo ancho para que no se vea muy pequeño en tablets
-            }}
-          />
-        </div>
+        <Logo />
         <div>
-          <h1 className="text-white">Playlist: {nombrePlaylist || "Cargando..."}</h1>
+          <h1 className="text-white">
+            Playlist: {nombrePlaylist || "Cargando..."}
+          </h1>
 
           <button className="btn btn-primary my-3" onClick={abrirModal}>
             Agregar Canciones
@@ -132,24 +129,50 @@ const MiPlaylistUser = () => {
           ) : canciones.length === 0 ? (
             <p>No hay canciones en esta playlist.</p>
           ) : (
-            <ul className="list-group">
-              {canciones.map((cancion) => (
-                <li
-                  key={cancion._id}
-                  className="list-group-item d-flex justify-content-between align-items-center"
-                >
-                  <span>
-                    {cancion.artista} - {cancion.titulo}
-                  </span>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => eliminarCancionDePlaylist(cancion._id)}
-                  >
-                    Eliminar
-                  </button>
-                </li>
+            <div className="tarjetas">
+              {canciones.map((video) => (
+                <div key={video._id} className="bg-modificado">
+                  <div>
+                    <button
+                      className="video-btn heart-btn"
+                      onClick={() => handleOpenModal(video._id)}
+                      title="Agregar a playlist"
+                      disabled={!isAuthenticated}
+                    >
+                      <img src="/heart.png" alt="" width="40px" />
+                    </button>
+
+                    <button
+                      className="video-btn list-btn"
+                      onClick={() => agregarACola(video._id)}
+                      title="Agregar a cola"
+                      disabled={!isAuthenticated}
+                    >
+                      <img src="/mas.png" alt="" width="40px" />
+                    </button>
+
+                    <button
+                      className="video-btn play-btn"
+                      onClick={() => {
+                        setMostrarReproductor(true);
+                      }}
+                    >
+                      <img src="/play.png" alt="" width="60px" />
+                    </button>
+                  </div>
+
+                  <div className="text-center text-black p-2 texto-superior">
+                    <span className="fw-bold">
+                      {video.numero} - {video.artista}
+                    </span>
+                    <br />
+                    <small>
+                      {video.titulo} - {video.generos?.nombre || "Sin género"}
+                    </small>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
 
           {/* Modal */}
