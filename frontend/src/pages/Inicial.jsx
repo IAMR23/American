@@ -86,20 +86,34 @@ export default function Inicial() {
   }, []);
 
   // ------------------ Suscripción al socket ------------------
+
+  const [colaCargada, setColaCargada] = useState(false);
+
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !userId) return;
+
+    socket.emit("join", userId);
+    socket.emit("pedirCola", userId);
 
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
+      if (!nuevaCola) return;
+
       setCola(nuevaCola.filter((c) => c && c._id));
-      setCurrentIndex(indexActual);
+
+      // Solo setear currentIndex si no hemos cargado la cola aún
+      setCurrentIndex((prevIndex) => {
+        if (!colaCargada) {
+          setColaCargada(true);
+          return indexActual ?? 0;
+        }
+        return prevIndex;
+      });
     };
 
     socket.on("colaActualizada", handleColaActualizada);
 
-    return () => {
-      socket.off("colaActualizada", handleColaActualizada);
-    };
-  }, [socket]);
+    return () => socket.off("colaActualizada", handleColaActualizada);
+  }, [socket, userId, colaCargada]);
 
   // ------------------ Funciones ------------------
   const handleLoginSuccess = async () => {
@@ -177,6 +191,7 @@ export default function Inicial() {
 
   const cargarPlaylistACola = async (playlistId, esPropia = false) => {
     const token = getToken();
+    console.log("CP1f");
     try {
       const url = esPropia
         ? `${API_URL}/t2/playlistPropia/canciones/${playlistId}`
@@ -308,6 +323,7 @@ export default function Inicial() {
               <button
                 className="boton3"
                 onClick={() => navigate("/ultimas-subidas")}
+                disabled={!suscrito}
               >
                 Lo último
               </button>

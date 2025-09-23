@@ -18,6 +18,7 @@ const publicacionRoutes = require("./routes/publicacionRoutes");
 const paypalRoutes = require("./routes/paypalRoutes");
 const suscripcionRoutes = require("./routes/suscripcionRoutes");
 const playlistPropiaRoutes = require("./routes/PlaylistPropiaRoutes");
+const Cola = require("./models/Cola");
 
 const app = express();
 const server = http.createServer(app);
@@ -88,23 +89,58 @@ conectarDB()
     // ====================
     // 🔹 Socket.io events
     // ====================
+
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
+      // Unirse a la sala del usuario
       socket.on("join", (userId) => {
         socket.join(userId);
         console.log(`Usuario ${userId} unido a su sala`);
       });
 
-      socket.on("cambiarCancion", ({ userId, index }) => {
-        console.log(`Usuario ${userId} cambió canción a índice ${index}`);
-        socket.to(userId).emit("cambiarCancion", { index, userId });
+      // Pedir la cola actual
+      socket.on("pedirCola", async (userId) => {
+        if (!userId) return; // prevenir null
+        const colaUsuario = await Cola.findOne({ user: userId }).populate(
+          "canciones"
+        );
+        if (!colaUsuario) return;
+
+        socket.emit("colaActualizada", {
+          nuevaCola: colaUsuario.canciones,
+          indexActual: colaUsuario.currentIndex ?? 0,
+        });
       });
 
-      socket.on("actualizarCola", ({ userId, nuevaCola, indexActual }) => {
-        console.log(`Usuario ${userId} actualizó la cola`);
-        socket.to(userId).emit("colaActualizada", { nuevaCola, indexActual });
+      // Cambiar canción y mantener sincronía en todos los dispositivos
+      socket.on("cambiarCancion", async ({ userId, index }) => {
+        if (!userId || index == null) return;
+
+        // Actualizar DB
+        await Cola.findOneAndUpdate({ user: userId }, { currentIndex: index });
+
+        // Emitir a TODOS los sockets en la sala del usuario
+        io.in(userId).emit("cambiarCancion", { index, userId });
       });
+
+      // Actualizar la cola completa
+      socket.on(
+        "actualizarCola",
+        async ({ userId, nuevaCola, indexActual }) => {
+          if (!userId) return;
+          console.log(`Usuario ${userId} actualizó la cola`);
+
+          // Guardar la nueva cola y el index en la DB
+          await Cola.findOneAndUpdate(
+            { user: userId },
+            { canciones: nuevaCola, currentIndex: indexActual }
+          );
+
+          // Emitir la actualización a TODOS los sockets en la sala del usuario
+          io.in(userId).emit("colaActualizada", { nuevaCola, indexActual });
+        }
+      );
 
       socket.on("disconnect", () => {
         console.log("🔴 Cliente desconectado:", socket.id);

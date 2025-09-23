@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const ColaSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
-  canciones: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' }]
+  canciones: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' }], 
+  currentIndex : Number
 
 }, { timestamps: true });
 

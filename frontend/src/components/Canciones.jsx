@@ -38,7 +38,7 @@ export default function Canciones() {
   const { socket, isConnected, emitEvent, onEvent } = useSocket();
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket || !isConnected || !onEvent) return; // ❌ espera a que onEvent exista
 
     const unsubscribeCola = onEvent("colaActualizada", (data) => {
       console.log("📥 Cola actualizada:", data);
