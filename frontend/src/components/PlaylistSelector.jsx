@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 
 const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
   const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(null); // estado para el seleccionado
 
   const isValidArray = Array.isArray(playlists);
 
@@ -20,7 +21,7 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
     <div className="bg-white p-4 rounded shadow-sm w-100" style={{ maxWidth: "100%" }}>
       <div className="d-flex align-items-center mb-3">
         <BsMusicNote size={24} className="me-2 text-primary" />
-        <h3 className="mb-0">Tus Favoritos</h3>
+        <h3 className="mb-0">Listados de Favoritos</h3>
       </div>
 
       <form className="input-group mb-3" onSubmit={handleSubmit}>
@@ -49,22 +50,37 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
             <li
               key={i}
               className="list-group-item d-flex justify-content-between align-items-center"
+              style={{
+                backgroundColor: selectedIndex === i ? "gray" : "white",
+                color: selectedIndex === i ? "white" : "black",
+              }}
             >
+              {/* Nombre de la playlist: solo pinta al hacer clic */}
               <div
                 className="d-flex align-items-center gap-2"
                 style={{ cursor: "pointer" }}
-                onClick={() => onSelect(playlist)}
+                onClick={() => setSelectedIndex(i)}
               >
                 <BsMusicNote className="text-primary" />
                 {playlist.nombre}
               </div>
 
-              <Link
-                to={`/mis-playlist/${playlist._id}`}
-                className="btn btn-outline-primary btn-sm"
-              >
-                Ver
-              </Link>
+              {/* Botones a la derecha */}
+              <div className="d-flex gap-2">
+                <Link
+                  to={`/mis-playlist/${playlist._id}`}
+                  className="btn btn-outline-primary btn-sm"
+                >
+                  Ver
+                </Link>
+
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => onSelect(playlist)} // reproduce solo esta playlist
+                >
+                  Todo
+                </button>
+              </div>
             </li>
           ))}
         </ul>

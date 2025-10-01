@@ -174,7 +174,7 @@ export default function MiPlaylistUser2() {
         {/* Filtro */}
         <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
           <h1 className="">
-            Playlist: {nombrePlaylist || "Cargando..."}
+            Favoritos: {nombrePlaylist || "Cargando..."}
           </h1>
         </div>
 

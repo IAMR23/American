@@ -418,7 +418,9 @@ export default function Inicial() {
         </div>
 
         {/* Cola dinámica */}
-        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
+
+        {/* este si vale  */}
+        {/* <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
           <h2 className="text-white">Canciones a la cola</h2>
           {getColaVisible().map((cancion, idx) => {
             const indexReal =
@@ -444,6 +446,68 @@ export default function Inicial() {
               </div>
             );
           })}
+        </div> */}
+
+        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
+          <h2 className="text-white mb-2">Canciones a la cola</h2>
+
+          <div className="cola-container position-relative">
+            {/* Flechas */}
+            {/* <button
+              className="scroll-btn left"
+              onClick={() => {
+                document
+                  .querySelector(".cola-scroll")
+                  .scrollBy({ left: -150, behavior: "smooth" });
+              }}
+            >
+              ◀
+            </button>
+            <button
+              className="scroll-btn right"
+              onClick={() => {
+                document
+                  .querySelector(".cola-scroll")
+                  .scrollBy({ left: 150, behavior: "smooth" });
+              }}
+            >
+              ▶
+            </button> */}
+
+            {/* Contenedor horizontal */}
+            <div className="cola-scroll d-flex gap-3 overflow-auto">
+              {getColaVisible().map((cancion, idx) => {
+                const indexReal =
+                  currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
+                return (
+                  <div
+                    key={indexReal}
+                    onClick={() => handleCambiarCancion(indexReal)}
+                    className="song-icon position-relative"
+                    style={{
+                      cursor: "pointer",
+                      minWidth: "80px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <FaCompactDisc
+                      size={40}
+                      className={`mb-1 ${
+                        indexReal === currentIndex
+                          ? "song-playing"
+                          : "text-primary"
+                      }`}
+                    />
+                    <div className="custom-tooltip">
+                      <strong>{cancion.titulo}</strong>
+                      <br />
+                      <small>{cancion.artista}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 

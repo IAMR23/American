@@ -50,6 +50,7 @@ const BuscadorTabla = () => {
     artista: "Cantante",
     titulo: "Canción",
     generos: "Género",
+    accion : "Acción"
   };
 
   return (
@@ -84,6 +85,7 @@ const BuscadorTabla = () => {
               <th>Cantante</th>
               <th>Canción</th>
               <th>Género</th>
+              <th>Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -93,6 +95,7 @@ const BuscadorTabla = () => {
                 <td>{fila.artista}</td>
                 <td>{fila.titulo}</td>
                 <td>{fila.generos?.nombre || "Sin género"}</td>
+                <td>TODAVIA FALTA AGREGAR ACCIONES</td>
               </tr>
             ))}
           </tbody>

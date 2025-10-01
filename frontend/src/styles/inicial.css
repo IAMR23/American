@@ -66,3 +66,34 @@ html, body {
     transform: rotate(360deg);
   }
 }
+
+
+.cola-container {
+  position: relative;
+}
+
+.cola-scroll {
+  scroll-behavior: smooth;
+  white-space: nowrap;
+}
+
+.scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px 10px;
+}
+
+.scroll-btn.left {
+  left: 0;
+}
+
+.scroll-btn.right {
+  right: 0;
+}

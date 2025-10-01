@@ -2,14 +2,24 @@
 import React from "react";
 
 export default function BarraDeslizante({ texto, isFullscreen = false }) {
-  const fontSize = isFullscreen ? "100px" : "40px";
+  // Ajuste de tamaño de letra según pantalla
+  let fontSize;
+  if (isFullscreen) {
+    fontSize = "70px";
+  } else if (window.innerWidth >= 1200) { // pantallas grandes
+    fontSize = "35px"; // un poco más pequeña
+  } else {
+    fontSize = "40px"; // tamaño normal
+  }
+
+  const animationDuration = isFullscreen ? "25s" : "15s"; // más lento en fullscreen
 
   return (
     <div
       style={{
         position: "absolute",
-        top: "30%",       // Ajusta según quieras
-        width: "100%",    // ancho completo del contenedor del video
+        top: "30%",
+        width: "100%",
         overflow: "hidden",
       }}
     >
@@ -18,12 +28,11 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
           whiteSpace: "nowrap",
           display: "inline-block",
           padding: "10px",
-          color: "white",
+          color: "gray",
           fontWeight: "bold",
-          fontSize: fontSize,
-              WebkitTextStroke: "2px gray", // borde gris
-
-          animation: "mover 10s linear infinite",
+          fontSize,
+          WebkitTextStroke: "2px gray",
+          animation: `mover ${animationDuration} linear infinite`,
         }}
       >
         {texto}
@@ -32,8 +41,8 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
       <style>
         {`
           @keyframes mover {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0%   { transform: translateX(100vw); }   /* fuera de la pantalla a la derecha */
+            100% { transform: translateX(-100%); }   /* se va completamente a la izquierda */
           }
         `}
       </style>
