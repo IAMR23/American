@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import ReactPlayer from "react-player";
 import { API_URL } from "../config";
-
+import "../styles/buttonGallery.css"
 const API_PUBLICACION = `${API_URL}/publicacion`;
 
 // Lista de botones con valor real y nombre visible
 const listaBotones = [
-  { value: "boton1", label: "Celeste" },
-  { value: "boton2", label: "Rojo" },
-  { value: "boton3", label: "Verde" },
-  { value: "boton4", label: "Rosado" },
-  { value: "boton5", label: "Cafe" },
-  { value: "boton6", label: "Verde" },
-  { value: "boton7", label: "Morado" },
-  { value: "boton8", label: "Gris" },
-  { value: "boton9", label: "Azul" },
-  { value: "boton10", label: "Rojo Oscuro" },
+  { value: "Mboton1", label: "Celeste" },
+  { value: "Mboton2", label: "Rojo" },
+  { value: "Mboton3", label: "Verde" },
+  { value: "Mboton4", label: "Rosado" },
+  { value: "Mboton5", label: "Cafe" },
+  { value: "Mboton6", label: "Verde" },
+  { value: "Mboton7", label: "Morado" },
+  { value: "Mboton8", label: "Gris" },
+  { value: "Mboton9", label: "Azul" },
+  { value: "Mboton10", label: "Rojo Oscuro" },
 ];
 
 const PublicacionesCrud = () => {

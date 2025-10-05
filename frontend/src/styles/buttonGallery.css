@@ -1,0 +1,317 @@
+.Mboton1 {
+  width: 320px;
+  height:100px;
+  background-image: url("Mboton1.png");
+  background-size: cover;
+  background-color: transparent;
+  background-position: center;
+  border: none;
+  cursor: pointer;
+
+  font-family: "Arial Black", "Impact", sans-serif;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1px white;
+
+  /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+}
+
+.Mboton1:active {
+  transform: scale(0.95);
+}
+
+
+.Mboton2 {
+  width: 320px;
+  height:100px;
+  background-image: url("Mboton2.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /*   /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton2:active {
+  transform: scale(0.95);
+}
+
+.Mboton3 {
+   width: 320px;
+  height:100px;
+  background-image: url("Mboton3.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton3:active {
+  transform: scale(0.95);
+}
+
+.Mboton4 {
+  width: 320px;
+  height:100px;
+  background-image: url("Mboton4.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton4:active {
+  transform: scale(0.95);
+}
+
+.Mboton5 {
+  width: 320px;
+  height:100px;
+  background-image: url("Mboton5.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton5:active {
+  transform: scale(0.95);
+}
+
+.Mboton6 {
+  width: 320px;
+  height:100px;
+  background-image: url("Mboton6.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton6:active {
+  transform: scale(0.95);
+}
+
+.Mboton7 {
+ width: 320px;
+  height:100px;
+  background-image: url("Mboton7.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton7:active {
+  transform: scale(0.95);
+}
+
+.Mboton8 {
+ width: 320px;
+  height:100px;
+  background-image: url("Mboton8.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton8:active {
+  transform: scale(0.95);
+}
+
+.Mboton9 {
+ width: 320px;
+  height:100px;
+  background-image: url("Mboton9.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton9:active {
+  transform: scale(0.95);
+}
+
+.Mboton10 {
+ width: 320px;
+  height:100px;
+  background-image: url("Mboton10.png"); /* Cambia a la ruta de tu imagen */
+  background-size: cover;
+  background-color: transparent;
+  font-family: "Arial Black", "Impact", sans-serif;
+
+  background-position: center;
+  border: none;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 900;
+  color: black;
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5); */
+
+ /* Sombra blanca envolvente + sombra negra de profundidad */
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white,
+     2px  2px 4px rgba(0,0,0,0.5); /* profundidad */
+
+  /* Borde blanco grueso */
+  -webkit-text-stroke: 1.2px white;}
+
+.Mboton10:active {
+  transform: scale(0.95);
+}
+
+/* Efecto hover para todos los botones Mboton */
+[class^="Mboton"]:hover {
+  transform: scale(1.05);          /* zoom suave */
+  filter: brightness(1.2);          /* aumenta brillo */
+  box-shadow: 0 8px 15px rgba(0,0,0,0.3); /* sombra flotante */
+  transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
+}
