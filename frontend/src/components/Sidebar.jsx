@@ -65,13 +65,19 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
-
-
           <li>
             <Link to="/usuarios" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
                 Usuarios
+              </span>
+            </Link>
+          </li>
+            <li>
+            <Link to="/register-user" className="nav-link px-0 align-middle">
+              <i className="fs-4 bi-table"></i>
+              <span className="ms-1 d-none d-sm-inline text-light">
+                Registrar Usuarios 
               </span>
             </Link>
           </li>

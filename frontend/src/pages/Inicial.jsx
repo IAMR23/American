@@ -137,17 +137,44 @@ export default function Inicial() {
     setSeccionActiva("video");
   };
 
-  const cerrarSesion = () => {
+  // const cerrarSesion = () => {
+  //   localStorage.removeItem("token");
+  //   setUserId(null);
+  //   setUserRole(null);
+
+  //   // LIMPIAR LA COLA AL CERRAR SESIÓN
+  //   setCola([]);
+  //   setCurrentIndex(0);
+  //   setModoReproduccion("cola");
+
+  //   window.location.reload();
+  // };
+
+  const cerrarSesion = async () => {
+    try {
+      const token = getToken();
+      if (token) {
+        await fetch(`${API_URL}/t/cola/remove`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Error al eliminar la cola:", err);
+    }
+
+    // Limpiar estado local
     localStorage.removeItem("token");
     setUserId(null);
     setUserRole(null);
-
-    // LIMPIAR LA COLA AL CERRAR SESIÓN
     setCola([]);
     setCurrentIndex(0);
     setModoReproduccion("cola");
 
-    window.location.reload();
+  //  window.location.reload();
   };
 
   const handlePlaySong = (index) => {
@@ -452,27 +479,31 @@ export default function Inicial() {
           <h2 className="text-white mb-2">Canciones a la cola</h2>
 
           <div className="cola-container position-relative">
-            {/* Flechas */}
-            {/* <button
-              className="scroll-btn left"
-              onClick={() => {
-                document
-                  .querySelector(".cola-scroll")
-                  .scrollBy({ left: -150, behavior: "smooth" });
-              }}
-            >
-              ◀
-            </button>
-            <button
-              className="scroll-btn right"
-              onClick={() => {
-                document
-                  .querySelector(".cola-scroll")
-                  .scrollBy({ left: 150, behavior: "smooth" });
-              }}
-            >
-              ▶
-            </button> */}
+            {/* Flechas solo si hay más de 8 canciones */}
+            {getColaVisible().length > 8 && (
+              <>
+                <button
+                  className="scroll-btn left"
+                  onClick={() => {
+                    document
+                      .querySelector(".cola-scroll")
+                      .scrollBy({ left: -150, behavior: "smooth" });
+                  }}
+                >
+                  ◀
+                </button>
+                <button
+                  className="scroll-btn right"
+                  onClick={() => {
+                    document
+                      .querySelector(".cola-scroll")
+                      .scrollBy({ left: 150, behavior: "smooth" });
+                  }}
+                >
+                  ▶
+                </button>
+              </>
+            )}
 
             {/* Contenedor horizontal */}
             <div className="cola-scroll d-flex gap-3 overflow-auto">

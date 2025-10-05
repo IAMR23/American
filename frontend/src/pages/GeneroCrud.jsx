@@ -39,7 +39,6 @@ export default function GeneroCRUD() {
     const modal = new window.bootstrap.Modal(document.getElementById("generoModal"));
     modal.show();
 
-    // Poner foco en el input tras abrir modal
     setTimeout(() => {
       const input = document.querySelector('#generoModal input[type="text"]');
       if (input) input.focus();
@@ -61,7 +60,6 @@ export default function GeneroCRUD() {
       setEditId(null);
       fetchGeneros();
 
-      // Cerrar modal usando API Bootstrap
       const modalEl = document.getElementById("generoModal");
       const modalInstance = window.bootstrap.Modal.getInstance(modalEl);
       if (modalInstance) modalInstance.hide();
@@ -85,47 +83,43 @@ export default function GeneroCRUD() {
       <h2 className="my-4 text-center">Gestión de Géneros</h2>
       <div className="text-end mb-3">
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          + Crear Género
+           Crear Género
         </button>
       </div>
 
       {generos.length === 0 ? (
         <p>No hay géneros registrados.</p>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-bordered align-middle">
-            <thead className="table-dark">
-              <tr>
-                <th>Nombre</th>
-                <th style={{ width: "110px" }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {generos.map((genero) => (
-                <tr key={genero._id}>
-                  <td>{genero.nombre}</td>
-                  <td>
-                    <div className="d-flex gap-2 justify-content-center">
-                      <button
-                        className="btn btn-warning btn-sm"
-                        title="Editar"
-                        onClick={() => handleOpenModal(genero)}
-                      >
-                        <FiEdit />
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        title="Eliminar"
-                        onClick={() => handleDelete(genero._id)}
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div
+          className="d-grid gap-3"
+          style={{
+            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          }}
+        >
+          {generos.map((genero) => (
+            <div
+              key={genero._id}
+              className="card p-3 shadow-sm text-center position-relative"
+            >
+              <h5 className="card-title">{genero.nombre}</h5>
+              <div className="d-flex justify-content-center gap-2 ">
+                <button
+                  className="btn btn-warning btn-sm"
+                  title="Editar"
+                  onClick={() => handleOpenModal(genero)}
+                >
+                  <FiEdit size={24}/>
+                </button>
+                <button
+                  className="btn btn-danger btn-sm"
+                  title="Eliminar"
+                  onClick={() => handleDelete(genero._id)}
+                >
+                  <FiTrash2 size={24} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

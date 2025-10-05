@@ -227,17 +227,7 @@ export default function UltimasSubidas({
         />
       )}
 
-      {mostrarReproductor && (
-        <div className="mini-player-flotante">
-          <VideoPlayer2
-            cola={[videoActual]}
-            currentIndex={0}
-            setCurrentIndex={() => {}}
-            fullscreenRequested={true}
-            onFullscreenHandled={() => {}}
-          />
-        </div>
-      )}
+  
     </div>
   );
 }

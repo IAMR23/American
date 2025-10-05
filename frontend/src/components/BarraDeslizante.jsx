@@ -12,7 +12,7 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
     fontSize = "40px"; // tamaño normal
   }
 
-  const animationDuration = isFullscreen ? "25s" : "15s"; // más lento en fullscreen
+  const animationDuration = isFullscreen ? "25s" : "22s"; // más lento en fullscreen
 
   return (
     <div

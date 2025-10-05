@@ -2,8 +2,14 @@ import { useEffect } from "react";
 import { useSocketContext } from "./SocketContext";
 
 export default function useSocket(userId, onCancionCambiada) {
-  const { socket, isConnected, connectSocket, disconnectSocket, emitEvent } =
-    useSocketContext();
+  const {
+    socket,
+    isConnected,
+    connectSocket,
+    disconnectSocket,
+    emitEvent,
+    onEvent, // ✅ Asegúrate de incluir esto
+  } = useSocketContext();
 
   useEffect(() => {
     if (userId) connectSocket(userId);
@@ -15,7 +21,6 @@ export default function useSocket(userId, onCancionCambiada) {
     if (!socket) return;
 
     const handleCancionCambiada = ({ index, userId: remoteUserId }) => {
-      // Solo actualizar si el cambio viene de otro dispositivo
       if (remoteUserId === userId && onCancionCambiada) {
         onCancionCambiada(index);
       }
@@ -37,5 +42,11 @@ export default function useSocket(userId, onCancionCambiada) {
     emitEvent("cambiarCancion", { userId, index });
   };
 
-  return { socket, isConnected, emitirCola, emitirCambiarCancion };
+  return {
+    socket,
+    isConnected,
+    emitirCola,
+    emitirCambiarCancion,
+    onEvent, // ✅ <-- agrégalo aquí
+  };
 }

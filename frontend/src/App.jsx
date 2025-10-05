@@ -33,6 +33,8 @@ import UltimasSubidas from "./components/UltimasSubidas";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
 import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 import { SocketProvider } from "./hooks/SocketContext";
+import UsuariosCrud from "./pages/UsuariosCRUD";
+import { ReproductorProvider } from "./hooks/ReproductorContext";
 
 function App() {
   const [auth, setAuth] = useState({ isAuthenticated: false, rol: null });
@@ -60,60 +62,69 @@ function App() {
   }, []);
 
   return (
-    <SocketProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <div>
-            <main className="flex-grow w-full ">
-              <Routes>
-                <Route path="/" element={<SidebarLayout />}>
-                  <Route path="anuncios" element={<AnunciosCRUD />} />
-                  <Route path="canciones" element={<CancionesCRUD />} />
-                  <Route path="genero" element={<GeneroCRUD />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="promociones" element={<PromocionesPage />} />
-                  <Route path="usuarios" element={<UsuariosPage />} />
-                  <Route path="productos" element={<Productos />} />
-                  <Route path="producto/:id" element={<ProductoDetalle />} />
+    // <ReproductorProvider>
+      <SocketProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <div>
+              <main className="flex-grow w-full ">
+                <Routes>
+                  <Route path="/" element={<SidebarLayout />}>
+                    <Route path="anuncios" element={<AnunciosCRUD />} />
+                    <Route path="canciones" element={<CancionesCRUD />} />
+                    <Route path="genero" element={<GeneroCRUD />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="promociones" element={<PromocionesPage />} />
+                    <Route path="usuarios" element={<UsuariosPage />} />
+                    <Route path="register-user" element={<UsuariosCrud />} />
+                    <Route path="productos" element={<Productos />} />
+                    <Route path="producto/:id" element={<ProductoDetalle />} />
+                    <Route
+                      path="/mas-reproducidas"
+                      element={<MasReproducidas />}
+                    />
+                    <Route
+                      path="/editar-mas-reproducidas"
+                      element={<EditarMasReproducidas />}
+                    />
+                    <Route path="solicitudes" element={<SolicitudesPage />} />
+                    <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
+                    <Route path="/playlist/:id" element={<MiPlaylist />} />
+                  </Route>
                   <Route
-                    path="/mas-reproducidas"
-                    element={<MasReproducidas />}
+                    path="/playlistPopular/:id"
+                    element={<MiPlaylistAdmin />}
                   />
                   <Route
-                    path="/editar-mas-reproducidas"
-                    element={<EditarMasReproducidas />}
+                    path="/mis-playlist/:id"
+                    element={<MiPlaylistUser2 />}
                   />
-                  <Route path="solicitudes" element={<SolicitudesPage />} />
-                  <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
-                  <Route path="/playlist/:id" element={<MiPlaylist />} />
-                </Route>
-                <Route
-                  path="/playlistPopular/:id"
-                  element={<MiPlaylistAdmin />}
-                />
-                <Route path="/mis-playlist/:id" element={<MiPlaylistUser2 />} />
-                <Route path="listacanciones" element={<ListaCanciones />} />
-                <Route
-                  path="ultimas-subidas"
-                  element={<ListaCancionesUltimas />}
-                />
-                <Route path="test" element={<PublicacionesCrud />} />
-                <Route index="/" element={<Inicial />} />
-                {/* <Route index="/" element={<Home />} /> */}
-                <Route path="/planes" element={<PlanTest />} />
-                <Route
-                  path="/login"
-                  element={<LoginForm setAuth={setAuth} />}
-                />
-                <Route path="/registro" element={<RegistrationForm />} />
-                <Route path="/publicaciones" element={<PublicacionesPage />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </BrowserRouter>
-      </AuthProvider>
-    </SocketProvider>
+                  <Route path="listacanciones" element={<ListaCanciones />} />
+                  <Route
+                    path="ultimas-subidas"
+                    element={<ListaCancionesUltimas />}
+                  />
+                  <Route path="test" element={<PublicacionesCrud />} />
+                  <Route index="/" element={<Inicial />} />
+                  {/* <Route index="/" element={<Home />} /> */}
+                  <Route path="/planes" element={<PlanTest />} />
+                  <Route
+                    path="/login"
+                    element={<LoginForm setAuth={setAuth} />}
+                  />
+                  <Route path="/registro" element={<RegistrationForm />} />
+                  <Route
+                    path="/publicaciones"
+                    element={<PublicacionesPage />}
+                  />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </BrowserRouter>
+        </AuthProvider>
+      </SocketProvider>
+    // </ReproductorProvider>
   );
 }
 

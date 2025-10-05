@@ -70,19 +70,26 @@ router.post("/cola/add", authenticate, async (req, res) => {
   }
 });
 
-router.delete("/cola/remove", async (req, res) => {
+router.delete("/cola/remove", authenticate, async (req, res) => {
   try {
-    const { _id } = req.body;
-    const eliminada = await Cola.findByIdAndDelete(_id);
+    const userId = req.user.id;
 
-    // Emitir evento cuando se elimina
-    const io = req.app.get("io");
-    io.to(eliminada.userId).emit("colaEliminada", eliminada);
-    res.json(eliminada);
+    // Elimina la cola del usuario
+    const eliminada = await Cola.findOneAndDelete({ user: userId });
+
+    if (eliminada) {
+      // Emitir evento a todos los sockets del usuario
+      const io = req.app.get("io");
+      io.to(userId).emit("colaEliminada", eliminada);
+    }
+
+    res.json({ message: "Cola eliminada correctamente", eliminada });
   } catch (err) {
+    console.error("Error al eliminar la cola:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 router.get("/cola/:userId", async (req, res) => {
   try {

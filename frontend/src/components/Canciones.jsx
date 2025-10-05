@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
+import ToastModal from "./modal/ToastModal";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
-import useSocket from "../hooks/useSocket"; // Ahora solo accede al contexto
+import useSocket from "../hooks/useSocket";
 import "../styles/listaCanciones.css";
 
 const SONG_URL = `${API_URL}/song/numero`;
@@ -16,8 +17,8 @@ export default function Canciones() {
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [filtros, setFiltros] = useState({ busqueda: "", ordenFecha: "desc" });
   const [videoActual, setVideoActual] = useState(null);
+  const [toastMsg, setToastMsg] = useState(""); // <-- Estado para el toast
 
-  // Autenticación segura
   let userId = null;
   let isAuthenticated = false;
   try {
@@ -31,12 +32,10 @@ export default function Canciones() {
     console.warn("Usuario no autenticado");
   }
 
-  // Suscribirse a eventos de la cola
-
-  const { socket, isConnected, emitEvent, onEvent } = useSocket();
+  const { socket, isConnected, onEvent } = useSocket();
 
   useEffect(() => {
-    if (!socket || !isConnected || !onEvent) return; // ❌ espera a que onEvent exista
+    if (!socket || !isConnected || !onEvent) return;
 
     const unsubscribeCola = onEvent("colaActualizada", (data) => {
       console.log("📥 Cola actualizada:", data);
@@ -57,22 +56,20 @@ export default function Canciones() {
     };
   }, [socket, isConnected, onEvent]);
 
-  // Abrir modal de playlist
   const handleOpenModal = (songId) => {
-    if (!isAuthenticated)
-      return alert("Inicia sesión para agregar a una playlist");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para agregar a una playlist");
+      return;
+    }
     setSelectedSongId(songId);
     setShowPlaylistModal(true);
   };
 
-  // Manejar filtros
   const handleChange = (e) => {
-    setMostrarReproductor(false);
     const { name, value } = e.target;
     setFiltros((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Cargar videos
   const fetchVideos = async (usarFiltro = false) => {
     try {
       const headers = isAuthenticated
@@ -101,26 +98,29 @@ export default function Canciones() {
     return () => clearTimeout(debounce);
   }, [filtros.busqueda, filtros.ordenFecha]);
 
-  // Agregar a favoritos
   const agregarAFavoritos = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para usar favoritos");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para usar favoritos");
+      return;
+    }
     try {
       await axios.post(
         `${API_URL}/t/favoritos/add`,
         { songId },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      alert("Canción agregada a favoritos");
+      setToastMsg("Canción agregada a favoritos");
     } catch (err) {
       console.error("Error al agregar a favoritos", err);
-      alert("Ocurrió un error al agregar a favoritos");
+      setToastMsg("Error al agregar a favoritos");
     }
   };
 
-  // Agregar a la cola
-
   const agregarACola = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para agregar a cola");
+      return;
+    }
 
     try {
       const res = await axios.post(
@@ -129,21 +129,18 @@ export default function Canciones() {
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
-      console.log("✅ Respuesta del servidor:", res.data);
-
       if (socket && socket.connected) {
         socket.emit("actualizarCola", { userId, songId });
-        alert("Canción agregada a la cola ✅");
+        setToastMsg("Canción agregada a la cola ✅");
       } else {
-        alert("Canción agregada a la cola (sin sincronización en tiempo real)");
+        setToastMsg("Canción agregada a la cola (sin sincronización en tiempo real)");
       }
     } catch (err) {
-      console.error("❌ Error al agregar a cola:", err.response?.data || err);
-      alert("No se pudo agregar la canción");
+      console.error("Error al agregar a cola:", err.response?.data || err);
+      setToastMsg("No se pudo agregar la canción");
     }
   };
 
-  // Agregar a playlist
   const handleAddToPlaylist = async (playlistId) => {
     if (!isAuthenticated) return;
     try {
@@ -152,11 +149,11 @@ export default function Canciones() {
         { playlistId, songId: selectedSongId },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      alert("Canción agregada al playlist ✅");
+      setToastMsg("Canción agregada al playlist ✅");
       setShowPlaylistModal(false);
     } catch (err) {
       console.error("Error al agregar canción", err);
-      alert("No se pudo agregar la canción ❌");
+      setToastMsg("No se pudo agregar la canción ❌");
     }
   };
 
@@ -203,9 +200,7 @@ export default function Canciones() {
 
               <button
                 className="video-btn play-btn"
-                onClick={() => {
-                  setVideoActual(video);
-                }}
+                onClick={() => setVideoActual(video)}
               >
                 <img src="./play.png" alt="" width="60px" />
               </button>
@@ -231,12 +226,16 @@ export default function Canciones() {
           onClose={() => setShowPlaylistModal(false)}
           userId={userId}
           songId={selectedSongId}
-          onAddToPlaylistSuccess={() =>
-            console.log("Canción agregada correctamente")
-          }
+          onAddToPlaylistSuccess={() => console.log("Canción agregada correctamente")}
         />
       )}
 
+      {/* Toast */}
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
 }

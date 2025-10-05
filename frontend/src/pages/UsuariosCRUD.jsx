@@ -3,19 +3,20 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { FiSave, FiTrash } from "react-icons/fi";
 
-const UsuariosPage = () => {
+const UsuariosCrud = () => {
   const [usuarios, setUsuarios] = useState([]);
-  const [filtroSuscripcion, setFiltroSuscripcion] = useState("todos");
-
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState("crear"); // "crear" o "editar"
   const [nuevoUsuario, setNuevoUsuario] = useState({
     nombre: "",
     email: "",
-    password: "",
-    confirmPassword: "",
+    password: "AmericanKaraoke100.",
+    rol: "cantante",
   });
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
   const [errorCreate, setErrorCreate] = useState(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [filtroSuscripcion, setFiltroSuscripcion] = useState("todos");
 
   useEffect(() => {
     fetchUsuarios();
@@ -48,6 +49,7 @@ const UsuariosPage = () => {
         suscrito: user.editSuscrito,
         subscriptionStart: user.editStart,
         subscriptionEnd: user.editEnd,
+        rol: user.rol,
       });
       alert("Usuario actualizado");
       fetchUsuarios();
@@ -57,7 +59,6 @@ const UsuariosPage = () => {
     }
   };
 
-  // Función para eliminar usuario
   const handleDeleteUser = async (id) => {
     const confirmDelete = window.confirm("¿Eliminar usuario?");
     if (!confirmDelete) return;
@@ -79,22 +80,21 @@ const UsuariosPage = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setErrorCreate(null);
-
-    nuevoUsuario.password = "AmericanKaraoke100.";
     setLoadingCreate(true);
     try {
       await axios.post(`${API_URL}/user`, {
         nombre: nuevoUsuario.nombre,
         email: nuevoUsuario.email,
         password: nuevoUsuario.password,
+        rol: nuevoUsuario.rol,
       });
       alert("Usuario creado exitosamente");
       setModalVisible(false);
       setNuevoUsuario({
         nombre: "",
         email: "",
-        password: "",
-        confirmPassword: "",
+        password: "AmericanKaraoke100.",
+        rol: "cantante",
       });
       fetchUsuarios();
     } catch (err) {
@@ -105,37 +105,63 @@ const UsuariosPage = () => {
     }
   };
 
-  const usuariosFiltrados = usuarios
-    .filter((usuario) => usuario.rol !== "admin") // primero excluimos los admin
-    .filter((usuario) => {
-      if (filtroSuscripcion === "todos") return true;
-      if (filtroSuscripcion === "suscritos") return usuario.suscrito === true;
-      if (filtroSuscripcion === "noSuscritos")
-        return usuario.suscrito === false;
-      return true;
+  // Abrir modal para edición
+  const handleEditUser = (user) => {
+    setModalMode("editar");
+    setUsuarioSeleccionado({
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      _id: user._id,
+      newPassword: "", // para actualizar si se ingresa
     });
+    setModalVisible(true);
+  };
 
-  const hoy = new Date().toISOString().split("T")[0];
+  // Submit único para modal
+  const handleSubmitModal = async (e) => {
+    e.preventDefault();
+    if (modalMode === "crear") {
+      handleCreateUser(e);
+    } else if (modalMode === "editar") {
+      try {
+        const data = {
+          nombre: usuarioSeleccionado.nombre,
+          email: usuarioSeleccionado.email,
+          rol: usuarioSeleccionado.rol,
+        };
+        if (usuarioSeleccionado.newPassword) {
+          data.password = usuarioSeleccionado.newPassword;
+        }
+
+        await axios.patch(`${API_URL}/users/${usuarioSeleccionado._id}`, data);
+
+        alert("Usuario actualizado");
+        setModalVisible(false);
+        setUsuarioSeleccionado(null);
+        fetchUsuarios();
+      } catch (err) {
+        console.error("Error actualizando usuario:", err);
+        alert("Error al actualizar usuario");
+      }
+    }
+  };
+
+  const usuariosFiltrados = usuarios.filter((usuario) => {
+    if (filtroSuscripcion === "todos") return true;
+    if (filtroSuscripcion === "suscritos") return usuario.suscrito === true;
+    if (filtroSuscripcion === "noSuscritos") return usuario.suscrito === false;
+    return true;
+  });
 
   return (
     <div>
-      <h2 className="font-bold mb-4">Lista de Usuarios</h2>
-
       <div className="mb-4 flex items-center gap-4 justify-between">
-        <div>
-          <label className="mr-2 font-medium">Filtrar por suscripción:</label>
-          <select
-            value={filtroSuscripcion}
-            onChange={(e) => setFiltroSuscripcion(e.target.value)}
-            className="border p-2 rounded"
-          >
-            <option value="todos">Todos</option>
-            <option value="suscritos">Suscritos</option>
-            <option value="noSuscritos">No Suscritos</option>
-          </select>
-        </div>
         <button
-          onClick={() => setModalVisible(true)}
+          onClick={() => {
+            setModalMode("crear");
+            setModalVisible(true);
+          }}
           className="bg-primary text-white px-4 py-2 rounded"
         >
           + Crear Usuario
@@ -148,9 +174,6 @@ const UsuariosPage = () => {
             <th className="py-2 px-4 border">Nombre</th>
             <th className="py-2 px-4 border">Email</th>
             <th className="py-2 px-4 border">Rol</th>
-            <th className="py-2 px-4 border">Activar</th>
-            <th className="py-2 px-4 border">Inicio</th>
-            <th className="py-2 px-4 border">Fin</th>
             <th className="py-2 px-4 border">Acción</th>
           </tr>
         </thead>
@@ -159,41 +182,17 @@ const UsuariosPage = () => {
             <tr key={user._id} className="text-center">
               <td className="py-2 px-4 border">{user.nombre}</td>
               <td className="py-2 px-4 border">{user.email}</td>
-              <td className="py-2 px-4 border">{user.rol}</td>
               <td className="py-2 px-4 border">
-                <input
-                  type="checkbox"
-                  checked={user.editSuscrito}
+                <select
+                  className="form-select"
+                  value={user.rol}
                   onChange={(e) =>
-                    handleInputChange(
-                      user._id,
-                      "editSuscrito",
-                      e.target.checked
-                    )
+                    handleInputChange(user._id, "rol", e.target.value)
                   }
-                />
-              </td>
-              <td className="py-2 px-4 border">
-                <input
-                  type="date"
-                  min={hoy}
-                  value={user.editStart}
-                  onChange={(e) =>
-                    handleInputChange(user._id, "editStart", e.target.value)
-                  }
-                  className="border rounded px-2"
-                />
-              </td>
-              <td className="py-2 px-4 border">
-                <input
-                  type="date"
-                  min={hoy}
-                  value={user.editEnd}
-                  onChange={(e) =>
-                    handleInputChange(user._id, "editEnd", e.target.value)
-                  }
-                  className="border rounded px-2"
-                />
+                >
+                  <option value="cantante">Cantante</option>
+                  <option value="admin">Admin</option>
+                </select>
               </td>
               <td className="py-2 px-4 border flex justify-center gap-2">
                 <button
@@ -205,10 +204,17 @@ const UsuariosPage = () => {
                 </button>
                 <button
                   onClick={() => handleDeleteUser(user._id)}
-                  className="bg-danger text-white px-2 py-1 rounded "
+                  className="bg-danger text-white px-2 py-1 rounded"
                   title="Eliminar Usuario"
                 >
                   <FiTrash />
+                </button>
+                <button
+                  onClick={() => handleEditUser(user)}
+                  className="bg-yellow-500 text-white px-2 py-1 rounded"
+                  title="Editar Usuario"
+                >
+                  ✏️
                 </button>
               </td>
             </tr>
@@ -216,7 +222,7 @@ const UsuariosPage = () => {
         </tbody>
       </table>
 
-      {/* Modal Crear Usuario */}
+      {/* Modal Crear/Editar Usuario */}
       {modalVisible && (
         <div
           className="modal show fade d-block"
@@ -232,7 +238,9 @@ const UsuariosPage = () => {
           >
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Crear Usuario</h5>
+                <h5 className="modal-title">
+                  {modalMode === "crear" ? "Crear Usuario" : "Editar Usuario"}
+                </h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -243,15 +251,27 @@ const UsuariosPage = () => {
                 {errorCreate && (
                   <div className="alert alert-danger">{errorCreate}</div>
                 )}
-                <form onSubmit={handleCreateUser}>
+                <form onSubmit={handleSubmitModal}>
                   <div className="mb-3">
                     <label className="form-label">Nombre</label>
                     <input
                       type="text"
                       className="form-control"
                       name="nombre"
-                      value={nuevoUsuario.nombre}
-                      onChange={handleChangeNuevoUsuario}
+                      value={
+                        modalMode === "editar"
+                          ? usuarioSeleccionado.nombre
+                          : nuevoUsuario.nombre
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        modalMode === "editar"
+                          ? setUsuarioSeleccionado((prev) => ({
+                              ...prev,
+                              nombre: value,
+                            }))
+                          : handleChangeNuevoUsuario(e);
+                      }}
                       required
                     />
                   </div>
@@ -261,20 +281,78 @@ const UsuariosPage = () => {
                       type="email"
                       className="form-control"
                       name="email"
-                      value={nuevoUsuario.email}
-                      onChange={handleChangeNuevoUsuario}
+                      value={
+                        modalMode === "editar"
+                          ? usuarioSeleccionado.email
+                          : nuevoUsuario.email
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        modalMode === "editar"
+                          ? setUsuarioSeleccionado((prev) => ({
+                              ...prev,
+                              email: value,
+                            }))
+                          : handleChangeNuevoUsuario(e);
+                      }}
                       required
                     />
                   </div>
+
+                  {/* Nueva contraseña opcional */}
+                  {modalMode === "editar" && (
+                    <div className="mb-3">
+                      <label className="form-label">Nueva Contraseña</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        placeholder="Dejar vacío para no cambiar"
+                        value={usuarioSeleccionado.newPassword}
+                        onChange={(e) =>
+                          setUsuarioSeleccionado((prev) => ({
+                            ...prev,
+                            newPassword: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {modalMode === "crear" && (
+                    <div className="mb-3">
+                      <label className="form-label">Contraseña</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={nuevoUsuario.password}
+                        readOnly
+                      />
+                    </div>
+                  )}
+
                   <div className="mb-3">
-                    <label className="form-label">Contraseña</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="confirmPassword"
-                      value="AmericanKaraoke100."
-                      readOnly
-                    />
+                    <label className="form-label">Rol</label>
+                    <select
+                      className="form-select"
+                      name="rol"
+                      value={
+                        modalMode === "editar"
+                          ? usuarioSeleccionado.rol
+                          : nuevoUsuario.rol
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        modalMode === "editar"
+                          ? setUsuarioSeleccionado((prev) => ({
+                              ...prev,
+                              rol: value,
+                            }))
+                          : handleChangeNuevoUsuario(e);
+                      }}
+                    >
+                      <option value="cantante">Cantante</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   </div>
 
                   <div className="d-flex justify-content-end gap-2">
@@ -290,7 +368,11 @@ const UsuariosPage = () => {
                       className="btn btn-primary"
                       disabled={loadingCreate}
                     >
-                      {loadingCreate ? "Creando..." : "Crear"}
+                      {modalMode === "crear"
+                        ? loadingCreate
+                          ? "Creando..."
+                          : "Crear"
+                        : "Guardar Cambios"}
                     </button>
                   </div>
                 </form>
@@ -303,4 +385,4 @@ const UsuariosPage = () => {
   );
 };
 
-export default UsuariosPage;
+export default UsuariosCrud;
