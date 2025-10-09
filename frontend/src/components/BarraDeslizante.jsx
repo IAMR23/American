@@ -5,11 +5,11 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
   // Ajuste de tamaño de letra según pantalla
   let fontSize;
   if (isFullscreen) {
-    fontSize = "70px";
+    fontSize = "60px";
   } else if (window.innerWidth >= 1200) { // pantallas grandes
-    fontSize = "35px"; // un poco más pequeña
+    fontSize = "30px"; // un poco más pequeña
   } else {
-    fontSize = "40px"; // tamaño normal
+    fontSize = "20px"; // tamaño normal
   }
 
   const animationDuration = isFullscreen ? "25s" : "22s"; // más lento en fullscreen
@@ -18,7 +18,7 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
     <div
       style={{
         position: "absolute",
-        top: "30%",
+        top: "10vh",
         width: "100%",
         overflow: "hidden",
       }}
@@ -28,10 +28,10 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
           whiteSpace: "nowrap",
           display: "inline-block",
           padding: "10px",
-          color: "gray",
+          color: "white",           // texto blanco
           fontWeight: "bold",
           fontSize,
-          WebkitTextStroke: "2px gray",
+          WebkitTextStroke: "2px gray", // contorno negro
           animation: `mover ${animationDuration} linear infinite`,
         }}
       >

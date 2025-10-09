@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { API_URL } from '../config'; 
+import { API_URL } from '../config';
 
 const SocketContext = createContext();
 
@@ -16,7 +16,7 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const eventBuffer = useRef([]); // Para eventos emitidos mientras no hay conexión
+  const eventBuffer = useRef([]); // Eventos pendientes mientras no hay conexión
 
   const connectSocket = (userId) => {
     if (!userId) return console.warn("❌ SocketContext: No userId provided");
@@ -31,7 +31,6 @@ export const SocketProvider = ({ children }) => {
       socketRef.current.disconnect();
     }
 
-  // const newSocket = io("https://american-karaoke.com", {
     const newSocket = io(API_URL, {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
@@ -49,7 +48,7 @@ export const SocketProvider = ({ children }) => {
       console.log('✅ Socket conectado:', newSocket.id);
       setIsConnected(true);
       newSocket.emit('join', userId);
-      
+
       // Emitir eventos pendientes
       eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
       eventBuffer.current = [];
@@ -69,7 +68,7 @@ export const SocketProvider = ({ children }) => {
       console.log('🔄 Socket reconectado tras', attempt, 'intentos');
       setIsConnected(true);
       newSocket.emit('join', userId);
-      
+
       // Emitir eventos pendientes tras reconexión
       eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
       eventBuffer.current = [];
@@ -100,30 +99,39 @@ export const SocketProvider = ({ children }) => {
   };
 
   const onEvent = (event, callback) => {
-    if (socketRef.current) {
-      socketRef.current.on(event, callback);
-      return () => socketRef.current.off(event, callback);
-    }
-    return () => {};
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(event, callback);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off(event, callback);
+      }
+    };
   };
 
-  // Cleanup global
+  // Cleanup global al desmontar el provider
   useEffect(() => {
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={{
-      socket: socketRef.current,
-      isConnected,
-      currentUserId,
-      connectSocket,
-      disconnectSocket,
-      emitEvent,
-      onEvent
-    }}>
+    <SocketContext.Provider
+      value={{
+        socket: socketRef.current,
+        isConnected,
+        currentUserId,
+        connectSocket,
+        disconnectSocket,
+        emitEvent,
+        onEvent,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );

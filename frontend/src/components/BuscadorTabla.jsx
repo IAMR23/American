@@ -111,7 +111,6 @@ const BuscadorTabla = () => {
       // Insertar en cola local y emitir socket
       insertarEnColaDespuesActual(song, emitirCola);
 
-      alert("🎵 Canción agregada a la cola ✅");
     } catch (err) {
       console.error(err);
       alert("No se pudo agregar a la cola ❌");

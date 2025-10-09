@@ -4,12 +4,13 @@ import { BsHeart, BsList } from "react-icons/bs";
 import { FaPlus } from "react-icons/fa";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import { jwtDecode } from "jwt-decode";
-import { API_URL } from "../config"
+import { API_URL } from "../config";
 import { getYoutubeThumbnail } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
+import useSocket from "../hooks/useSocket"; // <-- Importamos el hook de socket
+
 const SONG_URL = `${API_URL}/song`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
-
 
 export default function BuscadorCanciones({
   setCola,
@@ -25,6 +26,7 @@ export default function BuscadorCanciones({
     busqueda: "",
     ordenFecha: "desc",
   });
+  const [toastMsg, setToastMsg] = useState("");
 
   // Autenticación segura
   let userId = null;
@@ -39,6 +41,32 @@ export default function BuscadorCanciones({
   } catch (error) {
     console.warn("Usuario no autenticado");
   }
+
+  // Socket para sincronizar la cola
+  const { socket, isConnected, onEvent } = useSocket();
+
+  useEffect(() => {
+    if (!socket || !isConnected || !onEvent) return;
+
+    const unsubscribeCola = onEvent("colaActualizada", (data) => {
+      console.log("📥 Cola actualizada:", data);
+      if (setCola) setCola(data);
+    });
+
+    const unsubscribeCambiar = onEvent("cambiarCancionCliente", (index) => {
+      console.log("🎵 Cambiar canción a índice:", index);
+    });
+
+    const unsubscribeAgregada = onEvent("cancionAgregada", (data) => {
+    ///  console.log("✅ Canción agregada confirmada:", data);
+    });
+
+    return () => {
+      unsubscribeCola();
+      unsubscribeCambiar();
+      unsubscribeAgregada();
+    };
+  }, [socket, isConnected, onEvent, setCola]);
 
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
@@ -57,14 +85,12 @@ export default function BuscadorCanciones({
   const fetchVideos = async (usarFiltro = false) => {
     try {
       const headers = isAuthenticated
-        ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        ? { Authorization: `Bearer ${getToken()}` }
         : {};
-
       const url = usarFiltro ? FILTRO_URL : SONG_URL;
       const params = usarFiltro
         ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha }
         : {};
-
       const res = await axios.get(url, { headers, params });
       setVideos(res.data.canciones || res.data);
     } catch (err) {
@@ -78,11 +104,8 @@ export default function BuscadorCanciones({
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      if (filtros.busqueda.trim() !== "") {
-        fetchVideos(true);
-      } else {
-        fetchVideos();
-      }
+      if (filtros.busqueda.trim() !== "") fetchVideos(true);
+      else fetchVideos();
     }, 500);
     return () => clearTimeout(delayDebounce);
   }, [filtros.busqueda, filtros.ordenFecha]);
@@ -94,11 +117,7 @@ export default function BuscadorCanciones({
       await axios.post(
         `${API_URL}/t/favoritos/add`,
         { songId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       alert("Canción agregada a favoritos");
     } catch (error) {
@@ -108,15 +127,35 @@ export default function BuscadorCanciones({
   };
 
   const agregarACola = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para agregar a cola");
+      return;
+    }
 
     try {
-      if (onAgregarCancion) {
-        await onAgregarCancion(songId);
+      const token = getToken();
+      // Llamada al backend
+      await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Pedimos al backend la canción completa
+      const res = await axios.get(`${API_URL}/song/${songId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const nuevaCancion = res.data;
+
+      // Insertamos en la cola local + emitimos socket
+      if (insertarEnColaDespuesActual) {
+        insertarEnColaDespuesActual(nuevaCancion, socket?.emit);
       }
-    } catch (error) {
-      console.error("Error al agregar a cola", error);
-      alert("No se pudo agregar la canción");
+
+      setToastMsg("Canción agregada a la cola ✅");
+    } catch (err) {
+      console.error("Error al agregar a cola:", err.response?.data || err);
+      setToastMsg("No se pudo agregar la canción");
     }
   };
 
@@ -126,15 +165,9 @@ export default function BuscadorCanciones({
     try {
       await axios.post(
         `${API_URL}/t/playlist/cancion`,
-        {
-          playlistId,
-          songId: selectedSongId,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { playlistId, songId: selectedSongId },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("Canción agregada al playlist ✅");
       setShowPlaylistModal(false);
     } catch (error) {
       console.error("Error al agregar canción", error);
@@ -216,9 +249,7 @@ export default function BuscadorCanciones({
             onClose={() => setShowPlaylistModal(false)}
             userId={userId}
             songId={selectedSongId}
-            onAddToPlaylistSuccess={() => {
-              console.log("Canción agregada correctamente");
-            }}
+            onAddToPlaylistSuccess
           />
         )}
       </div>

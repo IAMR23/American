@@ -8,6 +8,8 @@ import { getToken } from "../utils/auth";
 import "../styles/MasReproducidasComponents.css";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { FaPlay } from "react-icons/fa";
+import useSocket from "../hooks/useSocket";
+import ToastModal from "./modal/ToastModal";
 
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
@@ -21,12 +23,13 @@ export default function MasReproducidas({
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
+  const [toastMsg, setToastMsg] = useState("");
 
   const carouselRef = useRef(null);
   const visible = 5;
   let index = useRef(0);
 
-  // Autenticación segura
+  // Autenticación
   let userId = null;
   let isAuthenticated = false;
   try {
@@ -39,6 +42,31 @@ export default function MasReproducidas({
   } catch {
     console.warn("Usuario no autenticado");
   }
+
+  // Socket
+  const { socket, isConnected, onEvent } = useSocket();
+
+  useEffect(() => {
+    if (!socket || !isConnected || !onEvent) return;
+
+    const unsubscribeCola = onEvent("colaActualizada", (data) => {
+      console.log("📥 Cola actualizada:", data);
+    });
+
+    const unsubscribeCambiar = onEvent("cambiarCancionCliente", (index) => {
+      console.log("🎵 Cambiar canción a índice:", index);
+    });
+
+    const unsubscribeAgregada = onEvent("cancionAgregada", (data) => {
+      console.log("✅ Canción agregada confirmada:", data);
+    });
+
+    return () => {
+      unsubscribeCola();
+      unsubscribeCambiar();
+      unsubscribeAgregada();
+    };
+  }, [socket, isConnected, onEvent]);
 
   const fetchVideos = async () => {
     try {
@@ -56,7 +84,7 @@ export default function MasReproducidas({
     fetchVideos();
   }, []);
 
-  // Funciones del carrusel
+  // Carrusel
   const updateCarousel = () => {
     if (!carouselRef.current) return;
     const offset = -(index.current * (100 / visible));
@@ -75,16 +103,16 @@ export default function MasReproducidas({
     updateCarousel();
   };
 
-  // Autoplay
   useEffect(() => {
     if (videos.length <= visible) return;
     const interval = setInterval(moveNext, 5000);
     return () => clearInterval(interval);
   }, [videos]);
 
+  // Funciones
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
-      alert("Inicia sesión para agregar a una playlist");
+      setToastMsg("Inicia sesión para agregar a una playlist");
       return;
     }
     setSelectedSongId(songId);
@@ -92,65 +120,70 @@ export default function MasReproducidas({
   };
 
   const agregarAFavoritos = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para usar favoritos");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para usar favoritos");
+      return;
+    }
     try {
-      const token = getToken();
       await axios.post(
         `${API_URL}/t/favoritos/add`,
         { songId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      alert("Canción agregada a favoritos");
-    } catch (error) {
-      alert("Ocurrió un error al agregar a favoritos");
+      setToastMsg("Canción agregada a favoritos");
+    } catch (err) {
+      console.error("Error al agregar a favoritos", err);
+      setToastMsg("Error al agregar a favoritos");
     }
   };
 
   const agregarACola = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para agregar a cola");
+      return;
+    }
 
     try {
       if (onAgregarCancion) {
         await onAgregarCancion(songId);
+
+        if (socket && socket.connected) {
+          socket.emit("actualizarCola", { userId, songId });
+          setToastMsg("Canción agregada a la cola ✅");
+        } else {
+          setToastMsg(
+            "Canción agregada a la cola (sin sincronización en tiempo real)"
+          );
+        }
       }
-    } catch (error) {
-      console.error("Error al agregar a cola", error);
-      alert("No se pudo agregar la canción");
+    } catch (err) {
+      console.error("Error al agregar a cola", err);
+      setToastMsg("No se pudo agregar la canción");
     }
   };
 
   const handleAddToPlaylist = async (playlistId) => {
     if (!isAuthenticated) return;
-    const token = getToken();
     try {
       await axios.post(
         `${API_URL}/t/playlist/cancion`,
-        {
-          playlistId,
-          songId: selectedSongId,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { playlistId, songId: selectedSongId },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      alert("Canción agregada al playlist ✅");
+      setToastMsg("Canción agregada al playlist ✅");
       setShowPlaylistModal(false);
-    } catch (error) {
-      console.error("Error al agregar canción", error);
-      alert("No se pudo agregar la canción ❌");
+    } catch (err) {
+      console.error("Error al agregar canción", err);
+      setToastMsg("No se pudo agregar la canción ❌");
     }
   };
 
   const masReproducida = async (id) => {
     await axios.post(`${API_URL}/song/${id}/reproducir`);
-    // lógica para reproducir el video...
   };
+
   return (
-    <div className="carousel-container ">
+    <div className="carousel-container">
       <button className="arrow arrow-left" onClick={movePrev}>
         &#10094;
       </button>
@@ -161,31 +194,28 @@ export default function MasReproducidas({
       <div className="carousel" ref={carouselRef}>
         {videos.map((video) => (
           <div key={video._id} className="item">
-            {/* Contenedor relativo */}
             <div className="image-container">
               <img
                 src={dropboxUrlToRaw(video.imagenUrl) || null}
                 alt={`Miniatura de ${video.titulo}`}
                 loading="lazy"
                 style={{
-                  width: window.innerWidth < 768 ? "400px" : "480px", // <768px es móvil
-                  height: window.innerWidth < 768 ? "270px" : "288px", // mantener proporción 16:9
+                  width: window.innerWidth < 768 ? "400px" : "480px",
+                  height: window.innerWidth < 768 ? "270px" : "288px",
                   objectFit: "cover",
                   borderRadius: "12px",
                 }}
               />
 
-              {/* Botón corazón (arriba izquierda) */}
               <button
                 className="btn-heart"
                 onClick={() => handleOpenModal(video._id)}
-                title="Agregar a favoritos"
+                title="Agregar a playlist"
                 disabled={!isAuthenticated}
               >
                 <img src="./heart.png" alt="" />
               </button>
 
-              {/* Botón lista (arriba derecha) */}
               <button
                 className="btn-list"
                 onClick={() => agregarACola(video._id)}
@@ -195,18 +225,17 @@ export default function MasReproducidas({
                 <img src="./mas.png" alt="" width={"40px"} />
               </button>
 
-              {/* Botón play (centro) */}
               <button
                 className="btn-play"
                 onClick={async () => {
                   await masReproducida(video._id);
-                  let index = cola.findIndex((c) => c._id === video._id);
-                  if (index === -1 && onAgregarCancion) {
+                  let indexSong = cola.findIndex((c) => c._id === video._id);
+                  if (indexSong === -1 && onAgregarCancion) {
                     await onAgregarCancion(video._id);
-                    index = cola.length;
+                    indexSong = cola.length;
                   }
-                  if (onPlaySong && index !== -1) onPlaySong(index);
-                  else alert("No se pudo reproducir la canción.");
+                  if (onPlaySong && indexSong !== -1) onPlaySong(indexSong);
+                  else setToastMsg("No se pudo reproducir la canción.");
                 }}
                 title="Reproducir ahora"
               >
@@ -214,7 +243,6 @@ export default function MasReproducidas({
               </button>
             </div>
 
-            {/* Texto debajo */}
             <span className="fw-bold text-light">{video.titulo}</span>
             <small className="text-light">
               {video.artista} - {video.generos?.nombre || "Sin género"}
@@ -232,6 +260,12 @@ export default function MasReproducidas({
           onAddToPlaylistSuccess={() => {}}
         />
       )}
+
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
 }

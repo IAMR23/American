@@ -136,20 +136,6 @@ export default function Inicial() {
     }
     setSeccionActiva("video");
   };
-
-  // const cerrarSesion = () => {
-  //   localStorage.removeItem("token");
-  //   setUserId(null);
-  //   setUserRole(null);
-
-  //   // LIMPIAR LA COLA AL CERRAR SESIÓN
-  //   setCola([]);
-  //   setCurrentIndex(0);
-  //   setModoReproduccion("cola");
-
-  //   window.location.reload();
-  // };
-
   const cerrarSesion = async () => {
     try {
       const token = getToken();
@@ -174,7 +160,7 @@ export default function Inicial() {
     setCurrentIndex(0);
     setModoReproduccion("cola");
 
-  //  window.location.reload();
+    //  window.location.reload();
   };
 
   const handlePlaySong = (index) => {
@@ -209,7 +195,6 @@ export default function Inicial() {
       }
 
       insertarEnColaDespuesActual(nuevaCancion, emitirCola);
-      alert("🎵 Canción agregada correctamente");
     } catch (err) {
       console.error(err);
       alert("No se pudo agregar la canción");
@@ -446,67 +431,14 @@ export default function Inicial() {
 
         {/* Cola dinámica */}
 
-        {/* este si vale  */}
-        {/* <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
-          <h2 className="text-white">Canciones a la cola</h2>
-          {getColaVisible().map((cancion, idx) => {
-            const indexReal =
-              currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
-            return (
-              <div
-                key={indexReal}
-                onClick={() => handleCambiarCancion(indexReal)}
-                className="song-icon position-relative"
-                style={{ cursor: "pointer" }}
-              >
-                <FaCompactDisc
-                  size={40}
-                  className={`mb-1 ${
-                    indexReal === currentIndex ? "song-playing" : "text-primary"
-                  }`}
-                />
-                <div className="custom-tooltip">
-                  <strong>{cancion.titulo}</strong>
-                  <br />
-                  <small>{cancion.artista}</small>
-                </div>
-              </div>
-            );
-          })}
-        </div> */}
-
-        <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 m-3">
-          <h2 className="text-white mb-2">Canciones a la cola</h2>
-
-          <div className="cola-container position-relative">
-            {/* Flechas solo si hay más de 8 canciones */}
-            {getColaVisible().length > 8 && (
-              <>
-                <button
-                  className="scroll-btn left"
-                  onClick={() => {
-                    document
-                      .querySelector(".cola-scroll")
-                      .scrollBy({ left: -150, behavior: "smooth" });
-                  }}
-                >
-                  ◀
-                </button>
-                <button
-                  className="scroll-btn right"
-                  onClick={() => {
-                    document
-                      .querySelector(".cola-scroll")
-                      .scrollBy({ left: 150, behavior: "smooth" });
-                  }}
-                >
-                  ▶
-                </button>
-              </>
-            )}
-
-            {/* Contenedor horizontal */}
-            <div className="cola-scroll d-flex gap-3 overflow-auto">
+        <div className="d-flex flex-column m-3">
+          <div className="d-flex align-items-start gap-3">
+            <h2 className="text-white">Canciones a la cola</h2>
+            <div
+              className={`cola-canciones ${
+                getColaVisible().length > 8 ? "scrollable" : ""
+              }`}
+            >
               {getColaVisible().map((cancion, idx) => {
                 const indexReal =
                   currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
@@ -515,11 +447,7 @@ export default function Inicial() {
                     key={indexReal}
                     onClick={() => handleCambiarCancion(indexReal)}
                     className="song-icon position-relative"
-                    style={{
-                      cursor: "pointer",
-                      minWidth: "80px",
-                      textAlign: "center",
-                    }}
+                    style={{ cursor: "pointer" }}
                   >
                     <FaCompactDisc
                       size={40}
