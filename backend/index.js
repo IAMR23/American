@@ -29,6 +29,7 @@ const PORT = process.env.PORT || 5000;
 // ====================
 const allowedOrigins = [
   "https://american-karaoke.com",
+  "https://www.american-karaoke.com",
   "http://localhost:5173",
   "http://192.168.1.33:5173",
 ];
