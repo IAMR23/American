@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
-import { PitchDetector } from "pitchy";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
+import { BsMusicNote } from "react-icons/bs";
+import { RiMusic2Fill } from "react-icons/ri";
+
+import { MdLibraryMusic } from "react-icons/md";
 
 export default function VideoPlayer({
   cola = [],
@@ -403,8 +406,19 @@ export default function VideoPlayer({
         )}
 
         {showNextMessage && (
+          // <BarraDeslizante
+          //   texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
+          //   isFullscreen={isFullscreen}
+          // />
           <BarraDeslizante
-            texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
+            texto={
+              <>
+                <BsMusicNote style={{ color: "#6f42c1" }} />{" "}
+                {/* Morado Bootstrap */}
+                &nbsp;Proxima cancion: {nextSongName}&nbsp;
+                <BsMusicNote style={{ color: "#6f42c1" }} />
+              </>
+            }
             isFullscreen={isFullscreen}
           />
         )}
