@@ -415,7 +415,7 @@ export default function VideoPlayer({
               <>
                 <BsMusicNote style={{ color: "#6f42c1" }} />{" "}
                 {/* Morado Bootstrap */}
-                &nbsp;Proxima cancion: {nextSongName}&nbsp;
+                &nbsp;Próxima canción: {nextSongName}&nbsp;
                 <BsMusicNote style={{ color: "#6f42c1" }} />
               </>
             }

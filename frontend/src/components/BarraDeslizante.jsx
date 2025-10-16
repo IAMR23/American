@@ -44,12 +44,14 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
 
   <style>
     {`
+
+
       @font-face {
-        font-family: 'BBH Sans Hegarty';
-        src: url('/fonts/BBHSansHegarty.ttf') format('truetype');
-        font-weight: normal;
-        font-style: normal;
-      }
+  font-family: "Jacques Francois Shadow", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
 
       @keyframes mover {
         0%   { transform: translateX(100vw); }
