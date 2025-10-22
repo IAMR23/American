@@ -16,34 +16,33 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
   const animationDuration = isFullscreen ? "25s" : "22s"; // más lento en fullscreen
 
   return (
-   
     <div
-  style={{
-    position: "absolute",
-    top: "25vh",
-    width: "100%",
-    overflow: "hidden",
-  }}
->
-  <div
-    style={{
-      whiteSpace: "nowrap",
-      display: "inline-block",
-      padding: "10px",
-      color: "transparent",                // texto transparente
-      fontWeight: "bold",
-      fontSize,
-      fontFamily: "'BBH Sans Hegarty', sans-serif", // fuente personalizada
-      WebkitTextStroke: "2px black",        // borde gris
-      WebkitTextFillColor: "transparent",  // relleno transparente
-      animation: `mover ${animationDuration} linear infinite`,
-    }}
-  >
-    {texto}
-  </div>
+      style={{
+        position: "absolute",
+        top: "25vh",
+        width: "100%",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          whiteSpace: "nowrap",
+          display: "inline-block",
+          padding: "10px",
+          color: "transparent", // texto transparente
+          fontWeight: "bold",
+          fontSize,
+          fontFamily: "'BBH Sans Hegarty', sans-serif", // fuente personalizada
+          WebkitTextStroke: "2px black", // borde gris
+          WebkitTextFillColor: "transparent", // relleno transparente
+          animation: `mover ${animationDuration} linear infinite`,
+        }}
+      >
+        {texto}
+      </div>
 
-  <style>
-    {`
+      <style>
+        {`
 
 
       @font-face {
@@ -58,8 +57,7 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
         100% { transform: translateX(-100%); }
       }
     `}
-  </style>
-</div>
-
+      </style>
+    </div>
   );
 }

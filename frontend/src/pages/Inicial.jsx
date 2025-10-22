@@ -5,6 +5,7 @@ import "../styles/disco.css";
 import { FaCompactDisc } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
+import axios from "axios";
 
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import VideoPlayer from "../components/VideoPlayer";
@@ -22,11 +23,9 @@ import MasReproducidas from "../components/MasReproducidas";
 
 import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
-
-import useSocket from "../hooks/useSocket";
-import useCola from "../utils/useCola";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
+import { useQueueContext } from "../hooks/QueueProvider";
 
 export default function Inicial() {
   const navigate = useNavigate();
@@ -37,35 +36,30 @@ export default function Inicial() {
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
 
   // ------------------ Hooks personalizados ------------------
+
   const {
     cola,
-    setCola,
     currentIndex,
+    setCola,
     setCurrentIndex,
-    modoReproduccion,
-    setModoReproduccion,
-    getColaVisible,
-    cargarCola,
-    reproducirCancion,
-    insertarEnColaDespuesActual,
-  } = useCola();
+    emitirCambiarCancion,
+  } = useQueueContext();
+
+ // const MIN_ANTERIORES = 2;
+
+  const getColaVisible = () => {
+    const start =
+      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+    const visibles = cola.slice(start);
+    return visibles.filter((c) => c && c._id);
+  };
 
   const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
     usePlaylists(userId);
 
-  // Función callback para manejar cambios de canción remotos
-  const handleCancionCambiadaRemota = (index) => {
-    console.log("Canción cambiada remotamente al índice:", index);
-    setCurrentIndex(index);
-  };
-
-  const { socket, emitirCola, emitirCambiarCancion } = useSocket(
-    userId,
-    handleCancionCambiadaRemota
-  );
-
   // ------------------ Manejo de token ------------------
   useEffect(() => {
+    console.log(cola)
     const token = getToken();
     if (!token) return;
 
@@ -77,43 +71,7 @@ export default function Inicial() {
     } catch (err) {
       console.error("Token inválido", err);
     }
-  }, []);
-
-  // ------------------ Cargar cola inicial ------------------
-  useEffect(() => {
-    const token = getToken();
-    if (!token) cargarCola();
-  }, []);
-
-  // ------------------ Suscripción al socket ------------------
-
-  const [colaCargada, setColaCargada] = useState(false);
-
-  useEffect(() => {
-    if (!socket || !userId) return;
-
-    socket.emit("join", userId);
-    socket.emit("pedirCola", userId);
-
-    const handleColaActualizada = ({ nuevaCola, indexActual }) => {
-      if (!nuevaCola) return;
-
-      setCola(nuevaCola.filter((c) => c && c._id));
-
-      // Solo setear currentIndex si no hemos cargado la cola aún
-      setCurrentIndex((prevIndex) => {
-        if (!colaCargada) {
-          setColaCargada(true);
-          return indexActual ?? 0;
-        }
-        return prevIndex;
-      });
-    };
-
-    socket.on("colaActualizada", handleColaActualizada);
-
-    return () => socket.off("colaActualizada", handleColaActualizada);
-  }, [socket, userId, colaCargada]);
+  }, [cola]);
 
   // ------------------ Funciones ------------------
   const handleLoginSuccess = async () => {
@@ -152,21 +110,12 @@ export default function Inicial() {
       console.error("Error al eliminar la cola:", err);
     }
 
-    // Limpiar estado local
     localStorage.removeItem("token");
     setUserId(null);
     setUserRole(null);
     setCola([]);
     setCurrentIndex(0);
     setModoReproduccion("cola");
-
-    //  window.location.reload();
-  };
-
-  const handlePlaySong = (index) => {
-    reproducirCancion(index, emitirCambiarCancion);
-    setSeccionActiva("video");
-    setShouldFullscreen(true);
   };
 
   // Función mejorada para cambiar canción con sincronización
@@ -175,35 +124,8 @@ export default function Inicial() {
     emitirCambiarCancion(index);
   };
 
-  const insertarCancion = async (songId) => {
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_URL}/song/${songId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const nuevaCancion = await res.json();
-
-      if (modoReproduccion === "cola") {
-        await fetch(`${API_URL}/t/cola/add`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ songId }),
-        });
-      }
-
-      insertarEnColaDespuesActual(nuevaCancion, emitirCola);
-    } catch (err) {
-      console.error(err);
-      alert("No se pudo agregar la canción");
-    }
-  };
-
   const cargarPlaylistACola = async (playlistId, esPropia = false) => {
     const token = getToken();
-    console.log("CP1f");
     try {
       const url = esPropia
         ? `${API_URL}/t2/playlistPropia/canciones/${playlistId}`
@@ -223,7 +145,6 @@ export default function Inicial() {
     }
   };
 
-  // ------------------ Renderizado de secciones ------------------
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
@@ -280,7 +201,6 @@ export default function Inicial() {
     }
   };
 
-  // ------------------ Render principal ------------------
   return (
     <>
       <div className="bg-primary container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
@@ -436,10 +356,10 @@ export default function Inicial() {
             <h2 className="text-white">Canciones a la cola</h2>
             <div
               className={`cola-canciones ${
-                getColaVisible().length > 8 ? "scrollable" : ""
+                cola.length > 8 ? "scrollable" : ""
               }`}
             >
-              {getColaVisible().map((cancion, idx) => {
+              {cola.map((cancion, idx) => {
                 const indexReal =
                   currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
                 return (
@@ -468,28 +388,6 @@ export default function Inicial() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Sección especial */}
-      <div className="fondo p-2">
-        <AnunciosVisibles />
-        <h1 className="p-2 text-white">Selección especial</h1>
-        <Carrousel
-          className="bg-dark"
-          setCola={setCola}
-          cola={cola}
-          cargarCola={cargarCola}
-          onAgregarCancion={insertarCancion}
-          onPlaySong={handlePlaySong}
-        />
-        <h1 className="p-2 text-white">Las más populares</h1>
-        <MasReproducidas
-          setCola={setCola}
-          cola={cola}
-          cargarCola={cargarCola}
-          onAgregarCancion={insertarCancion}
-          onPlaySong={handlePlaySong}
-        />
       </div>
     </>
   );

@@ -4,21 +4,24 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
-import useSocket from "../hooks/useSocket";
-import useCola from "../utils/useCola";
+import ToastModal from "./modal/ToastModal";
+import { useQueueContext } from "../hooks/QueueProvider";
 
 const SONG_URL = `${API_URL}/song/numero`;
+const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-const BuscadorTabla = () => {
+export default function BuscadorTabla() {
   const [filtroActivo, setFiltroActivo] = useState("titulo");
   const [busqueda, setBusqueda] = useState("");
   const [data, setData] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
+  const [toastMsg, setToastMsg] = useState("");
 
-  // ------------------ Autenticación ------------------
   const [userId, setUserId] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const { addToQueue, changeSong } = useQueueContext();
 
   useEffect(() => {
     const token = getToken();
@@ -27,36 +30,21 @@ const BuscadorTabla = () => {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
         setIsAuthenticated(true);
-      } catch {}
+      } catch {
+        setIsAuthenticated(false);
+      }
     }
   }, []);
 
-  // ------------------ Hooks de cola ------------------
-  const {
-    cola,
-    setCola,
-    currentIndex,
-    setCurrentIndex,
-    reproducirCancion,
-    insertarEnColaDespuesActual,
-  } = useCola();
-
-  // ------------------ Hook de socket ------------------
-  const { socket, emitirCola, emitirCambiarCancion } = useSocket(
-    userId,
-    (index) => {
-      console.log("🎵 Canción cambiada remotamente:", index);
-      setCurrentIndex(index);
-    }
-  );
-
-  // ------------------ Fetch canciones ------------------
   const fetchCanciones = async () => {
     try {
       const headers = isAuthenticated
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
-      const res = await axios.get(`${SONG_URL}`, { headers });
+      const url = busqueda.trim() ? FILTRO_URL : SONG_URL;
+      const params = busqueda.trim() ? { busqueda, filtro: filtroActivo } : {};
+
+      const res = await axios.get(url, { headers, params });
       setData(res.data.canciones || res.data);
     } catch (err) {
       console.error("Error al obtener canciones", err);
@@ -64,68 +52,57 @@ const BuscadorTabla = () => {
   };
 
   useEffect(() => {
-    fetchCanciones();
-  }, [isAuthenticated]);
-
-  const filtrar = (fila) => {
-    const valor =
-      filtroActivo === "generos"
-        ? fila.generos?.nombre?.toLowerCase() || ""
-        : fila[filtroActivo]?.toString().toLowerCase() || "";
-    return valor.includes(busqueda.toLowerCase());
-  };
-
-  const datosFiltrados = data.filter(filtrar);
-
-  // ------------------ Funciones de acción ------------------
-  const handlePlay = (index) => {
-    reproducirCancion(index, emitirCambiarCancion);
-    alert(`🎵 Reproduciendo: ${data[index].titulo}`);
-  };
-
-  const agregarAFavoritos = async (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para usar favoritos");
-    try {
-      await axios.post(
-        `${API_URL}/t/favoritos/add`,
-        { songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      alert("Canción agregada a favoritos ✅");
-    } catch (err) {
-      console.error(err);
-      alert("No se pudo agregar a favoritos ❌");
-    }
-  };
+    const debounce = setTimeout(fetchCanciones, 500);
+    return () => clearTimeout(debounce);
+  }, [busqueda, filtroActivo]);
 
   const agregarACola = async (song) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a cola");
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para agregar a la cola");
+      return;
+    }
+
     try {
-      const token = getToken();
       await axios.post(
         `${API_URL}/t/cola/add`,
         { userId, songId: song._id },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
-      // Insertar en cola local y emitir socket
-      insertarEnColaDespuesActual(song, emitirCola);
-
+      addToQueue({
+        _id: song._id,
+        titulo: song.titulo,
+        artista: song.artista,
+        numero: song.numero,
+        videoUrl: song.videoUrl, // Si tienes esta info
+      });
+      setToastMsg(`✅ "${song.titulo}" agregada a la cola`);
     } catch (err) {
       console.error(err);
-      alert("No se pudo agregar a la cola ❌");
+      setToastMsg("❌ No se pudo agregar a la cola");
     }
   };
 
+  const handlePlay = (song) => {
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para reproducir");
+      return;
+    }
+    changeSong(song);
+  };
+
   const handleOpenModal = (songId) => {
-    if (!isAuthenticated) return alert("Inicia sesión para agregar a playlist");
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para agregar a playlist");
+      return;
+    }
     setSelectedSongId(songId);
     setShowPlaylistModal(true);
   };
 
   return (
-    <div>
-      {/* Filtros y búsqueda */}
+    <div className="p-2">
+      {/* Filtros */}
       <div className="d-flex align-items-center flex-wrap mb-3">
         {["numero", "artista", "titulo", "generos"].map((tipo) => (
           <button
@@ -140,7 +117,6 @@ const BuscadorTabla = () => {
               : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
           </button>
         ))}
-
         <input
           type="text"
           className="form-control ms-2"
@@ -151,8 +127,8 @@ const BuscadorTabla = () => {
         />
       </div>
 
-      {/* Tabla de canciones */}
-      <div style={{ maxHeight: "600px", overflowY: "scroll" }}>
+      {/* Tabla */}
+      <div style={{ maxHeight: "600px", overflowY: "auto" }}>
         <table className="table table-striped">
           <thead>
             <tr>
@@ -164,7 +140,7 @@ const BuscadorTabla = () => {
             </tr>
           </thead>
           <tbody>
-            {datosFiltrados.map((fila, index) => (
+            {data.map((fila) => (
               <tr key={fila._id}>
                 <td>{fila.numero}</td>
                 <td>{fila.artista}</td>
@@ -173,22 +149,22 @@ const BuscadorTabla = () => {
                 <td>
                   <div className="d-flex gap-1">
                     <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => handlePlay(index)}
+                      className="btn btn-success btn-sm p-1"
+                      onClick={() => handlePlay(fila)}
                     >
-                      <img src="./play.png" alt="" width="40px" />
+                      <img src="./play.png" alt="play" width="25px" />
                     </button>
                     <button
-                      className="btn btn-info btn-sm"
+                      className="btn btn-info btn-sm p-1"
                       onClick={() => agregarACola(fila)}
                     >
-                      <img src="./mas.png" alt="" width="40px" />
+                      <img src="./mas.png" alt="add" width="25px" />
                     </button>
                     <button
-                      className="btn btn-danger btn-sm"
+                      className="btn btn-danger btn-sm p-1"
                       onClick={() => handleOpenModal(fila._id)}
                     >
-                      <img src="./heart.png" alt="" width="40px" />
+                      <img src="./heart.png" alt="fav" width="25px" />
                     </button>
                   </div>
                 </td>
@@ -198,7 +174,6 @@ const BuscadorTabla = () => {
         </table>
       </div>
 
-      {/* Modal de playlists */}
       {isAuthenticated && (
         <PlaylistSelectorModal
           show={showPlaylistModal}
@@ -207,8 +182,12 @@ const BuscadorTabla = () => {
           songId={selectedSongId}
         />
       )}
+
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
-};
-
-export default BuscadorTabla;
+}

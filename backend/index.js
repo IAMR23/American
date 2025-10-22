@@ -32,7 +32,7 @@ const allowedOrigins = [
   "https://www.american-karaoke.com",
   "http://localhost:5173",
   "http://192.168.1.33:5173",
-  "http://192.168.105.2:5173"
+  "http://192.168.105.2:5173",
 ];
 
 app.use(
@@ -43,7 +43,7 @@ app.use(
       return callback(new Error("CORS no permitido: " + origin), false);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT" , "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -51,25 +51,18 @@ app.use(
 app.options("*", cors());
 app.use(express.json());
 
-// ====================
-// 🔹 Configuración de Socket.io
-// ====================
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: true, // necesario si hay cookies o headers de autenticación
+    credentials: true,
   },
-  transports: ["websocket", "polling"], // fallback seguro
-  allowEIO3: true, // si el cliente es legacy
+  transports: ["websocket", "polling"],
+  allowEIO3: true,
 });
 
-// Guardar instancia de io en app
 app.set("io", io);
 
-// ====================
-// 🔹 Conectar DB y arrancar servidor
-// ====================
 conectarDB()
   .then(() => {
     console.log("Base de datos conectada");
@@ -88,61 +81,29 @@ conectarDB()
     app.use("/suscripcion", suscripcionRoutes);
     app.use("/t2", playlistPropiaRoutes);
 
-    // ====================
-    // 🔹 Socket.io events
-    // ====================
-
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
-      // Unirse a la sala del usuario
-      socket.on("join", (userId) => {
+      socket.on("join", async (userId) => {
         socket.join(userId);
         console.log(`Usuario ${userId} unido a su sala`);
-      });
 
-      // Pedir la cola actual
-      socket.on("pedirCola", async (userId) => {
-        if (!userId) return; // prevenir null
         const colaUsuario = await Cola.findOne({ user: userId }).populate(
           "canciones"
         );
-        if (!colaUsuario) return;
-
-        socket.emit("colaActualizada", {
-          nuevaCola: colaUsuario.canciones,
-          indexActual: colaUsuario.currentIndex ?? 0,
-        });
+        if (colaUsuario) {
+          socket.emit("colaActualizada", {
+            nuevaCola: colaUsuario.canciones,
+            indexActual: colaUsuario.currentIndex || 0,
+          });
+        }
       });
 
-      // Cambiar canción y mantener sincronía en todos los dispositivos
-      socket.on("cambiarCancion", async ({ userId, index }) => {
+      socket.on("cambiarCancion", ({ userId, index }) => {
         if (!userId || index == null) return;
 
-        // Actualizar DB
-        await Cola.findOneAndUpdate({ user: userId }, { currentIndex: index });
-
-        // Emitir a TODOS los sockets en la sala del usuario
         io.in(userId).emit("cambiarCancion", { index, userId });
       });
-
-      // Actualizar la cola completa
-      socket.on(
-        "actualizarCola",
-        async ({ userId, nuevaCola, indexActual }) => {
-          if (!userId) return;
-          console.log(`Usuario ${userId} actualizó la cola`);
-
-          // Guardar la nueva cola y el index en la DB
-          await Cola.findOneAndUpdate(
-            { user: userId },
-            { canciones: nuevaCola, currentIndex: indexActual }
-          );
-
-          // Emitir la actualización a TODOS los sockets en la sala del usuario
-          io.in(userId).emit("colaActualizada", { nuevaCola, indexActual });
-        }
-      );
 
       socket.on("disconnect", () => {
         console.log("🔴 Cliente desconectado:", socket.id);

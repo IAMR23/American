@@ -4,7 +4,6 @@ import { FiEdit, FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { API_URL } from "../config"
 
 
-
 const API_ANUNCIOS = `${API_URL}/anuncio`;
 
 export default function AnunciosCRUD() {
