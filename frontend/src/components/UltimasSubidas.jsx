@@ -5,19 +5,63 @@ import ToastModal from "./modal/ToastModal";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
-import useSocket from "../hooks/useSocket";
 import "../styles/listaCanciones.css";
+import { useQueueContext } from "../hooks/QueueProvider";
+import { useNavigate } from "react-router-dom";
 
 const SONG_URL = `${API_URL}/song/ultsubidas`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-export default function Canciones() {
+export default function UltimasSubidas() {
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [filtros, setFiltros] = useState({ busqueda: "", ordenFecha: "desc" });
   const [videoActual, setVideoActual] = useState(null);
-  const [toastMsg, setToastMsg] = useState(""); // <-- Estado para el toast
+  const [toastMsg, setToastMsg] = useState("");
+
+  const navigate = useNavigate();
+
+  const { addToQueue, playNowQueue, changeSong, cola, setCola, currentIndex } =
+    useQueueContext();
+
+  const playNow = async (video) => {
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para reproducir");
+      return;
+    }
+
+    try {
+      const token = getToken();
+
+      // 🔴 Detener la canción anterior
+      const existingMedia = document.querySelector("audio, video");
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
+      await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId: video._id, position: currentIndex },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      playNowQueue({
+        _id: video._id,
+        titulo: video.titulo,
+        artista: video.artista,
+        numero: video.numero,
+        videoUrl: video.videoUrl,
+      });
+
+      navigate("/"); // Ahora no habrá dos sonidos
+      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+    } catch (err) {
+      console.error(err);
+      setToastMsg("❌ No se pudo reproducir la canción");
+    }
+  };
 
   let userId = null;
   let isAuthenticated = false;
@@ -31,30 +75,6 @@ export default function Canciones() {
   } catch {
     console.warn("Usuario no autenticado");
   }
-
-  const { socket, isConnected, onEvent } = useSocket();
-
-  useEffect(() => {
-    if (!socket || !isConnected || !onEvent) return;
-
-    const unsubscribeCola = onEvent("colaActualizada", (data) => {
-      console.log("📥 Cola actualizada:", data);
-    });
-
-    const unsubscribeCambiar = onEvent("cambiarCancionCliente", (index) => {
-      console.log("🎵 Cambiar canción a índice:", index);
-    });
-
-    const unsubscribeAgregada = onEvent("cancionAgregada", (data) => {
-      console.log("✅ Canción agregada confirmada:", data);
-    });
-
-    return () => {
-      unsubscribeCola();
-      unsubscribeCambiar();
-      unsubscribeAgregada();
-    };
-  }, [socket, isConnected, onEvent]);
 
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
@@ -98,24 +118,6 @@ export default function Canciones() {
     return () => clearTimeout(debounce);
   }, [filtros.busqueda, filtros.ordenFecha]);
 
-  const agregarAFavoritos = async (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para usar favoritos");
-      return;
-    }
-    try {
-      await axios.post(
-        `${API_URL}/t/favoritos/add`,
-        { songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      setToastMsg("Canción agregada a favoritos");
-    } catch (err) {
-      console.error("Error al agregar a favoritos", err);
-      setToastMsg("Error al agregar a favoritos");
-    }
-  };
-
   const agregarACola = async (songId) => {
     if (!isAuthenticated) {
       setToastMsg("Inicia sesión para agregar a cola");
@@ -129,31 +131,24 @@ export default function Canciones() {
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
-      if (socket && socket.connected) {
-        socket.emit("actualizarCola", { userId, songId });
-        setToastMsg("Canción agregada a la cola ✅");
-      } else {
-        setToastMsg("Canción agregada a la cola (sin sincronización en tiempo real)");
+      const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+
+      if (!cancion) {
+        setToastMsg("No se encontró la canción");
+        return;
       }
+      addToQueue({
+        _id: cancion._id,
+        titulo: cancion.titulo,
+        artista: cancion.artista,
+        numero: cancion.numero,
+        videoUrl: cancion.videoUrl,
+      });
+
+      setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
-      setToastMsg("No se pudo agregar la canción");
-    }
-  };
-
-  const handleAddToPlaylist = async (playlistId) => {
-    if (!isAuthenticated) return;
-    try {
-      await axios.post(
-        `${API_URL}/t/playlist/cancion`,
-        { playlistId, songId: selectedSongId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      setToastMsg("Canción agregada al playlist ✅");
-      setShowPlaylistModal(false);
-    } catch (err) {
-      console.error("Error al agregar canción", err);
-      setToastMsg("No se pudo agregar la canción ❌");
+      setToastMsg("❌ No se pudo agregar la canción");
     }
   };
 
@@ -200,7 +195,7 @@ export default function Canciones() {
 
               <button
                 className="video-btn play-btn"
-                onClick={() => setVideoActual(video)}
+                onClick={() => playNow(video)}
               >
                 <img src="./play.png" alt="" width="60px" />
               </button>
@@ -226,7 +221,7 @@ export default function Canciones() {
           onClose={() => setShowPlaylistModal(false)}
           userId={userId}
           songId={selectedSongId}
-          onAddToPlaylistSuccess={() => console.log("Canción agregada correctamente")}
+          onAddToPlaylistSuccess
         />
       )}
 

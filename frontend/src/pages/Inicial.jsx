@@ -37,15 +37,10 @@ export default function Inicial() {
 
   // ------------------ Hooks personalizados ------------------
 
-  const {
-    cola,
-    currentIndex,
-    setCola,
-    setCurrentIndex,
-    emitirCambiarCancion,
-  } = useQueueContext();
+  const { cola, currentIndex, setCola, setCurrentIndex, emitirCambiarCancion } =
+    useQueueContext();
 
- // const MIN_ANTERIORES = 2;
+  const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
     const start =
@@ -59,7 +54,6 @@ export default function Inicial() {
 
   // ------------------ Manejo de token ------------------
   useEffect(() => {
-    console.log(cola)
     const token = getToken();
     if (!token) return;
 
@@ -71,7 +65,7 @@ export default function Inicial() {
     } catch (err) {
       console.error("Token inválido", err);
     }
-  }, [cola]);
+  });
 
   // ------------------ Funciones ------------------
   const handleLoginSuccess = async () => {
@@ -143,6 +137,12 @@ export default function Inicial() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handlePlaySong = (index) => {
+    setCurrentIndex(index);
+    setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
+    setShouldFullscreen(true); // activar fullscreen en VideoPlayer
   };
 
   const renderContenido = () => {
@@ -356,10 +356,10 @@ export default function Inicial() {
             <h2 className="text-white">Canciones a la cola</h2>
             <div
               className={`cola-canciones ${
-                cola.length > 8 ? "scrollable" : ""
+                getColaVisible().length > 8 ? "scrollable" : ""
               }`}
             >
-              {cola.map((cancion, idx) => {
+              {getColaVisible().map((cancion, idx) => {
                 const indexReal =
                   currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
                 return (
@@ -388,6 +388,37 @@ export default function Inicial() {
             </div>
           </div>
         </div>
+
+        {/* <div style={{ margin: "1rem" }}>
+          <h2 style={{ color: "white" }}>Canciones a la cola</h2>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {cola.map((cancion, idx) => (
+              <div
+                key={idx}
+                onClick={() => handleCambiarCancion(idx)}
+                style={{ cursor: "pointer", textAlign: "center" }}
+              >
+                <FaCompactDisc
+                  size={40}
+                  color={idx === currentIndex ? "red" : "blue"}
+                />
+                <div style={{ fontSize: "0.8rem" }}>
+                  <strong>{cancion.titulo}</strong>
+                  <br />
+                  <small>{cancion.artista}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div> */}
+      </div>
+
+      <div className="fondo p-2">
+        <AnunciosVisibles />
+        <h1 className="p-2 text-white">Selección especial</h1>
+        <Carrousel className="bg-dark" />
+        <h1 className="p-2 text-white">Las más populares</h1>
+        <MasReproducidas />
       </div>
     </>
   );

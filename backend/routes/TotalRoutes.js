@@ -27,36 +27,52 @@ router.delete(
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { songId } = req.body;
+    const { songId, position } = req.body; // posición = currentIndex en frontend
 
     let colaUsuario = await Cola.findOne({ user: userId });
+
     if (!colaUsuario) {
+      // Si no existe la cola, la creamos
       colaUsuario = await Cola.create({
         user: userId,
         canciones: [songId],
         currentIndex: 0,
       });
     } else {
-      colaUsuario.canciones.push(songId);
+      // Evitar duplicados
+      colaUsuario.canciones = colaUsuario.canciones.filter(
+        (c) => c.toString() !== songId
+      );
+
+      // 🔥 Insertar en la posición actual (desplazando las demás)
+      const insertPos =
+        typeof position === "number" && position >= 0
+          ? Math.min(position, colaUsuario.canciones.length)
+          : colaUsuario.canciones.length;
+
+      colaUsuario.canciones.splice(insertPos, 0, songId);
+
+      // Mantener el índice actual sin moverse
       await colaUsuario.save();
     }
 
+    // Obtener cola actualizada y con populate
     const colaActualizada = await Cola.findOne({ user: userId }).populate(
       "canciones"
     );
 
-    // Emitir actualización a todos los sockets del usuario
+    // 🔁 Emitir evento de sincronización vía Socket.IO
     const io = req.app.get("io");
     io.to(userId).emit("colaActualizada", {
       nuevaCola: colaActualizada.canciones,
-      indexActual: colaActualizada.currentIndex || 0,
+      indexActual: colaUsuario.currentIndex || 0,
     });
 
     res.status(201).json({
-      message: "Canción agregada a la cola",
+      message: "Canción agregada en la posición actual",
       cola: colaActualizada.canciones,
       totalCanciones: colaActualizada.canciones.length,
-      currentIndex: colaActualizada.currentIndex || 0,
+      currentIndex: colaUsuario.currentIndex || 0,
     });
   } catch (err) {
     console.error("Error al agregar canción a la cola:", err);

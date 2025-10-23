@@ -7,6 +7,7 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import "../styles/listaCanciones.css";
 import { useQueueContext } from "../hooks/QueueProvider";
+import { useNavigate } from "react-router-dom";
 
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
@@ -19,6 +20,8 @@ export default function Canciones() {
   const [videoActual, setVideoActual] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
+  const navigate = useNavigate();
+
   const { addToQueue, playNowQueue, changeSong, cola, setCola, currentIndex } =
     useQueueContext();
 
@@ -29,25 +32,30 @@ export default function Canciones() {
     }
 
     try {
-      // Opcional: guardar en tu backend la canción en la cola
       const token = getToken();
+
+      // 🔴 Detener la canción anterior
+      const existingMedia = document.querySelector("audio, video");
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
       await axios.post(
         `${API_URL}/t/cola/add`,
-        { userId, songId: video._id },
+        { userId, songId: video._id, position: currentIndex },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      playNowQueue(
-        {
-          _id: video._id,
-          titulo: video.titulo,
-          artista: video.artista,
-          numero: video.numero,
-          videoUrl: video.videoUrl,
-        },
-        true,
-        currentIndex
-      );
 
+      playNowQueue({
+        _id: video._id,
+        titulo: video.titulo,
+        artista: video.artista,
+        numero: video.numero,
+        videoUrl: video.videoUrl,
+      });
+
+      navigate("/"); // Ahora no habrá dos sonidos
       setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
     } catch (err) {
       console.error(err);

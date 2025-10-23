@@ -46,27 +46,29 @@ export const QueueProvider = ({ children, userId }) => {
     setCola((prev) => [...prev, cancion]);
   };
 
-  // Reproducir ahora (nueva)
-const playNowQueue = (cancion, reproducirAhora = false, indexActual = 0) => {
-  setCola((prevCola) => {
-    let nuevaCola = [...prevCola];
+  // Reproducir ahora (CORREGIDA)
+  const playNowQueue = (cancion) => {
+    setCola((prevCola) => {
+      // Quitar duplicados primero
+      const sinDuplicado = prevCola.filter((c) => c._id !== cancion._id);
 
-    // Elimina la canción si ya existe
-    nuevaCola = nuevaCola.filter((c) => c._id !== cancion._id);
+      // Insertar justo en la posición actual
+      const nuevaCola = [
+        ...sinDuplicado.slice(0, currentIndex),
+        cancion,
+        ...sinDuplicado.slice(currentIndex),
+      ];
 
-    if (reproducirAhora) {
-      // Evita índices fuera de rango
-      const insertIndex = Math.min(Math.max(indexActual + 1, 0), nuevaCola.length);
-      nuevaCola.splice(insertIndex, 0, cancion);
-    } else {
-      nuevaCola.push(cancion);
-    }
+      // Emitir la cola actualizada al backend o a otros clientes
+      setTimeout(() => {
+        emitirCola(nuevaCola, currentIndex);
+      }, 0);
 
-    console.log("Cola actualizada:", nuevaCola);
-    return nuevaCola;
-  });
-};
+      return nuevaCola;
+    });
 
+    setCurrentIndex(currentIndex);
+  };
 
   return (
     <QueueContext.Provider

@@ -21,7 +21,7 @@ export default function BuscadorTabla() {
   const [userId, setUserId] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const { addToQueue, changeSong } = useQueueContext();
+  const { addToQueue, playNowQueue, currentIndex } = useQueueContext();
 
   useEffect(() => {
     const token = getToken();
@@ -43,7 +43,6 @@ export default function BuscadorTabla() {
         : {};
       const url = busqueda.trim() ? FILTRO_URL : SONG_URL;
       const params = busqueda.trim() ? { busqueda, filtro: filtroActivo } : {};
-
       const res = await axios.get(url, { headers, params });
       setData(res.data.canciones || res.data);
     } catch (err) {
@@ -65,17 +64,19 @@ export default function BuscadorTabla() {
     try {
       await axios.post(
         `${API_URL}/t/cola/add`,
-        { userId, songId: song._id },
+        { userId, songId: song._id},
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
+      // Evitar duplicados en la cola
       addToQueue({
         _id: song._id,
         titulo: song.titulo,
         artista: song.artista,
         numero: song.numero,
-        videoUrl: song.videoUrl, // Si tienes esta info
+        videoUrl: song.videoUrl,
       });
+
       setToastMsg(`✅ "${song.titulo}" agregada a la cola`);
     } catch (err) {
       console.error(err);
@@ -83,12 +84,40 @@ export default function BuscadorTabla() {
     }
   };
 
-  const handlePlay = (song) => {
+  const handlePlay = async (song) => {
     if (!isAuthenticated) {
       setToastMsg("⚠️ Inicia sesión para reproducir");
       return;
     }
-    changeSong(song);
+
+    try {
+      // Detener cualquier reproducción existente
+      const existingMedia = document.querySelector("audio, video");
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
+      // Agregar a la cola si no está
+      await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId: song._id, position: currentIndex },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+
+      playNowQueue({
+        _id: song._id,
+        titulo: song.titulo,
+        artista: song.artista,
+        numero: song.numero,
+        videoUrl: song.videoUrl,
+      });
+
+      setToastMsg(`▶️ Reproduciendo "${song.titulo}" ahora`);
+    } catch (err) {
+      console.error(err);
+      setToastMsg("❌ No se pudo reproducir la canción");
+    }
   };
 
   const handleOpenModal = (songId) => {

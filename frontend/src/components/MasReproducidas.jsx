@@ -1,25 +1,18 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { BsHeart, BsList } from "react-icons/bs";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
-import { jwtDecode } from "jwt-decode";
-import { API_URL } from "../config";
-import { getToken } from "../utils/auth";
-import "../styles/MasReproducidasComponents.css";
-import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
-import { FaPlay } from "react-icons/fa";
-import useSocket from "../hooks/useSocket";
 import ToastModal from "./modal/ToastModal";
+import { API_URL } from "../config";
+import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
+import { getToken } from "../utils/auth";
+import { useQueueContext } from "../hooks/QueueProvider";
+import { useNavigate } from "react-router-dom";
+import "../styles/Carrousel.css";
+import "../styles/MasReproducidasComponents.css";
 
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
-export default function MasReproducidas({
-  setCola,
-  cola,
-  cargarCola,
-  onAgregarCancion,
-  onPlaySong,
-}) {
+export default function Carrousel() {
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
@@ -27,15 +20,21 @@ export default function MasReproducidas({
 
   const carouselRef = useRef(null);
   const visible = 5;
-  let index = useRef(0);
+  const index = useRef(0);
+
+  const navigate = useNavigate();
+
+  // Queue context
+  const { addToQueue, playNowQueue, cola, setCola, currentIndex } =
+    useQueueContext();
 
   // Autenticación
-  let userId = null;
   let isAuthenticated = false;
+  let userId = null;
   try {
     const token = getToken();
-    if (token && typeof token === "string") {
-      const decoded = jwtDecode(token);
+    if (token) {
+      const decoded = JSON.parse(atob(token.split(".")[1])); // jwtDecode simple
       userId = decoded.userId;
       isAuthenticated = true;
     }
@@ -43,31 +42,7 @@ export default function MasReproducidas({
     console.warn("Usuario no autenticado");
   }
 
-  // Socket
-  const { socket, isConnected, onEvent } = useSocket();
-
-  useEffect(() => {
-    if (!socket || !isConnected || !onEvent) return;
-
-    const unsubscribeCola = onEvent("colaActualizada", (data) => {
-      console.log("📥 Cola actualizada:", data);
-    });
-
-    const unsubscribeCambiar = onEvent("cambiarCancionCliente", (index) => {
-      console.log("🎵 Cambiar canción a índice:", index);
-    });
-
-    const unsubscribeAgregada = onEvent("cancionAgregada", (data) => {
-      console.log("✅ Canción agregada confirmada:", data);
-    });
-
-    return () => {
-      unsubscribeCola();
-      unsubscribeCambiar();
-      unsubscribeAgregada();
-    };
-  }, [socket, isConnected, onEvent]);
-
+  // Fetch videos
   const fetchVideos = async () => {
     try {
       const headers = isAuthenticated
@@ -119,22 +94,8 @@ export default function MasReproducidas({
     setShowPlaylistModal(true);
   };
 
-  const agregarAFavoritos = async (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para usar favoritos");
-      return;
-    }
-    try {
-      await axios.post(
-        `${API_URL}/t/favoritos/add`,
-        { songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      setToastMsg("Canción agregada a favoritos");
-    } catch (err) {
-      console.error("Error al agregar a favoritos", err);
-      setToastMsg("Error al agregar a favoritos");
-    }
+  const masReproducida = async (id) => {
+    await axios.post(`${API_URL}/song/${id}/reproducir`);
   };
 
   const agregarACola = async (songId) => {
@@ -144,42 +105,73 @@ export default function MasReproducidas({
     }
 
     try {
-      if (onAgregarCancion) {
-        await onAgregarCancion(songId);
-
-        if (socket && socket.connected) {
-          socket.emit("actualizarCola", { userId, songId });
-          setToastMsg("Canción agregada a la cola ✅");
-        } else {
-          setToastMsg(
-            "Canción agregada a la cola (sin sincronización en tiempo real)"
-          );
-        }
-      }
-    } catch (err) {
-      console.error("Error al agregar a cola", err);
-      setToastMsg("No se pudo agregar la canción");
-    }
-  };
-
-  const handleAddToPlaylist = async (playlistId) => {
-    if (!isAuthenticated) return;
-    try {
-      await axios.post(
-        `${API_URL}/t/playlist/cancion`,
-        { playlistId, songId: selectedSongId },
+      const res = await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
-      setToastMsg("Canción agregada al playlist ✅");
-      setShowPlaylistModal(false);
+
+      const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+      if (!cancion) {
+        setToastMsg("No se encontró la canción");
+        return;
+      }
+
+      // Evitar duplicados
+      if (!cola.some((c) => c._id === cancion._id)) {
+        addToQueue({
+          _id: cancion._id,
+          titulo: cancion.titulo,
+          artista: cancion.artista,
+          numero: cancion.numero,
+          videoUrl: cancion.videoUrl,
+        });
+      }
+
+      setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
-      console.error("Error al agregar canción", err);
-      setToastMsg("No se pudo agregar la canción ❌");
+      console.error("Error al agregar a cola:", err.response?.data || err);
+      setToastMsg("❌ No se pudo agregar la canción");
     }
   };
 
-  const masReproducida = async (id) => {
-    await axios.post(`${API_URL}/song/${id}/reproducir`);
+  const playNow = async (video) => {
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para reproducir");
+      return;
+    }
+
+    try {
+      const token = getToken();
+
+      // Detener la canción anterior
+      const existingMedia = document.querySelector("audio, video");
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
+      // Insertar en cola backend en la posición exacta
+      await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId: video._id, position: currentIndex },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Insertar en cola frontend exactamente en currentIndex
+      playNowQueue({
+        _id: video._id,
+        titulo: video.titulo,
+        artista: video.artista,
+        numero: video.numero,
+        videoUrl: video.videoUrl,
+      });
+
+      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+    } catch (err) {
+      console.error(err);
+      setToastMsg("❌ No se pudo reproducir la canción");
+    }
   };
 
   return (
@@ -229,13 +221,7 @@ export default function MasReproducidas({
                 className="btn-play"
                 onClick={async () => {
                   await masReproducida(video._id);
-                  let indexSong = cola.findIndex((c) => c._id === video._id);
-                  if (indexSong === -1 && onAgregarCancion) {
-                    await onAgregarCancion(video._id);
-                    indexSong = cola.length;
-                  }
-                  if (onPlaySong && indexSong !== -1) onPlaySong(indexSong);
-                  else setToastMsg("No se pudo reproducir la canción.");
+                  playNow(video);
                 }}
                 title="Reproducir ahora"
               >
