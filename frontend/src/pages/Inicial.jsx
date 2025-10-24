@@ -9,8 +9,8 @@ import axios from "axios";
 
 import AnunciosVisibles from "../components/AnunciosVisibles";
 import VideoPlayer from "../components/VideoPlayer";
-import PlaylistSelector from "../components/PlaylistSelector";
-import PlaylistSugeridos from "./PLaylistSugeridos";
+import FavoritePlaylist from "../components/FavoritePlaylist";
+import PlaylistSugeridos from "./PlaylistSugeridos";
 import SolicitudesCancion from "./SolicitudCancion";
 import LoginForm from "../components/LoginForm";
 import RegistrationForm from "../components/RegistrationForm";
@@ -34,6 +34,7 @@ export default function Inicial() {
   const [seccionActiva, setSeccionActiva] = useState("video");
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [user, setUser] = useState(null);
 
   // ------------------ Hooks personalizados ------------------
 
@@ -61,11 +62,17 @@ export default function Inicial() {
       const decoded = jwtDecode(token);
       setUserId(decoded.userId);
       setUserRole(decoded.rol);
-      console.log("Usuario autenticado:", decoded.userId);
     } catch (err) {
       console.error("Token inválido", err);
     }
   });
+
+  // 2️⃣ Cuando userId cambie, trae el usuario
+  useEffect(() => {
+    if (userId) {
+      getUser(userId);
+    }
+  }, [userId]);
 
   // ------------------ Funciones ------------------
   const handleLoginSuccess = async () => {
@@ -75,7 +82,6 @@ export default function Inicial() {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
         setUserRole(decoded.rol);
-
         // LIMPIAR LA COLA AL HACER LOGIN
         setCola([]);
         setCurrentIndex(0);
@@ -118,6 +124,30 @@ export default function Inicial() {
     emitirCambiarCancion(index);
   };
 
+  const getUser = async (userId) => {
+    if (!userId) return null; // Evita peticiones innecesarias
+
+    try {
+      const token = getToken();
+      if (!token) throw new Error("No hay token disponible");
+
+      const res = await axios.get(`${API_URL}/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setUser(res.data.user);
+      return res.data; // contiene nombre, correo, rol, etc.
+    } catch (err) {
+      console.error(
+        "Error al traer usuario:",
+        err.response?.data || err.message
+      );
+      return null;
+    }
+  };
+
   const cargarPlaylistACola = async (playlistId, esPropia = false) => {
     const token = getToken();
     try {
@@ -151,7 +181,7 @@ export default function Inicial() {
         return <BuscadorTabla />;
       case "favoritos":
         return (
-          <PlaylistSelector
+          <FavoritePlaylist
             playlists={playlists}
             onSelect={(playlist) => {
               setSelectedPlaylist(playlist);
@@ -223,6 +253,17 @@ export default function Inicial() {
               minWidth: "250px",
             }}
           />
+          <h2
+            style={{
+              position: "absolute",
+              right: "20px", // distancia desde el borde derecho
+              margin: 0,
+              color: "white",
+              textTransform: "uppercase", 
+            }}
+          >
+            BIENVENIDO {user?.nombre || ""}
+          </h2>
         </div>
 
         {/* Botones laterales y contenido */}

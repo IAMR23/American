@@ -70,6 +70,22 @@ export const QueueProvider = ({ children, userId }) => {
     setCurrentIndex(currentIndex);
   };
 
+  const actualizarColaServidor = (nuevaCola, index = 0) => {
+    if (socket && userId) {
+      socket.emit("actualizarCola", {
+        userId,
+        nuevaCola,
+        indexActual: index,
+      });
+    }
+  };
+
+  const setNuevaCola = (nuevaCola, index = 0) => {
+    setCola(nuevaCola);
+    setCurrentIndex(index);
+    actualizarColaServidor(nuevaCola, index);
+  };
+
   return (
     <QueueContext.Provider
       value={{
@@ -82,6 +98,8 @@ export const QueueProvider = ({ children, userId }) => {
         emitirCola,
         emitirCambiarCancion,
         changeSong,
+        actualizarColaServidor,
+        setNuevaCola, 
       }}
     >
       {children}

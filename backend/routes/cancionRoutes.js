@@ -14,7 +14,10 @@ router.get("/search", cancionController.getCancionesPaginadas);
 router.get("/visibles", cancionController.listarCancionesVisibles);
 router.get("/masreproducidas", async (req, res) => {
   try {
-    const top = await Cancion.find().sort({ reproducciones: -1 }).limit(20);
+    const top = await Cancion.find()
+      .sort({ reproducciones: -1 })
+      .limit(20)
+      .populate("generos", "nombre");
     res.json(top);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener canciones populares" });

@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 
-const API_URL2 = import.meta.env.VITE_API_URL;
-const API_URL = `${API_URL2}/song/masreproducidas`;
-const GENEROS_URL = `${API_URL2}/genero`;
+const API_URL = import.meta.env.VITE_API_URL;
+
+//const GENEROS_URL = `${API_URL2}/genero`;
 
 export default function EditarMasReproducidas() {
   const [canciones, setCanciones] = useState([]);
@@ -16,7 +16,6 @@ export default function EditarMasReproducidas() {
     generos: "",
     videoUrl: "",
     imagenUrl: "",
-    visiblePrincipal: false,
   });
   const [editId, setEditId] = useState(null);
 
@@ -27,7 +26,10 @@ export default function EditarMasReproducidas() {
 
   const fetchCanciones = async () => {
     try {
-      const res = await axios.get(`${API_URL}`, { headers });
+      const res = await axios.get(`${API_URL}/song/masreproducidas`, {
+        headers,
+      });
+      console.log(res.data);
       setCanciones(res.data);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
@@ -36,7 +38,7 @@ export default function EditarMasReproducidas() {
 
   const fetchGeneros = async () => {
     try {
-      const res = await axios.get(GENEROS_URL, { headers });
+      const res = await axios.get(`${API_URL}/genero`, { headers });
       setGeneros(res.data.genero || []);
     } catch (error) {
       console.error("Error al obtener géneros:", error);
@@ -58,7 +60,6 @@ export default function EditarMasReproducidas() {
         generos: cancion.generos?._id || "",
         videoUrl: cancion.videoUrl,
         imagenUrl: cancion.imagenUrl || "",
-        visiblePrincipal: cancion.visiblePrincipal || false,
       });
     } else {
       setEditId(null);
@@ -69,7 +70,6 @@ export default function EditarMasReproducidas() {
         generos: "",
         videoUrl: "",
         imagenUrl: "",
-        visiblePrincipal: false,
       });
     }
     new window.bootstrap.Modal(document.getElementById("cancionModal")).show();
@@ -98,7 +98,7 @@ export default function EditarMasReproducidas() {
       };
 
       if (editId) {
-        await axios.put(`${API_URL}/${editId}`, dataToSend, { headers });
+        await axios.put(`${API_URL}/song/${editId}`, dataToSend, { headers });
       } else {
         await axios.post(API_URL, dataToSend, { headers });
       }
@@ -110,7 +110,6 @@ export default function EditarMasReproducidas() {
         generos: "",
         videoUrl: "",
         imagenUrl: "",
-        visiblePrincipal: false,
       });
       setEditId(null);
       fetchCanciones();
@@ -123,7 +122,7 @@ export default function EditarMasReproducidas() {
   const handleDelete = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar esta canción?")) return;
     try {
-      await axios.delete(`${API_URL}/${id}`, { headers });
+      await axios.delete(`${API_URL}/song/${id}`, { headers });
       fetchCanciones();
     } catch (error) {
       console.error("Error al eliminar canción:", error);
@@ -133,7 +132,7 @@ export default function EditarMasReproducidas() {
   return (
     <div className="p-2">
       <h2>Canciones mas cantadas</h2>
-  
+
       {canciones.length === 0 && <p>No hay canciones registradas.</p>}
       <table className="table table-striped table-bordered">
         <thead className="thead-dark">
@@ -143,7 +142,6 @@ export default function EditarMasReproducidas() {
             <th>Artista</th>
             <th>Género</th>
             <th>Imagen</th>
-            <th>Visible Principal</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -154,7 +152,6 @@ export default function EditarMasReproducidas() {
               <td>{cancion.titulo}</td>
               <td>{cancion.artista}</td>
               <td>{cancion.generos?.nombre || "Sin género"}</td>
-             
               <td>
                 {cancion.imagenUrl ? (
                   <img
@@ -166,7 +163,6 @@ export default function EditarMasReproducidas() {
                   "Sin imagen"
                 )}
               </td>
-              <td>{cancion.visiblePrincipal ? "Sí" : "No"}</td>
               <td>
                 <div className="d-flex gap-2">
                   <button
@@ -190,7 +186,7 @@ export default function EditarMasReproducidas() {
 
       {/* Modal */}
       <div className="modal fade" id="cancionModal" tabIndex="-1">
-        <div className="modal-dialog">
+        <div className="modal-dialog" style={{ maxWidth: "60vw" }}>
           <form className="modal-content" onSubmit={handleSubmit}>
             <div className="modal-header">
               <h5 className="modal-title">
@@ -203,100 +199,99 @@ export default function EditarMasReproducidas() {
                 id="cerrarModalCancion"
               />
             </div>
-            <div className="modal-body">
-              {/* Campos del formulario */}
-              <div className="mb-3">
-                <label className="form-label">Número</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  required
-                  value={form.numero}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      numero: e.target.value,
-                    })
-                  }
-                />
-              </div>
-                            <div className="mb-3">
-                <label className="form-label">Artista</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.artista}
-                  onChange={(e) =>
-                    setForm({ ...form, artista: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Canción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.titulo}
-                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                />
-              </div>
 
-              <div className="mb-3">
-                <label className="form-label">Género</label>
-                <select
-                  className="form-select"
-                  required
-                  value={form.generos}
-                  onChange={(e) =>
-                    setForm({ ...form, generos: e.target.value })
-                  }
-                >
-                  <option value="">Seleccionar género</option>
-                  {generos.map((g) => (
-                    <option key={g._id} value={g._id}>
-                      {g.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Video URL</label>
-                <input
-                  type="url"
-                  className="form-control"
-                  required
-                  value={form.videoUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, videoUrl: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Imagen URL</label>
-                <input
-                  type="url"
-                  className="form-control"
-                  value={form.imagenUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, imagenUrl: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3 form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="visiblePrincipal"
-                  checked={form.visiblePrincipal}
-                  onChange={(e) =>
-                    setForm({ ...form, visiblePrincipal: e.target.checked })
-                  }
-                />
-                <label className="form-check-label" htmlFor="visiblePrincipal">
-                  ¿Visible en principal?
-                </label>
+            <div className="modal-body">
+              <div className="container-fluid">
+                <div className="row">
+                  {/* Columna izquierda */}
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label">Número</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        required
+                        value={form.numero}
+                        onChange={(e) =>
+                          setForm({ ...form, numero: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Artista</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={form.artista}
+                        onChange={(e) =>
+                          setForm({ ...form, artista: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Canción</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={form.titulo}
+                        onChange={(e) =>
+                          setForm({ ...form, titulo: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Columna derecha */}
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label">Género</label>
+                      <select
+                        className="form-select"
+                        required
+                        value={form.generos}
+                        onChange={(e) =>
+                          setForm({ ...form, generos: e.target.value })
+                        }
+                      >
+                        <option value="">Seleccionar género</option>
+                        {generos.map((g) => (
+                          <option key={g._id} value={g._id}>
+                            {g.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Video URL</label>
+                      <input
+                        type="url"
+                        className="form-control"
+                        required
+                        value={form.videoUrl}
+                        onChange={(e) =>
+                          setForm({ ...form, videoUrl: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Imagen URL</label>
+                      <input
+                        type="url"
+                        className="form-control"
+                        value={form.imagenUrl}
+                        onChange={(e) =>
+                          setForm({ ...form, imagenUrl: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

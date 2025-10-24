@@ -134,7 +134,13 @@ export default function CancionCRUD() {
     <div className="p-2">
       <h2>Gestión de Canciones</h2>
       <button
-        className="btn btn-primary mb-3"
+        className="btn btn-primary"
+        style={{
+          position: "fixed",
+          top: "30px",
+          right: "20px",
+          zIndex: 9999, // que esté encima de todo
+        }}
         onClick={() => handleOpenModal()}
       >
         + Crear Canción
@@ -201,7 +207,7 @@ export default function CancionCRUD() {
 
       {/* Modal */}
       <div className="modal fade" id="cancionModal" tabIndex="-1">
-        <div className="modal-dialog">
+        <div className="modal-dialog" style={{ maxWidth: "60vw" }}>
           <form className="modal-content" onSubmit={handleSubmit}>
             <div className="modal-header">
               <h5 className="modal-title">
@@ -214,100 +220,120 @@ export default function CancionCRUD() {
                 id="cerrarModalCancion"
               />
             </div>
-            <div className="modal-body">
-              {/* Campos del formulario */}
-              <div className="mb-3">
-                <label className="form-label">Número</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  required
-                  value={form.numero}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      numero: e.target.value,
-                    })
-                  }
-                />
-              </div>
-                            <div className="mb-3">
-                <label className="form-label">Artista</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.artista}
-                  onChange={(e) =>
-                    setForm({ ...form, artista: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Canción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  required
-                  value={form.titulo}
-                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                />
-              </div>
 
-              <div className="mb-3">
-                <label className="form-label">Género</label>
-                <select
-                  className="form-select"
-                  required
-                  value={form.generos}
-                  onChange={(e) =>
-                    setForm({ ...form, generos: e.target.value })
-                  }
-                >
-                  <option value="">Seleccionar género</option>
-                  {generos.map((g) => (
-                    <option key={g._id} value={g._id}>
-                      {g.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Video URL</label>
-                <input
-                  type="url"
-                  className="form-control"
-                  required
-                  value={form.videoUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, videoUrl: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">Imagen URL</label>
-                <input
-                  type="url"
-                  className="form-control"
-                  value={form.imagenUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, imagenUrl: e.target.value })
-                  }
-                />
-              </div>
-              <div className="mb-3 form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="visiblePrincipal"
-                  checked={form.visiblePrincipal}
-                  onChange={(e) =>
-                    setForm({ ...form, visiblePrincipal: e.target.checked })
-                  }
-                />
-                <label className="form-check-label" htmlFor="visiblePrincipal">
-                  ¿Visible en principal?
-                </label>
+            <div className="modal-body">
+              <div className="container-fluid">
+                <div className="row">
+                  {/* Columna izquierda */}
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label">Número</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        required
+                        value={form.numero}
+                        onChange={(e) =>
+                          setForm({ ...form, numero: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Artista</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={form.artista}
+                        onChange={(e) =>
+                          setForm({ ...form, artista: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Canción</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        required
+                        value={form.titulo}
+                        onChange={(e) =>
+                          setForm({ ...form, titulo: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Columna derecha */}
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label">Género</label>
+                      <select
+                        className="form-select"
+                        required
+                        value={form.generos}
+                        onChange={(e) =>
+                          setForm({ ...form, generos: e.target.value })
+                        }
+                      >
+                        <option value="">Seleccionar género</option>
+                        {generos.map((g) => (
+                          <option key={g._id} value={g._id}>
+                            {g.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Video URL</label>
+                      <input
+                        type="url"
+                        className="form-control"
+                        required
+                        value={form.videoUrl}
+                        onChange={(e) =>
+                          setForm({ ...form, videoUrl: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label">Imagen URL</label>
+                      <input
+                        type="url"
+                        className="form-control"
+                        value={form.imagenUrl}
+                        onChange={(e) =>
+                          setForm({ ...form, imagenUrl: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="visiblePrincipal"
+                        checked={form.visiblePrincipal}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            visiblePrincipal: e.target.checked,
+                          })
+                        }
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="visiblePrincipal"
+                      >
+                        ¿Visible en principal?
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -80,38 +80,6 @@ router.post("/cola/add", authenticate, async (req, res) => {
   }
 });
 
-// Cambiar índice actual de la cola
-router.patch("/cola/current-index", authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { index } = req.body;
-
-    const colaUsuario = await Cola.findOneAndUpdate(
-      { user: userId },
-      { currentIndex: index },
-      { new: true }
-    ).populate("canciones");
-
-    if (!colaUsuario)
-      return res.status(404).json({ error: "Cola no encontrada" });
-
-    // Emitir a todos los sockets del usuario
-    const io = req.app.get("io");
-    io.to(userId).emit("colaActualizada", {
-      nuevaCola: colaUsuario.canciones,
-      indexActual: colaUsuario.currentIndex,
-    });
-
-    res.json({
-      message: "Índice actualizado",
-      currentIndex: colaUsuario.currentIndex,
-    });
-  } catch (err) {
-    console.error("Error al actualizar índice:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Limpiar toda la cola
 router.delete("/cola/remove", authenticate, async (req, res) => {
   try {

@@ -81,6 +81,35 @@ conectarDB()
     app.use("/suscripcion", suscripcionRoutes);
     app.use("/t2", playlistPropiaRoutes);
 
+    // io.on("connection", (socket) => {
+    //   console.log("🟢 Cliente conectado:", socket.id);
+
+    //   socket.on("join", async (userId) => {
+    //     socket.join(userId);
+    //     console.log(`Usuario ${userId} unido a su sala`);
+
+    //     const colaUsuario = await Cola.findOne({ user: userId }).populate(
+    //       "canciones"
+    //     );
+    //     if (colaUsuario) {
+    //       socket.emit("colaActualizada", {
+    //         nuevaCola: colaUsuario.canciones,
+    //         indexActual: colaUsuario.currentIndex || 0,
+    //       });
+    //     }
+    //   });
+
+    //   socket.on("cambiarCancion", ({ userId, index }) => {
+    //     if (!userId || index == null) return;
+
+    //     io.in(userId).emit("cambiarCancion", { index, userId });
+    //   });
+
+    //   socket.on("disconnect", () => {
+    //     console.log("🔴 Cliente desconectado:", socket.id);
+    //   });
+    // });
+
     io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
@@ -99,9 +128,26 @@ conectarDB()
         }
       });
 
+      socket.on(
+        "actualizarCola",
+        async ({ userId, nuevaCola, indexActual }) => {
+          if (!userId || !nuevaCola) return;
+
+          await Cola.findOneAndUpdate(
+            { user: userId },
+            {
+              canciones: nuevaCola.map((c) => c._id),
+              currentIndex: indexActual || 0,
+            },
+            { upsert: true, new: true }
+          );
+
+          io.in(userId).emit("colaActualizada", { nuevaCola, indexActual });
+        }
+      );
+
       socket.on("cambiarCancion", ({ userId, index }) => {
         if (!userId || index == null) return;
-
         io.in(userId).emit("cambiarCancion", { index, userId });
       });
 

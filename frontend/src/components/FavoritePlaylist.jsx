@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import { BsMusicNote } from "react-icons/bs";
 import { Link } from "react-router-dom";
+import { useQueueContext } from "../hooks/QueueProvider";
 
-const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
+const FavoritePlaylist = ({ playlists }) => {
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(null); // estado para el seleccionado
 
-  const isValidArray = Array.isArray(playlists);
+  const { setNuevaCola } = useQueueContext();
 
+  const isValidArray = Array.isArray(playlists);
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newPlaylistName.trim()) {
@@ -70,11 +72,11 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
                   fontSize: selectedIndex === i ? "1.2rem" : "1rem", // agranda texto al seleccionar
                   transform: selectedIndex === i ? "scale(1.05)" : "scale(1)", // leve aumento visual
                   transition: "all 0.2s ease-in-out", // animación suave
-                  fontWeight: selectedIndex === i ? "bold" : "normal"
+                  fontWeight: selectedIndex === i ? "bold" : "normal",
                 }}
                 onClick={() => setSelectedIndex(i)}
               >
-                <BsMusicNote style={{ color: "purple" }}/>
+                <BsMusicNote style={{ color: "purple" }} />
                 {playlist.nombre}
               </div>
 
@@ -89,7 +91,11 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
 
                 <button
                   className="btn btn-danger btn-sm"
-                  onClick={() => onSelect(playlist)} // reproduce solo esta playlist
+                  onClick={() => {
+                    if (playlist.canciones) {
+                      setNuevaCola(playlist.canciones, 0);
+                    }
+                  }}
                 >
                   Todo
                 </button>
@@ -102,4 +108,4 @@ const PlaylistSelector = ({ playlists, onSelect, onAdd, onClose }) => {
   );
 };
 
-export default PlaylistSelector;
+export default FavoritePlaylist;

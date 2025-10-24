@@ -29,12 +29,10 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
           whiteSpace: "nowrap",
           display: "inline-block",
           padding: "10px",
-          color: "transparent", // texto transparente
           fontWeight: "bold",
           fontSize,
           fontFamily: "'BBH Sans Hegarty', sans-serif", // fuente personalizada
           WebkitTextStroke: "2px black", // borde gris
-          WebkitTextFillColor: "transparent", // relleno transparente
           animation: `mover ${animationDuration} linear infinite`,
         }}
       >

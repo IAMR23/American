@@ -406,16 +406,22 @@ export default function VideoPlayer({
         )}
 
         {showNextMessage && (
-          // <BarraDeslizante
-          //   texto={`🎶 Próxima canción: ${nextSongName} 🎶`}
-          //   isFullscreen={isFullscreen}
-          // />
           <BarraDeslizante
             texto={
               <>
-                <BsMusicNote style={{ color: "#6f42c1" }} />{" "}
-                {/* Morado Bootstrap */}
-                &nbsp;Próxima canción: {nextSongName}&nbsp;
+                <BsMusicNote style={{ fontSize: "120%", WebkitTextStroke: "2px"  , color: "#6f42c1" }} /> &nbsp;Próxima
+                canción:{" "}
+                <span
+                  style={{
+                    fontSize: "120%",
+                    WebkitTextStroke: "2px white", // borde blanco
+                    WebkitTextFillColor: "black", // relleno del texto
+                    fontWeight: "bold",
+                  }}
+                >
+                  {nextSongName}
+                </span>
+                &nbsp;
                 <BsMusicNote style={{ color: "#6f42c1" }} />
               </>
             }
