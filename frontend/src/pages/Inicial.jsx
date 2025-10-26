@@ -124,6 +124,23 @@ export default function Inicial() {
     emitirCambiarCancion(index);
   };
 
+  const limpiarCola = async () => {
+    try {
+      const token = getToken();
+      if (token) {
+        await fetch(`${API_URL}/t/cola/remove`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Error al eliminar la cola:", err);
+    }
+  };
+
   const getUser = async (userId) => {
     if (!userId) return null; // Evita peticiones innecesarias
 
@@ -148,33 +165,6 @@ export default function Inicial() {
     }
   };
 
-  const cargarPlaylistACola = async (playlistId, esPropia = false) => {
-    const token = getToken();
-    try {
-      const url = esPropia
-        ? `${API_URL}/t2/playlistPropia/canciones/${playlistId}`
-        : `${API_URL}/t/playlist/canciones/${playlistId}`;
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      const canciones = data.canciones || [];
-
-      setCola(canciones);
-      setCurrentIndex(0);
-      setModoReproduccion("playlist");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handlePlaySong = (index) => {
-    setCurrentIndex(index);
-    setSeccionActiva("video"); // para asegurarse de mostrar el reproductor
-    setShouldFullscreen(true); // activar fullscreen en VideoPlayer
-  };
-
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
@@ -183,24 +173,14 @@ export default function Inicial() {
         return (
           <FavoritePlaylist
             playlists={playlists}
-            onSelect={(playlist) => {
-              setSelectedPlaylist(playlist);
-              cargarPlaylistACola(playlist._id);
-              setSeccionActiva("video");
-            }}
-            onAdd={handleAddPlaylist}
+            onSelectAll={() => setSeccionActiva("video")}
           />
         );
       case "playlist":
         return (
           <PlaylistSugeridos
             playlists={playlistsPropia}
-            onSelect={(playlist) => {
-              setSelectedPlaylist(playlist);
-              cargarPlaylistACola(playlist._id, true);
-              setSeccionActiva("video");
-            }}
-            onAdd={handleAddPlaylist}
+            onSelectAll={() => setSeccionActiva("video")}
           />
         );
       case "sugerirCanciones":
@@ -259,7 +239,7 @@ export default function Inicial() {
               right: "20px", // distancia desde el borde derecho
               margin: 0,
               color: "white",
-              textTransform: "uppercase", 
+              textTransform: "uppercase",
             }}
           >
             BIENVENIDO {user?.nombre || ""}
@@ -426,6 +406,9 @@ export default function Inicial() {
                   </div>
                 );
               })}
+              {/* <button onClick={limpiarCola}>
+                Limpiar Cola
+              </button> */}
             </div>
           </div>
         </div>

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import "../styles/inicial.css";
+import { FaCompactDisc } from "react-icons/fa";
+import Logo from "../components/Logo";
 
 const MiPlaylistUser = () => {
   const { id } = useParams();
@@ -51,28 +53,12 @@ const MiPlaylistUser = () => {
 
   return (
     <>
-      <div className="fondo container-fluid  overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
-        <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
-          <img
-            src="/icono.png"
-            alt="icono"
-            style={{ width: "60px", height: "auto" }}
-          />
-          <img
-            onClick={() => setSeccionActiva("video")}
-            src="/logo.png"
-            alt="logo"
-            className="img-fluid"
-            style={{
-              width: "80%", // 80% en móviles
-              maxWidth: "600px", // máximo ancho en pantallas grandes
-              cursor: "pointer",
-              minWidth: "250px", // mínimo ancho para que no se vea muy pequeño en tablets
-            }}
-          />
-        </div>
+      <div className="fondo container-fluid  ">
+      <Logo/>
         <div>
-          <h1 className="text-white">Playlist: {nombrePlaylist || "Cargando..."}</h1>
+          <h1 className="text-white">
+            Playlist: {nombrePlaylist || "Cargando..."}
+          </h1>
 
           {loading ? (
             <p>Cargando canciones...</p>
@@ -81,18 +67,37 @@ const MiPlaylistUser = () => {
           ) : canciones.length === 0 ? (
             <p>No hay canciones en esta playlist.</p>
           ) : (
-            <ul className="list-group">
-              {canciones.map((cancion) => (
-                <li
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "1rem",
+                marginTop: "1rem",
+              }}
+            >
+              {canciones.map((cancion, idx) => (
+                <div
                   key={cancion._id}
-                  className="list-group-item d-flex justify-content-between align-items-center"
+                  onClick={() => handleCambiarCancion(idx)}
+                  style={{
+                    cursor: "pointer",
+                    textAlign: "center",
+                    width: "100px",
+                    color : "blue"
+                  }}
                 >
-                  <span>
-                    {cancion.artista} - {cancion.titulo}
-                  </span>
-                </li>
+                  <FaCompactDisc
+                    size={50}
+                    
+                  />
+                  <div style={{ fontSize: "0.8rem", marginTop: "0.3rem" , color:"white" }}>
+                    <strong >{cancion.titulo}</strong>
+                    <br />
+                    <small>{cancion.artista}</small>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>

@@ -221,7 +221,10 @@ export default function UltimasSubidas() {
           onClose={() => setShowPlaylistModal(false)}
           userId={userId}
           songId={selectedSongId}
-          onAddToPlaylistSuccess
+          onAddToPlaylistSuccess={() => {
+            setToastMsg("🎵 Canción agregada a la playlist");
+            // Opcional: actualizar la lista de videos o la cola si quieres
+          }}
         />
       )}
 

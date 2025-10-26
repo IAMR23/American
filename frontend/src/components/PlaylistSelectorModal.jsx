@@ -3,6 +3,7 @@ import axios from "axios";
 import { getToken } from "../utils/auth";
 import { API_URL } from "../config";
 import { FaPlus } from "react-icons/fa";
+import ToastModal from "./modal/ToastModal";
 
 export default function PlaylistSelectorModal({
   userId,
@@ -16,6 +17,8 @@ export default function PlaylistSelectorModal({
   const [error, setError] = useState(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
 
   useEffect(() => {
     if (!show) return;
@@ -28,7 +31,6 @@ export default function PlaylistSelectorModal({
         const res = await axios.get(`${API_URL}/t/playlist/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log(res.data);
         setPlaylists(res.data || []);
       } catch (err) {
         setError("Error cargando playlists");
@@ -40,10 +42,8 @@ export default function PlaylistSelectorModal({
     fetchPlaylists();
   }, [show, userId]);
 
-  const [newPlaylistName, setNewPlaylistName] = useState("");
-
   const handleSubmit = (e) => {
-    e.preventDefault(); // Evita que recargue la página
+    e.preventDefault();
     if (newPlaylistName.trim()) {
       onAdd(newPlaylistName.trim());
       setNewPlaylistName("");
@@ -60,22 +60,20 @@ export default function PlaylistSelectorModal({
       );
 
       const nuevaPlaylist = res.data;
-
       setPlaylists((prev) =>
         Array.isArray(prev) ? [...prev, nuevaPlaylist] : [nuevaPlaylist]
       );
+
+      setToast("✅ Playlist creado correctamente");
     } catch (err) {
-      console.error(
-        "Error al crear playlist:",
-        err.response?.data || err.message
-      );
-      alert("No se pudo crear el playlist. Quizás ya existe.");
+      console.error("Error al crear playlist:", err.response?.data || err.message);
+      setToast("⚠️ No se pudo crear el playlist. Quizás ya existe.");
     }
   };
 
   const handleAddToPlaylist = async () => {
     if (!selectedPlaylistId) {
-      alert("Selecciona una playlist");
+      setToast("⚠️ Selecciona una playlist primero");
       return;
     }
 
@@ -87,11 +85,18 @@ export default function PlaylistSelectorModal({
         { songId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("Canción agregada a la playlist!");
+
+      setToast("🎵 Canción agregada correctamente");
       onAddToPlaylistSuccess && onAddToPlaylistSuccess();
-      onClose();
+
+      // 🔥 Cerrar modal después de mostrar el toast
+      setTimeout(() => {
+        setToast(null);
+        onClose();
+      }, 1500);
     } catch (err) {
-      alert("Error al agregar la canción");
+      console.error(err);
+      setToast("❌ Error al agregar la canción");
     } finally {
       setAdding(false);
     }
@@ -100,115 +105,137 @@ export default function PlaylistSelectorModal({
   if (!show) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0,0,0,0.6)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 9999,
-      }}
-    >
+    <>
+      {/* Fondo oscuro */}
       <div
         style={{
-          backgroundColor: "#fff",
-          padding: "20px",
-          borderRadius: "12px",
-          maxWidth: "400px",
-          width: "90%",
-          boxShadow: "0 0 10px rgba(0,0,0,0.3)",
-          position: "relative",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          backgroundColor: "rgba(0,0,0,0.6)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
         }}
       >
-        <button
-          onClick={onClose}
+        {/* Modal */}
+        <div
           style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            border: "none",
-            background: "transparent",
-            fontSize: "20px",
-            cursor: "pointer",
+            backgroundColor: "#fff",
+            padding: "25px",
+            borderRadius: "12px",
+            maxWidth: "400px",
+            width: "90%",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+            position: "relative",
           }}
         >
-          ✖
-        </button>
-
-        <h3>Selecciona un playlist</h3>
-
-        <form className="input-group mb-3" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Nombre del nuevo playlist"
-            value={newPlaylistName}
-            onChange={(e) => setNewPlaylistName(e.target.value)}
-            aria-label="Nuevo playlist"
-            autoFocus
-          />
+          {/* Botón de cierre (X) */}
           <button
-            className="btn btn-primary d-flex align-items-center justify-content-center"
-            type="submit"
-            title="Crear nuevo playlist"
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: "10px",
+              right: "10px",
+              border: "none",
+              background: "transparent",
+              fontSize: "22px",
+              cursor: "pointer",
+              color: "#555",
+              transition: "0.3s",
+            }}
+            onMouseEnter={(e) => (e.target.style.color = "red")}
+            onMouseLeave={(e) => (e.target.style.color = "#555")}
           >
-            <FaPlus />
+            ✖
           </button>
-        </form>
 
-        {loading && <p>Cargando playlists...</p>}
-        {error && <p style={{ color: "red" }}>{error}</p>}
+          <h3 style={{ textAlign: "center", marginBottom: "15px" }}>
+            Selecciona un playlist
+          </h3>
 
-        {!loading && playlists.length === 0 && <p>No tienes playlists.</p>}
+          {/* Crear nuevo playlist */}
+          <form className="input-group mb-3" onSubmit={handleSubmit}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Nombre del nuevo playlist"
+              value={newPlaylistName}
+              onChange={(e) => setNewPlaylistName(e.target.value)}
+              aria-label="Nuevo playlist"
+              autoFocus
+            />
+            <button
+              className="btn btn-primary d-flex align-items-center justify-content-center"
+              type="submit"
+              title="Crear nuevo playlist"
+            >
+              <FaPlus />
+            </button>
+          </form>
 
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            maxHeight: "300px",
-            overflowY: "auto",
-          }}
-        >
-          {playlists.map((playlist) => (
-            <li key={playlist._id} style={{ marginBottom: "10px" }}>
-              <label style={{ cursor: "pointer", userSelect: "none" }}>
-                <input
-                  type="radio"
-                  name="playlist"
-                  value={playlist._id}
-                  checked={selectedPlaylistId === playlist._id}
-                  onChange={() => setSelectedPlaylistId(playlist._id)}
-                  style={{ marginRight: "8px" }}
-                />
-                🎵 {playlist.nombre}
-              </label>
-            </li>
-          ))}
-        </ul>
+          {/* Listado */}
+          {loading && <p>Cargando playlists...</p>}
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          {!loading && playlists.length === 0 && <p>No tienes playlists.</p>}
 
-        <button
-          disabled={adding}
-          onClick={handleAddToPlaylist}
-          style={{
-            marginTop: "15px",
-            padding: "10px 20px",
-            backgroundColor: adding ? "#ccc" : "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: adding ? "not-allowed" : "pointer",
-            width: "100%",
-            fontSize: "16px",
-          }}
-        >
-          {adding ? "Guardando..." : "Guardar en playlist"}
-        </button>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              maxHeight: "250px",
+              overflowY: "auto",
+              marginBottom: "15px",
+            }}
+          >
+            {playlists.map((playlist) => (
+              <li key={playlist._id} style={{ marginBottom: "8px" }}>
+                <label style={{ cursor: "pointer", userSelect: "none" }}>
+                  <input
+                    type="radio"
+                    name="playlist"
+                    value={playlist._id}
+                    checked={selectedPlaylistId === playlist._id}
+                    onChange={() => setSelectedPlaylistId(playlist._id)}
+                    style={{ marginRight: "8px" }}
+                  />
+                  🎵 {playlist.nombre}
+                </label>
+              </li>
+            ))}
+          </ul>
+
+          {/* Botón guardar */}
+          <button
+            disabled={adding}
+            onClick={handleAddToPlaylist}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: adding ? "#ccc" : "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: adding ? "not-allowed" : "pointer",
+              width: "100%",
+              fontSize: "16px",
+            }}
+          >
+            {adding ? "Guardando..." : "Guardar en playlist"}
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* Toast */}
+      {toast && (
+        <ToastModal
+          mensaje={toast}
+          duracion={2000}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </>
   );
 }

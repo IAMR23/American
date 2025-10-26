@@ -3,7 +3,7 @@ import { BsMusicNote } from "react-icons/bs";
 import { Link } from "react-router-dom";
 import { useQueueContext } from "../hooks/QueueProvider";
 
-const PlaylistSugeridos = ({ playlists }) => {
+const PlaylistSugeridos = ({ playlists, onSelectAll }) => {
   const isValidArray = Array.isArray(playlists);
   const [selectedIndex, setSelectedIndex] = useState(null); // estado para el seleccionado
 
@@ -12,7 +12,7 @@ const PlaylistSugeridos = ({ playlists }) => {
   return (
     <div
       className="bg-white p-4 rounded shadow-sm w-100"
-      style={{ maxWidth: "100%" }}
+      style={{ maxWidth: "100%", height: "80%" }}
     >
       <div className="d-flex align-items-center mb-3">
         <BsMusicNote size={24} className="me-2 text-primary" />
@@ -41,7 +41,8 @@ const PlaylistSugeridos = ({ playlists }) => {
                 style={{ cursor: "pointer" }}
                 onClick={() => {
                   if (playlist.canciones) {
-                    setNuevaCola(playlist.canciones, 0);                    
+                    setNuevaCola(playlist.canciones, 0);
+                    onSelectAll?.();
                   }
                 }}
               >

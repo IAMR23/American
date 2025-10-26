@@ -238,12 +238,15 @@ export default function Carrousel() {
 
       {isAuthenticated && (
         <PlaylistSelectorModal
-          show={showPlaylistModal}
-          onClose={() => setShowPlaylistModal(false)}
-          userId={userId}
-          songId={selectedSongId}
-          onAddToPlaylistSuccess={() => {}}
-        />
+               show={showPlaylistModal}
+               onClose={() => setShowPlaylistModal(false)}
+               userId={userId}
+               songId={selectedSongId}
+               onAddToPlaylistSuccess={() => {
+                 setToastMsg("🎵 Canción agregada a la playlist");
+                 // Opcional: actualizar la lista de videos o la cola si quieres
+               }}
+             />
       )}
 
       <ToastModal

@@ -41,23 +41,6 @@ export default function VideoPlayer({
 
   const currentVideo = playlist[currentIndex];
 
-  // // --- MICRÓFONO ---
-  // const startMic = async () => {
-  //   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  //   audioContextRef.current = new AudioContext();
-  //   const source = audioContextRef.current.createMediaStreamSource(stream);
-
-  //   analyserRef.current = audioContextRef.current.createAnalyser();
-  //   analyserRef.current.fftSize = 2048;
-  //   source.connect(analyserRef.current);
-
-  //   detectorRef.current = PitchDetector.forFloat32Array(
-  //     analyserRef.current.fftSize
-  //   );
-  //   userPitchesRef.current = [];
-  //   capturePitch();
-  // };
-
   const capturePitch = () => {
     const input = new Float32Array(analyserRef.current.fftSize);
     analyserRef.current.getFloatTimeDomainData(input);
@@ -153,7 +136,6 @@ export default function VideoPlayer({
   // --- PROGRESS ---
   const handleProgress = ({ playedSeconds }) => {
     setProgress(playedSeconds);
-
     const dur = playerRef.current?.getDuration?.();
     if (!dur) return;
 
@@ -409,20 +391,12 @@ export default function VideoPlayer({
           <BarraDeslizante
             texto={
               <>
-                <BsMusicNote style={{ fontSize: "120%", WebkitTextStroke: "2px"  , color: "#6f42c1" }} /> &nbsp;Próxima
-                canción:{" "}
-                <span
-                  style={{
-                    fontSize: "120%",
-                    WebkitTextStroke: "2px white", // borde blanco
-                    WebkitTextFillColor: "black", // relleno del texto
-                    fontWeight: "bold",
-                  }}
-                >
+                <BsMusicNote style={{ color: "#6f42c1" }} size={40} />{" "}
+                <span className="outlined">Próxima canción: </span>
+                <span style={{ fontSize: "120%" }} className="outlined-white">
                   {nextSongName}
                 </span>
-                &nbsp;
-                <BsMusicNote style={{ color: "#6f42c1" }} />
+                <BsMusicNote style={{ color: "#6f42c1" }} size={40} />
               </>
             }
             isFullscreen={isFullscreen}

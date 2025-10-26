@@ -4,6 +4,63 @@
   display: inline-block;
 }
 
+.outlined {
+  /* valor por defecto (fallback visual usando text-shadow) */
+  color: transparent;
+   font-weight: 900; 
+  -webkit-font-smoothing: antialiased;
+
+  /* fallback: simular contorno con sombras */
+  text-shadow:
+    1px  1px 0 black,
+   -1px  1px 0 black,
+    1px -1px 0 black,
+   -1px -1px 0 black,
+    0px  1px 0 black,
+    0px -1px 0 black,
+    1px  0px 0 black,
+   -1px  0px 0 black;
+}
+
+.outlined-white {
+  /* valor por defecto (fallback visual usando text-shadow) */
+  color: transparent;
+  -webkit-font-smoothing: antialiased;
+font-weight: 900; 
+  /* fallback: simular contorno con sombras */
+  text-shadow:
+    1px  1px 0 white,
+   -1px  1px 0 white,
+    1px -1px 0 white,
+   -1px -1px 0 white,
+    0px  1px 0 white,
+    0px -1px 0 white,
+    1px  0px 0 white,
+   -1px  0px 0 white;
+}
+
+
+/* Si el navegador soporta -webkit-text-stroke, lo usamos (más nítido) */
+@supports (-webkit-text-stroke: 2px black) {
+  .outlined {
+    /* quitamos la text-shadow para evitar "sombra + trazo" */
+    text-shadow: none;
+    -webkit-text-stroke: 2.5px black;
+    /* la propiedad no-prefijada no es ampliamente soportada;
+       no hace falta incluirla si el inspector la marca desconocida */
+  }
+}
+
+@supports (-webkit-text-stroke: 2px white) {
+  .outlined-white {
+    /* quitamos la text-shadow para evitar "sombra + trazo" */
+    text-shadow: none;
+    -webkit-text-stroke: 2.5px white;
+    /* la propiedad no-prefijada no es ampliamente soportada;
+       no hace falta incluirla si el inspector la marca desconocida */
+  }
+}
+
 @keyframes scroll {
   0% {
     transform: translateX(100%);
