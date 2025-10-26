@@ -43,13 +43,6 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
         {`
 
 
-      @font-face {
-  font-family: "Jacques Francois Shadow", serif;
-  font-weight: 400;
-  font-style: normal;
-}
-
-
       @keyframes mover {
         0%   { transform: translateX(100vw); }
         100% { transform: translateX(-100%); }

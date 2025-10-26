@@ -233,17 +233,23 @@ export default function Inicial() {
               minWidth: "250px",
             }}
           />
-          <h2
+          <div
+            className="d-flex justify-content-center align-items-center flex-column "
             style={{
               position: "absolute",
-              right: "20px", // distancia desde el borde derecho
+              right: "20px",
               margin: 0,
               color: "white",
-              textTransform: "uppercase",
             }}
           >
-            BIENVENIDO {user?.nombre || ""}
-          </h2>
+            <div>
+              <h2 className="outlined-white" style={{color:"white"}}>Bienvenido:</h2>
+            </div>
+
+            <div class="capsula-wrapper">
+              <button class="capsula-btn">{user?.nombre || ""}</button>
+            </div>
+          </div>
         </div>
 
         {/* Botones laterales y contenido */}
