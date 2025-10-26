@@ -10,7 +10,7 @@ import { useQueueContext } from "../hooks/QueueProvider";
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-export default function BuscadorTabla() {
+export default function BuscadorTabla({ onSelectAll }) {
   const [filtroActivo, setFiltroActivo] = useState("titulo");
   const [busqueda, setBusqueda] = useState("");
   const [data, setData] = useState([]);
@@ -64,7 +64,7 @@ export default function BuscadorTabla() {
     try {
       await axios.post(
         `${API_URL}/t/cola/add`,
-        { userId, songId: song._id},
+        { userId, songId: song._id },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
@@ -179,7 +179,10 @@ export default function BuscadorTabla() {
                   <div className="d-flex gap-1">
                     <button
                       className="btn btn-success btn-sm p-1"
-                      onClick={() => handlePlay(fila)}
+                      onClick={() => {
+                        handlePlay(fila);
+                        onSelectAll?.();
+                      }}
                     >
                       <img src="./play.png" alt="play" width="25px" />
                     </button>

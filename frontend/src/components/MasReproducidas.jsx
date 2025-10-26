@@ -7,7 +7,6 @@ import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import { useQueueContext } from "../hooks/QueueProvider";
 import { useNavigate } from "react-router-dom";
-import "../styles/Carrousel.css";
 import "../styles/MasReproducidasComponents.css";
 
 const SONG_URL = `${API_URL}/song/masreproducidas`;
@@ -37,7 +36,8 @@ export default function Carrousel() {
       const decoded = JSON.parse(atob(token.split(".")[1])); // jwtDecode simple
       userId = decoded.userId;
       isAuthenticated = true;
-    }
+    }  const [videos, setVideos] = useState([]);
+
   } catch {
     console.warn("Usuario no autenticado");
   }

@@ -26,6 +26,8 @@ import { jwtDecode } from "jwt-decode";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
 import { useQueueContext } from "../hooks/QueueProvider";
+import VideoCarousel from "../components/VideoCarousel";
+import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 
 export default function Inicial() {
   const navigate = useNavigate();
@@ -85,7 +87,6 @@ export default function Inicial() {
         // LIMPIAR LA COLA AL HACER LOGIN
         setCola([]);
         setCurrentIndex(0);
-        setModoReproduccion("cola");
 
         console.log("Cola limpiada después del login");
       } catch (err) {
@@ -115,7 +116,6 @@ export default function Inicial() {
     setUserRole(null);
     setCola([]);
     setCurrentIndex(0);
-    setModoReproduccion("cola");
   };
 
   // Función mejorada para cambiar canción con sincronización
@@ -168,7 +168,7 @@ export default function Inicial() {
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
-        return <BuscadorTabla />;
+        return <BuscadorTabla onSelectAll={() => setSeccionActiva("video")} />;
       case "favoritos":
         return (
           <FavoritePlaylist
@@ -440,9 +440,9 @@ export default function Inicial() {
       <div className="fondo p-2">
         <AnunciosVisibles />
         <h1 className="p-2 text-white">Selección especial</h1>
-        <Carrousel className="bg-dark" />
+        <VideoCarouselVisibles />
         <h1 className="p-2 text-white">Las más populares</h1>
-        <MasReproducidas />
+        <VideoCarousel />
       </div>
     </>
   );

@@ -7,7 +7,6 @@ import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import { useQueueContext } from "../hooks/QueueProvider";
 import { useNavigate } from "react-router-dom";
-import "../styles/Carrousel.css";
 
 const SONG_URL = `${API_URL}/song/visibles`;
 
