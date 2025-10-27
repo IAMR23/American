@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
-import { FaCompactDisc } from "react-icons/fa";
+import { FaBroom, FaCompactDisc } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import axios from "axios";
@@ -116,6 +116,8 @@ export default function Inicial() {
     setUserRole(null);
     setCola([]);
     setCurrentIndex(0);
+    // Recarga la página
+    window.location.reload();
   };
 
   // Función mejorada para cambiar canción con sincronización
@@ -233,23 +235,23 @@ export default function Inicial() {
               minWidth: "250px",
             }}
           />
-          <div
-            className="d-flex justify-content-center align-items-center flex-column "
-            style={{
-              position: "absolute",
-              right: "20px",
-              margin: 0,
-              color: "white",
-            }}
-          >
-            <div>
-              <h2 className="outlined-white" style={{color:"white"}}>Bienvenido:</h2>
-            </div>
+          {user && user.nombre && (
+            <div
+              className="m-2 pt-4 d-flex justify-content-center align-items-center flex-column"
+              style={{
+                position: "absolute",
+                right: "20px",
+                margin: 0,
+                color: "white",
+              }}
+            >
+              <div>
+                <h3 className="outlined-black">Bienvenido:</h3>
+              </div>
 
-            <div class="capsula-wrapper">
-              <button class="capsula-btn">{user?.nombre || ""}</button>
+              <button className="boton0">{user.nombre}</button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Botones laterales y contenido */}
@@ -378,8 +380,8 @@ export default function Inicial() {
 
         {/* Cola dinámica */}
 
-        <div className="d-flex flex-column m-3">
-          <div className="d-flex align-items-start gap-3">
+        <div className="m-2 ">
+          <div className="d-flex justify-content-center align-items-center gap-3">
             <h2 className="text-white">Canciones a la cola</h2>
             <div
               className={`cola-canciones ${
@@ -412,10 +414,15 @@ export default function Inicial() {
                   </div>
                 );
               })}
-              {/* <button onClick={limpiarCola}>
-                Limpiar Cola
-              </button> */}
             </div>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                limpiarCola();
+              }}
+            >
+              <FaBroom /> Limpiar
+            </button>
           </div>
         </div>
 

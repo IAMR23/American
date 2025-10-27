@@ -391,12 +391,75 @@ export default function VideoPlayer({
           <BarraDeslizante
             texto={
               <>
-                <BsMusicNote style={{ color: "#6f42c1" }} size={40} />{" "}
-                <span className="outlined">Próxima canción: </span>
-                <span style={{ fontSize: "120%" }} className="outlined-white">
-                  {nextSongName}
-                </span>
-                <BsMusicNote style={{ color: "#6f42c1" }} size={40} />
+                <div className="d-flex justify-content-center align-items-center ">
+                  <div style={{ display: "inline-block", lineHeight: 0 }}>
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "24px",
+                        position: "relative",
+                        top: "0px",
+                      }}
+                      size={30}
+                    />
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "28px",
+                        position: "relative",
+                        top: "-6px",
+                        marginLeft: "-8px",
+                      }}
+                      size={40}
+                    />
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "24px",
+                        position: "relative",
+                        top: "-2px",
+                        marginLeft: "-6px",
+                      }}
+                      size={30}
+                    />
+                  </div>
+
+                  <span className="outlined"> 🎶 Próxima canción:</span>
+                  <span style={{ fontSize: "120%" }} className="outlined-white">
+                    {nextSongName} 🎶
+                  </span>
+                  <div style={{ display: "inline-block", lineHeight: 0 }}>
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "24px",
+                        position: "relative",
+                        top: "0px",
+                      }}
+                      size={30}
+                    />
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "28px",
+                        position: "relative",
+                        top: "-6px",
+                        marginLeft: "-8px",
+                      }}
+                      size={40}
+                    />
+                    <BsMusicNote
+                      style={{
+                        color: "#6f42c1",
+                        fontSize: "24px",
+                        position: "relative",
+                        top: "-2px",
+                        marginLeft: "-6px",
+                      }}
+                      size={30}
+                    />
+                  </div>
+                </div>
               </>
             }
             isFullscreen={isFullscreen}

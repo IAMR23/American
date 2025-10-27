@@ -6,10 +6,9 @@ import "../styles/disco.css";
 import Logo from "./Logo";
 
 export default function ListaCanciones() {
-
   return (
     <>
-     <Logo/>
+      <Logo />
       <Canciones />
     </>
   );

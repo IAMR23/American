@@ -176,27 +176,26 @@ export default function BuscadorTabla({ onSelectAll }) {
                 <td>{fila.titulo}</td>
                 <td>{fila.generos?.nombre || "Sin género"}</td>
                 <td>
-                  <div className="d-flex gap-1">
+                  <div class="d-flex justify-content-center align-items-center gap-2">
                     <button
-                      className="btn btn-success btn-sm p-1"
-                      onClick={() => {
-                        handlePlay(fila);
-                        onSelectAll?.();
-                      }}
+                      class="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
+                      onclick="handlePlay(fila); onSelectAll?.();"
                     >
-                      <img src="./play.png" alt="play" width="25px" />
+                      <img src="./play.png" alt="play" width="40" />
                     </button>
+
                     <button
-                      className="btn btn-info btn-sm p-1"
-                      onClick={() => agregarACola(fila)}
+                      class="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
+                      onclick="agregarACola(fila);"
                     >
-                      <img src="./mas.png" alt="add" width="25px" />
+                      <img src="./mas.png" alt="add" width="40" />
                     </button>
+
                     <button
-                      className="btn btn-danger btn-sm p-1"
-                      onClick={() => handleOpenModal(fila._id)}
+                      class="btn btn-danger btn-sm p-1 d-flex justify-content-center align-items-center"
+                      onclick="handleOpenModal(fila._id);"
                     >
-                      <img src="./heart.png" alt="fav" width="25px" />
+                      <img src="./heart.png" alt="fav" width="40" />
                     </button>
                   </div>
                 </td>
