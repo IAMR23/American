@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
+import ToastModal from "../components/modal/ToastModal";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
@@ -19,6 +20,7 @@ export default function CancionCRUD() {
     visiblePrincipal: false,
   });
   const [editId, setEditId] = useState(null);
+  const [toastMensaje, setToastMensaje] = useState("");
 
   const headers = {
     Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -52,7 +54,7 @@ export default function CancionCRUD() {
     if (cancion) {
       setEditId(cancion._id);
       setForm({
-        numero: cancion.numero || "",
+        numero: cancion.numero || form.numero, // mantiene el número si es edición
         titulo: cancion.titulo,
         artista: cancion.artista,
         generos: cancion.generos?._id || "",
@@ -63,7 +65,7 @@ export default function CancionCRUD() {
     } else {
       setEditId(null);
       setForm({
-        numero: "",
+        numero: form.numero, // mantiene el número ingresado
         titulo: "",
         artista: "",
         generos: "",
@@ -94,39 +96,48 @@ export default function CancionCRUD() {
     try {
       const dataToSend = {
         ...form,
-        numero: parseInt(form.numero), // aseguramos que sea número
+        numero: parseInt(form.numero),
       };
 
       if (editId) {
         await axios.put(`${API_URL}/${editId}`, dataToSend, { headers });
+        setToastMensaje("Canción editada correctamente");
       } else {
         await axios.post(API_URL, dataToSend, { headers });
+        setToastMensaje("Canción creada correctamente");
+        // Limpiar todos los campos excepto el número
+        setForm((prev) => ({
+          ...prev,
+          titulo: "",
+          artista: "",
+          generos: "",
+          videoUrl: "",
+          imagenUrl: "",
+          visiblePrincipal: false,
+        }));
       }
 
-      setForm({
-        numero: "",
-        titulo: "",
-        artista: "",
-        generos: "",
-        videoUrl: "",
-        imagenUrl: "",
-        visiblePrincipal: false,
-      });
       setEditId(null);
       fetchCanciones();
-      document.getElementById("cerrarModalCancion").click();
+      // NO cerramos el modal automáticamente
     } catch (error) {
       console.error("Error al guardar canción:", error);
     }
   };
-
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar esta canción?")) return;
+    // Mostramos un toast preguntando confirmación
+    const confirmar = window.confirm(
+      "⚠️ ¿Estás seguro de eliminar esta canción?"
+    );
+    if (!confirmar) return;
+
     try {
       await axios.delete(`${API_URL}/${id}`, { headers });
+      setToastMensaje("🗑️ Canción eliminada correctamente");
       fetchCanciones();
     } catch (error) {
       console.error("Error al eliminar canción:", error);
+      setToastMensaje("❌ Error al eliminar la canción");
     }
   };
 
@@ -139,7 +150,7 @@ export default function CancionCRUD() {
           position: "fixed",
           top: "30px",
           right: "20px",
-          zIndex: 9999, // que esté encima de todo
+          zIndex: 9999,
         }}
         onClick={() => handleOpenModal()}
       >
@@ -217,7 +228,6 @@ export default function CancionCRUD() {
                 type="button"
                 className="btn-close"
                 data-bs-dismiss="modal"
-                id="cerrarModalCancion"
               />
             </div>
 
@@ -345,6 +355,13 @@ export default function CancionCRUD() {
           </form>
         </div>
       </div>
+
+      {/* Toast */}
+      <ToastModal
+        mensaje={toastMensaje}
+        duracion={2000}
+        onClose={() => setToastMensaje("")}
+      />
     </div>
   );
 }
