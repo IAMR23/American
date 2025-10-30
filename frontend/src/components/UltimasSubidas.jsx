@@ -152,6 +152,10 @@ export default function UltimasSubidas() {
     }
   };
 
+  const masReproducida = async (id) => {
+    await axios.post(`${API_URL}/song/${id}/reproducir`);
+  };
+  
   return (
     <div className="p-2">
       {/* Filtro */}
@@ -195,7 +199,10 @@ export default function UltimasSubidas() {
 
               <button
                 className="video-btn play-btn"
-                onClick={() => playNow(video)}
+                onClick={async () => {
+                  await masReproducida(video._id);
+                  playNow(video);
+                }}
               >
                 <img src="./play.png" alt="" width="60px" />
               </button>

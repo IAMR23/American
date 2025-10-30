@@ -129,6 +129,10 @@ export default function BuscadorTabla({ onSelectAll }) {
     setShowPlaylistModal(true);
   };
 
+  const masReproducida = async (id) => {
+    await axios.post(`${API_URL}/song/${id}/reproducir`);
+  };
+
   return (
     <div className="p-2">
       {/* Filtros */}
@@ -179,21 +183,25 @@ export default function BuscadorTabla({ onSelectAll }) {
                   <div class="d-flex justify-content-center align-items-center gap-2">
                     <button
                       class="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
-                      onclick="handlePlay(fila); onSelectAll?.();"
+                      onClick={async () => {
+                        await masReproducida(video._id);
+                        handlePlay(fila);
+                        onSelectAll?.();
+                      }}
                     >
                       <img src="./play.png" alt="play" width="40" />
                     </button>
 
                     <button
                       class="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
-                      onclick="agregarACola(fila);"
+                      onClick={() => agregarACola(fila)}
                     >
                       <img src="./mas.png" alt="add" width="40" />
                     </button>
 
                     <button
                       class="btn btn-danger btn-sm p-1 d-flex justify-content-center align-items-center"
-                      onclick="handleOpenModal(fila._id);"
+                      onClick={() => handleOpenModal(fila._id)}
                     >
                       <img src="./heart.png" alt="fav" width="40" />
                     </button>
