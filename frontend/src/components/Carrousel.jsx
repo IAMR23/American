@@ -97,17 +97,20 @@ export default function Carrousel() {
   };
 
   const agregarACola = async (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a cola");
-      return;
-    }
-
     try {
-      const res = await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
+      let res;
+      console.log("cd")
+      if (isAuthenticated) {
+        // 🔐 Usuario autenticado
+        res = await axios.post(
+          `${API_URL}/t/cola/add`,
+          { userId, songId },
+          { headers: { Authorization: `Bearer ${getToken()}` } }
+        );
+      } else {
+        // 👥 Usuario no autenticado (cola temporal/global)
+        res = await axios.post(`${API_URL}/t/cola/without/aut/add`, { songId });
+      }
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
       if (!cancion) {
@@ -237,15 +240,15 @@ export default function Carrousel() {
 
       {isAuthenticated && (
         <PlaylistSelectorModal
-               show={showPlaylistModal}
-               onClose={() => setShowPlaylistModal(false)}
-               userId={userId}
-               songId={selectedSongId}
-               onAddToPlaylistSuccess={() => {
-                 setToastMsg("🎵 Canción agregada a la playlist");
-                 // Opcional: actualizar la lista de videos o la cola si quieres
-               }}
-             />
+          show={showPlaylistModal}
+          onClose={() => setShowPlaylistModal(false)}
+          userId={userId}
+          songId={selectedSongId}
+          onAddToPlaylistSuccess={() => {
+            setToastMsg("🎵 Canción agregada a la playlist");
+            // Opcional: actualizar la lista de videos o la cola si quieres
+          }}
+        />
       )}
 
       <ToastModal

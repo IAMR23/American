@@ -6,6 +6,7 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
+import ToastModal from "./modal/ToastModal";
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
 export default function VideoCarousel() {
@@ -72,18 +73,59 @@ export default function VideoCarousel() {
     fetchVideos();
   }, []);
 
-  const agregarACola = async (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a cola");
-      return;
-    }
+  // const agregarACola = async (songId) => {
+  //   if (!isAuthenticated) {
+  //     setToastMsg("Inicia sesión para agregar a cola");
+  //     return;
+  //   }
 
+  //   try {
+  //     const res = await axios.post(
+  //       `${API_URL}/t/cola/add`,
+  //       { userId, songId },
+  //       { headers: { Authorization: `Bearer ${getToken()}` } }
+  //     );
+
+  //     const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+  //     if (!cancion) {
+  //       setToastMsg("No se encontró la canción");
+  //       return;
+  //     }
+
+  //     // Evitar duplicados
+  //     if (!cola.some((c) => c._id === cancion._id)) {
+  //       addToQueue({
+  //         _id: cancion._id,
+  //         titulo: cancion.titulo,
+  //         artista: cancion.artista,
+  //         numero: cancion.numero,
+  //         videoUrl: cancion.videoUrl,
+  //       });
+  //     }
+
+  //     setToastMsg("✅ Canción agregada a la cola");
+  //   } catch (err) {
+  //     console.error("Error al agregar a cola:", err.response?.data || err);
+  //     setToastMsg("❌ No se pudo agregar la canción");
+  //   }
+  // };
+
+  const agregarACola = async (songId) => {
     try {
-      const res = await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
+      let res;
+      console.log("cd");
+      if (isAuthenticated) {
+        // 🔐 Usuario autenticado
+        res = await axios.post(
+          `${API_URL}/t/cola/add`,
+          { userId, songId },
+          { headers: { Authorization: `Bearer ${getToken()}` } }
+        );
+      } else {
+        // 👥 Usuario no autenticado (cola temporal/global)
+        res = await axios.post(`${API_URL}/t/cola/without/aut/add`, { songId });
+        console.log("cd");
+      }
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
       if (!cancion) {
@@ -92,20 +134,22 @@ export default function VideoCarousel() {
       }
 
       // Evitar duplicados
-      if (!cola.some((c) => c._id === cancion._id)) {
-        addToQueue({
-          _id: cancion._id,
-          titulo: cancion.titulo,
-          artista: cancion.artista,
-          numero: cancion.numero,
-          videoUrl: cancion.videoUrl,
-        });
-      }
+      // if (!cola.some((c) => c._id === cancion._id)) {
+      addToQueue({
+        _id: cancion._id,
+        titulo: cancion.titulo,
+        artista: cancion.artista,
+        numero: cancion.numero,
+        videoUrl: cancion.videoUrl,
+      });
+      //   }
 
       setToastMsg("✅ Canción agregada a la cola");
+      console.log("cds");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
       setToastMsg("❌ No se pudo agregar la canción");
+      console.log("cssds");
     }
   };
 
@@ -150,8 +194,6 @@ export default function VideoCarousel() {
 
   return (
     <div className="carousel-container">
-      
-
       <div className="carousel-content">
         <button className="arrow-btn left" onClick={prev}>
           <FaChevronLeft />
@@ -186,7 +228,6 @@ export default function VideoCarousel() {
                     className="btn-list"
                     onClick={() => agregarACola(video._id)}
                     title="Agregar a cola"
-                    disabled={!isAuthenticated}
                   >
                     <img src="./mas.png" alt="" width={"40px"} />
                   </button>
@@ -217,6 +258,12 @@ export default function VideoCarousel() {
           <FaChevronRight />
         </button>
       </div>
+
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
 }

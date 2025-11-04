@@ -24,6 +24,61 @@ router.delete(
 // ---------------- COLA ----------------
 
 // Agregar canción a la cola
+
+router.post("/cola/without/aut/add", async (req, res) => {
+  try {
+    const { songId, position } = req.body;
+
+    // Buscamos una única cola global (puede usarse un campo especial o ID fijo)
+    let colaGlobal = await Cola.findOne({ user: null });
+
+    if (!colaGlobal) {
+      // Si no existe la cola global, la creamos
+      colaGlobal = await Cola.create({
+        user: null,
+        canciones: [songId],
+        currentIndex: 0,
+      });
+    } else {
+      // Evitar duplicados
+      colaGlobal.canciones = colaGlobal.canciones.filter(
+        (c) => c.toString() !== songId
+      );
+
+      // Insertar canción en la posición indicada o al final
+      const insertPos =
+        typeof position === "number" && position >= 0
+          ? Math.min(position, colaGlobal.canciones.length)
+          : colaGlobal.canciones.length;
+
+      colaGlobal.canciones.splice(insertPos, 0, songId);
+
+      await colaGlobal.save();
+    }
+
+    // Obtener la cola con populate
+    const colaActualizada = await Cola.findOne({ user: null }).populate("canciones");
+
+    // 🔁 Emitir evento global (opcional)
+    const io = req.app.get("io");
+    io.emit("colaActualizadaGlobal", {
+      nuevaCola: colaActualizada.canciones,
+      indexActual: colaGlobal.currentIndex || 0,
+    });
+
+    res.status(201).json({
+      message: "Canción agregada a la cola global",
+      cola: colaActualizada.canciones,
+      totalCanciones: colaActualizada.canciones.length,
+      currentIndex: colaGlobal.currentIndex || 0,
+    });
+  } catch (err) {
+    console.error("Error al agregar canción a la cola global:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;

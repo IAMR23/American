@@ -118,7 +118,7 @@ export default function Carrousel() {
       }
 
       // Evitar duplicados
-      if (!cola.some((c) => c._id === cancion._id)) {
+     // if (!cola.some((c) => c._id === cancion._id)) {
         addToQueue({
           _id: cancion._id,
           titulo: cancion.titulo,
@@ -126,7 +126,7 @@ export default function Carrousel() {
           numero: cancion.numero,
           videoUrl: cancion.videoUrl,
         });
-      }
+    //  }
 
       setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
