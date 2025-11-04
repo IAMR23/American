@@ -136,6 +136,8 @@ export default function Inicial() {
             Authorization: `Bearer ${token}`,
           },
         });
+        setCola([]);
+        setCurrentIndex(0);
       }
     } catch (err) {
       console.error("Error al eliminar la cola:", err);
