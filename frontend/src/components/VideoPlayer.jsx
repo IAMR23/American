@@ -394,7 +394,7 @@ export default function VideoPlayer({
                 <div className="d-flex justify-content-center align-items-center ">
                   <img
                     className="m-2"
-                    src="/ci2.png"
+                    src="/ci.png"
                     alt=""
                     width={isFullscreen ? 45 : 30}
                   />
@@ -407,7 +407,7 @@ export default function VideoPlayer({
 
                   <img
                     className="m-2"
-                    src="/cd2.png"
+                    src="/cd.png"
                     alt=""
                     width={isFullscreen ? 40 : 25}
                   />

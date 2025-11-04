@@ -130,8 +130,7 @@ export default function Inicial() {
     try {
       const token = getToken();
       if (token) {
-        await fetch(`${API_URL}/t/cola/remove`, {
-          method: "DELETE",
+        await axios.delete(`${API_URL}/t/cola/remove`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
