@@ -6,6 +6,7 @@ const Playlist = require("../models/Playlist");
 const Cola = require("../models/Cola");
 const createListController = require("../controllers/listController");
 const { authenticate } = require("../middleware/authMiddleware");
+const Cancion = require("../models/Cancion");
 
 const favoritoController = createListController(Favorito);
 const playlistController = createListController(Playlist);
@@ -57,7 +58,9 @@ router.post("/cola/without/aut/add", async (req, res) => {
     }
 
     // Obtener la cola con populate
-    const colaActualizada = await Cola.findOne({ user: null }).populate("canciones");
+    const colaActualizada = await Cola.findOne({ user: null }).populate(
+      "canciones"
+    );
 
     // 🔁 Emitir evento global (opcional)
     const io = req.app.get("io");
@@ -77,7 +80,6 @@ router.post("/cola/without/aut/add", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 router.post("/cola/add", authenticate, async (req, res) => {
   try {

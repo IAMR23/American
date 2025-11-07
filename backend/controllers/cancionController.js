@@ -11,6 +11,7 @@ const crearCancion = async (req, res) => {
       videoUrl,
       imagenUrl,
       visiblePrincipal,
+      videoDefault,
     } = req.body;
 
     const nuevaCancion = new Cancion({
@@ -20,7 +21,8 @@ const crearCancion = async (req, res) => {
       generos,
       videoUrl,
       imagenUrl,
-      visiblePrincipal: visiblePrincipal || false, // por defecto false si no se envía
+      visiblePrincipal: visiblePrincipal || false,
+      videoDefault,
     });
 
     await nuevaCancion.save();
@@ -85,6 +87,7 @@ const actualizarCancion = async (req, res) => {
       videoUrl,
       imagenUrl,
       visiblePrincipal,
+      videoDefault,
     } = req.body;
 
     const cancionActualizada = await Cancion.findByIdAndUpdate(
@@ -97,6 +100,7 @@ const actualizarCancion = async (req, res) => {
         videoUrl,
         imagenUrl,
         visiblePrincipal,
+        videoDefault,
       },
       { new: true }
     );
@@ -110,6 +114,22 @@ const actualizarCancion = async (req, res) => {
   }
 };
 
+const getVideoDefault = async (req, res) => {
+  try {
+    // Busca todas las canciones donde videoDefault es true
+    const canciones = await Cancion.find({ videoDefault: true })
+      .populate("generos") // opcional: si quieres traer los géneros completos
+
+    if (!canciones.length)
+      return res.status(404).json({ mensaje: "No hay canciones con video default" });
+
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 const eliminarCancion = async (req, res) => {
   try {
     const cancionEliminada = await Cancion.findByIdAndDelete(req.params.id);
@@ -122,9 +142,50 @@ const eliminarCancion = async (req, res) => {
   }
 };
 
+// const filtrarCanciones = async (req, res) => {
+//   try {
+//     const { busqueda, ordenFecha } = req.query;
+
+//     const pipeline = [
+//       {
+//         $lookup: {
+//           from: "generos",
+//           localField: "generos",
+//           foreignField: "_id",
+//           as: "generos",
+//         },
+//       },
+//     ];
+
+//     if (busqueda) {
+//       const regex = new RegExp(busqueda, "i");
+//       pipeline.push({
+//         $match: {
+//           $or: [
+//             { titulo: { $regex: regex } },
+//             { artista: { $regex: regex } },
+//             { "generos.nombre": { $regex: regex } },
+//           ],
+//         },
+//       });
+//     }
+
+//     pipeline.push({
+//       $sort: { createdAt: ordenFecha === "asc" ? 1 : -1 },
+//     });
+
+//     const canciones = await mongoose.model("Cancion").aggregate(pipeline);
+
+//     res.status(200).json({ canciones });
+//   } catch (error) {
+//     console.error("Error en filtro por búsqueda:", error);
+//     res.status(500).json({ message: "Error al filtrar canciones", error });
+//   }
+// };
+
 const filtrarCanciones = async (req, res) => {
   try {
-    const { busqueda, ordenFecha } = req.query;
+    const { busqueda, ordenFecha, filtro } = req.query;
 
     const pipeline = [
       {
@@ -135,30 +196,59 @@ const filtrarCanciones = async (req, res) => {
           as: "generos",
         },
       },
+      {
+        $unwind: {
+          path: "$generos",
+          preserveNullAndEmptyArrays: true, // mantiene las canciones sin género
+        },
+      },
     ];
 
     if (busqueda) {
       const regex = new RegExp(busqueda, "i");
-      pipeline.push({
-        $match: {
-          $or: [
+
+      const filtros = [];
+
+      // Permitir filtrar por campo específico
+      switch (filtro) {
+        case "numero":
+          const numeroBuscado = parseInt(busqueda);
+          if (!isNaN(numeroBuscado)) {
+            filtros.push({ numero: numeroBuscado });
+          }
+          break;
+        case "titulo":
+          filtros.push({ titulo: { $regex: regex } });
+          break;
+        case "artista":
+          filtros.push({ artista: { $regex: regex } });
+          break;
+        case "generos":
+          filtros.push({ "generos.nombre": { $regex: regex } });
+          break;
+        default:
+          // Búsqueda general si no se pasa filtroActivo
+          filtros.push(
             { titulo: { $regex: regex } },
             { artista: { $regex: regex } },
-            { "generos.nombre": { $regex: regex } },
-          ],
-        },
-      });
+            { "generos.nombre": { $regex: regex } }
+          );
+          break;
+      }
+
+      pipeline.push({ $match: { $or: filtros } });
     }
 
+    // Ordenar por fecha de creación
     pipeline.push({
       $sort: { createdAt: ordenFecha === "asc" ? 1 : -1 },
     });
 
-    const canciones = await mongoose.model("Cancion").aggregate(pipeline);
+    const canciones = await Cancion.aggregate(pipeline);
 
     res.status(200).json({ canciones });
   } catch (error) {
-    console.error("Error en filtro por búsqueda:", error);
+    console.error("❌ Error al filtrar canciones:", error);
     res.status(500).json({ message: "Error al filtrar canciones", error });
   }
 };
@@ -210,7 +300,6 @@ const listarCancionesVisibles = async (req, res) => {
   }
 };
 
-
 // Listar canciones por últimas subidas
 const listarCancionesUltimas = async (req, res) => {
   try {
@@ -224,7 +313,6 @@ const listarCancionesUltimas = async (req, res) => {
   }
 };
 
-
 module.exports = {
   crearCancion,
   listarCanciones,
@@ -236,5 +324,6 @@ module.exports = {
   listarCancionesVisibles,
   listarCancionesArtista,
   listarCancionesNumero,
-  listarCancionesUltimas
+  listarCancionesUltimas,
+  getVideoDefault
 };

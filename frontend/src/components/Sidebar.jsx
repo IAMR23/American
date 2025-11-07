@@ -41,6 +41,16 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
+
+          <li>
+            <Link to="/video-default" className="nav-link px-0 align-middle">
+              <i className="fs-4 bi-table"></i>
+              <span className="ms-1 d-none d-sm-inline text-light">
+                Video Preferido
+              </span>
+            </Link>
+          </li>
+
           <li>
             <Link to="/canciones" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
@@ -57,8 +67,11 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
-             <li>
-            <Link to="/editar-mas-reproducidas" className="nav-link px-0 align-middle">
+          <li>
+            <Link
+              to="/editar-mas-reproducidas"
+              className="nav-link px-0 align-middle"
+            >
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
                 Editar las mas cantadas
@@ -73,11 +86,11 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
-            <li>
+          <li>
             <Link to="/register-user" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
               <span className="ms-1 d-none d-sm-inline text-light">
-                Registrar Usuarios 
+                Registrar Usuarios
               </span>
             </Link>
           </li>

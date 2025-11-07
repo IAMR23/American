@@ -76,7 +76,56 @@ export default function Inicial() {
     }
   }, [userId]);
 
+  // useEffect(() => {
+  //   const fetchVideoPorDefecto = async () => {
+  //     try {
+  //       const res = await axios.get(`${API_URL}/song/default`);
+  //       if (res.data && res.data.length > 0) {
+  //         // 🧠 Si no hay canciones, los pone como la cola inicial
+  //         if (!cola || cola.length === 0) {
+  //           setCola(res.data);
+  //           setCurrentIndex(0);
+  //         }
+  //         // 🧠 Si ya está al final, agrega los videos default al final de la cola
+  //         else if (currentIndex >= cola.length - 1) {
+  //           setCola((prevCola) => [...prevCola, ...res.data]);
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Error al cargar video por defecto:", err);
+  //     }
+  //   };
+
+  //   // 🧠 Caso 1: cola vacía
+  //   if (!cola || cola.length === 0) {
+  //     fetchVideoPorDefecto();
+  //     return;
+  //   }
+
+  //   // 🧠 Caso 2: llegó al último video
+  //   if (currentIndex >= cola.length - 1) {
+  //     fetchVideoPorDefecto();
+  //   }
+  // }, [cola, currentIndex]);
+
   // ------------------ Funciones ------------------
+
+  const [colaDefault, setColaDefault] = useState([]);
+
+  useEffect(() => {
+    const fetchDefaultVideos = async () => {
+      const res = await axios.get(`${API_URL}/song/default`);
+      setColaDefault(res.data);
+    };
+    fetchDefaultVideos();
+  }, []);
+
+  const getColaActual = () => {
+    if (cola.length > 0 && currentIndex < cola.length) return cola;
+    return colaDefault;
+  };
+
+
   const handleLoginSuccess = async () => {
     const token = getToken();
     if (token) {
@@ -204,7 +253,7 @@ export default function Inicial() {
       default:
         return (
           <VideoPlayer
-            cola={cola}
+            cola={getColaActual()}
             currentIndex={currentIndex}
             setCurrentIndex={handleCambiarCancion}
             fullscreenRequested={shouldFullscreen}

@@ -5,6 +5,7 @@ import ToastModal from "../components/modal/ToastModal";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
+const FILTRO_URL = `${API_URL2}/song/filtrar`;
 const GENEROS_URL = `${API_URL2}/genero`;
 
 export default function CancionCRUD() {
@@ -18,9 +19,14 @@ export default function CancionCRUD() {
     videoUrl: "",
     imagenUrl: "",
     visiblePrincipal: false,
+    videoDefault: false,
   });
   const [editId, setEditId] = useState(null);
   const [toastMensaje, setToastMensaje] = useState("");
+
+  // --- NUEVO: estados de filtro ---
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroActivo, setFiltroActivo] = useState("titulo");
 
   const headers = {
     Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -45,33 +51,56 @@ export default function CancionCRUD() {
     }
   };
 
+  // --- NUEVO: función para filtrar ---
+  const fetchFiltrado = async () => {
+    try {
+      if (!busqueda.trim()) {
+        fetchCanciones();
+        return;
+      }
+      const params = { busqueda, filtro: filtroActivo };
+      const res = await axios.get(FILTRO_URL, { headers, params });
+      setCanciones(res.data.canciones || []);
+    } catch (error) {
+      console.error("Error al filtrar canciones:", error);
+    }
+  };
+
   useEffect(() => {
     fetchCanciones();
     fetchGeneros();
   }, []);
 
+  // --- NUEVO: buscar con debounce ---
+  useEffect(() => {
+    const delay = setTimeout(fetchFiltrado, 500);
+    return () => clearTimeout(delay);
+  }, [busqueda, filtroActivo]);
+
   const handleOpenModal = (cancion = null) => {
     if (cancion) {
       setEditId(cancion._id);
       setForm({
-        numero: cancion.numero || form.numero, // mantiene el número si es edición
+        numero: cancion.numero || form.numero,
         titulo: cancion.titulo,
         artista: cancion.artista,
         generos: cancion.generos?._id || "",
         videoUrl: cancion.videoUrl,
         imagenUrl: cancion.imagenUrl || "",
         visiblePrincipal: cancion.visiblePrincipal || false,
+        videoDefault: cancion.videoDefault || false,
       });
     } else {
       setEditId(null);
       setForm({
-        numero: form.numero, // mantiene el número ingresado
+        numero: form.numero,
         titulo: "",
         artista: "",
         generos: "",
         videoUrl: "",
         imagenUrl: "",
         visiblePrincipal: false,
+        videoDefault: false,
       });
     }
     new window.bootstrap.Modal(document.getElementById("cancionModal")).show();
@@ -80,7 +109,7 @@ export default function CancionCRUD() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { numero, titulo, artista, generos, videoUrl, imagenUrl } = form;
+    const { numero, titulo, artista, generos, videoUrl } = form;
 
     if (
       !numero ||
@@ -105,7 +134,6 @@ export default function CancionCRUD() {
       } else {
         await axios.post(API_URL, dataToSend, { headers });
         setToastMensaje("Canción creada correctamente");
-        // Limpiar todos los campos excepto el número
         setForm((prev) => ({
           ...prev,
           titulo: "",
@@ -114,18 +142,18 @@ export default function CancionCRUD() {
           videoUrl: "",
           imagenUrl: "",
           visiblePrincipal: false,
+          videoDefault: false,
         }));
       }
 
       setEditId(null);
       fetchCanciones();
-      // NO cerramos el modal automáticamente
     } catch (error) {
       console.error("Error al guardar canción:", error);
     }
   };
+
   const handleDelete = async (id) => {
-    // Mostramos un toast preguntando confirmación
     const confirmar = window.confirm(
       "⚠️ ¿Estás seguro de eliminar esta canción?"
     );
@@ -144,6 +172,33 @@ export default function CancionCRUD() {
   return (
     <div className="p-2">
       <h2>Gestión de Canciones</h2>
+
+      {/* NUEVO: bloque de filtro */}
+
+      <div className="d-flex align-items-center flex-wrap mb-3">
+        {["numero", "artista", "titulo", "generos"].map((tipo) => (
+          <button
+            key={tipo}
+            onClick={() => setFiltroActivo(tipo)}
+            className={`btn me-2 ${
+              filtroActivo === tipo ? "btn-danger" : "btn-primary"
+            }`}
+          >
+            {tipo === "generos"
+              ? "Género"
+              : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+          </button>
+        ))}
+        <input
+          type="text"
+          className="form-control ms-2"
+          style={{ width: "auto" }}
+          placeholder="Buscar..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
+
       <button
         className="btn btn-primary"
         style={{
@@ -168,6 +223,7 @@ export default function CancionCRUD() {
             <th>Video</th>
             <th>Imagen</th>
             <th>Visible Principal</th>
+            <th>Video Default</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -195,6 +251,7 @@ export default function CancionCRUD() {
                 )}
               </td>
               <td>{cancion.visiblePrincipal ? "Sí" : "No"}</td>
+              <td>{cancion.videoDefault ? "Sí" : "No"}</td>
               <td>
                 <div className="d-flex gap-2">
                   <button
@@ -340,6 +397,27 @@ export default function CancionCRUD() {
                         htmlFor="visiblePrincipal"
                       >
                         ¿Visible en principal?
+                      </label>
+                    </div>
+
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="videoDefault"
+                        checked={form.videoDefault}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            videoDefault: e.target.checked,
+                          })
+                        }
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="videoDefault"
+                      >
+                        Video default
                       </label>
                     </div>
                   </div>

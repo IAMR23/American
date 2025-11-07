@@ -23,6 +23,7 @@ router.get("/masreproducidas", async (req, res) => {
     res.status(500).json({ error: "Error al obtener canciones populares" });
   }
 });
+router.get("/default" , cancionController.getVideoDefault)
 router.get("/:id", cancionController.obtenerCancion);
 router.put("/:id", cancionController.actualizarCancion);
 router.delete("/:id", cancionController.eliminarCancion);
