@@ -125,7 +125,6 @@ export default function Inicial() {
     return colaDefault;
   };
 
-
   const handleLoginSuccess = async () => {
     const token = getToken();
     if (token) {
@@ -466,12 +465,12 @@ export default function Inicial() {
               })}
             </div>
             <button
-              className="btn btn-secondary"
+              className="btn "
               onClick={() => {
                 limpiarCola();
               }}
             >
-              <FaBroom /> Limpiar
+              <img className="m-2" src="/limpiar.png" alt="" width={120} />
             </button>
           </div>
         </div>
