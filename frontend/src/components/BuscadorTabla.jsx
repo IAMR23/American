@@ -69,13 +69,13 @@ export default function BuscadorTabla({ onSelectAll }) {
       );
 
       // Evitar duplicados en la cola
-      addToQueue({
-        _id: song._id,
-        titulo: song.titulo,
-        artista: song.artista,
-        numero: song.numero,
-        videoUrl: song.videoUrl,
-      });
+      // addToQueue({
+      //   _id: song._id,
+      //   titulo: song.titulo,
+      //   artista: song.artista,
+      //   numero: song.numero,
+      //   videoUrl: song.videoUrl,
+      // });
 
       setToastMsg(`✅ "${song.titulo}" agregada a la cola`);
     } catch (err) {

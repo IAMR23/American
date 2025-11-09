@@ -52,12 +52,22 @@ export default function CancionCRUD() {
   };
 
   // --- NUEVO: función para filtrar ---
+
   const fetchFiltrado = async () => {
     try {
+      if (filtroActivo === "videoDefault") {
+        const res = await axios.get(`${FILTRO_URL}?videoDefault=true`, {
+          headers,
+        });
+        setCanciones(res.data.canciones || []);
+        return;
+      }
+
       if (!busqueda.trim()) {
         fetchCanciones();
         return;
       }
+
       const params = { busqueda, filtro: filtroActivo };
       const res = await axios.get(FILTRO_URL, { headers, params });
       setCanciones(res.data.canciones || []);
@@ -176,7 +186,7 @@ export default function CancionCRUD() {
       {/* NUEVO: bloque de filtro */}
 
       <div className="d-flex align-items-center flex-wrap mb-3">
-        {["numero", "artista", "titulo", "generos"].map((tipo) => (
+        {/* {["numero", "artista", "titulo", "generos"].map((tipo) => (
           <button
             key={tipo}
             onClick={() => setFiltroActivo(tipo)}
@@ -188,7 +198,26 @@ export default function CancionCRUD() {
               ? "Género"
               : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
           </button>
-        ))}
+        ))} */}
+
+        {["numero", "artista", "titulo", "generos", "videoDefault"].map(
+          (tipo) => (
+            <button
+              key={tipo}
+              onClick={() => setFiltroActivo(tipo)}
+              className={`btn me-2 ${
+                filtroActivo === tipo ? "btn-danger" : "btn-primary"
+              }`}
+            >
+              {tipo === "generos"
+                ? "Género"
+                : tipo === "videoDefault"
+                ? "Video Default"
+                : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+            </button>
+          )
+        )}
+
         <input
           type="text"
           className="form-control ms-2"

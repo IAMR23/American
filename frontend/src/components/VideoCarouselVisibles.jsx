@@ -97,13 +97,13 @@ export default function VideoCarouselVisibles() {
       }
 
       // Evitar duplicados
-      addToQueue({
-        _id: cancion._id,
-        titulo: cancion.titulo,
-        artista: cancion.artista,
-        numero: cancion.numero,
-        videoUrl: cancion.videoUrl,
-      });
+      // addToQueue({
+      //   _id: cancion._id,
+      //   titulo: cancion.titulo,
+      //   artista: cancion.artista,
+      //   numero: cancion.numero,
+      //   videoUrl: cancion.videoUrl,
+      // });
 
       setToastMsg("✅ Canción agregada a la cola");
       console.log("cds");

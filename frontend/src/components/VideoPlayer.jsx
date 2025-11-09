@@ -2,10 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
-import { BsMusicNote } from "react-icons/bs";
-import { RiMusic2Fill } from "react-icons/ri";
-
-import { MdLibraryMusic } from "react-icons/md";
 
 export default function VideoPlayer({
   cola = [],
@@ -13,6 +9,7 @@ export default function VideoPlayer({
   setCurrentIndex,
   fullscreenRequested = false,
   onFullscreenHandled,
+  onColaTerminada,
 }) {
   const playlist = cola || [];
 
@@ -20,8 +17,6 @@ export default function VideoPlayer({
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [score, setScore] = useState(null);
-  const [scoreCalculated, setScoreCalculated] = useState(false);
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -32,62 +27,7 @@ export default function VideoPlayer({
   const playerRef = useRef();
   const containerRef = useRef();
 
-  // Pitch detection refs
-  const audioContextRef = useRef(null);
-  const analyserRef = useRef(null);
-  const detectorRef = useRef(null);
-  const rafRef = useRef(null);
-  const userPitchesRef = useRef([]);
-
   const currentVideo = playlist[currentIndex];
-
-  const capturePitch = () => {
-    const input = new Float32Array(analyserRef.current.fftSize);
-    analyserRef.current.getFloatTimeDomainData(input);
-
-    const [pitch, clarity] = detectorRef.current.findPitch(
-      input,
-      audioContextRef.current.sampleRate
-    );
-
-    if (clarity > 0.5) {
-      userPitchesRef.current.push(pitch);
-    }
-
-    rafRef.current = requestAnimationFrame(capturePitch);
-  };
-
-  const stopMic = () => {
-    cancelAnimationFrame(rafRef.current);
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-  };
-
-  const calculateScore = () => {
-    const userPitches = userPitchesRef.current;
-    if (!userPitches.length) return 0;
-
-    const songReference = new Array(userPitches.length).fill(440);
-
-    let total = 0;
-    let count = userPitches.length;
-
-    for (let i = 0; i < count; i++) {
-      let diff = Math.abs(userPitches[i] - songReference[i]);
-      if (userPitches[i] === 0) {
-        total += 40;
-      } else if (diff < 5) {
-        total += 100;
-      } else if (diff < 20) {
-        total += 70;
-      } else {
-        total += 40;
-      }
-    }
-
-    return Math.round(total / count);
-  };
 
   // --- FULLSCREEN ---
   useEffect(() => {
@@ -110,7 +50,6 @@ export default function VideoPlayer({
   // --- CAMBIO DE CANCIÓN ---
   useEffect(() => {
     if (!currentVideo) return;
-    stopMic();
     setIsPlaying(false);
     if (playerRef.current) {
       playerRef.current.seekTo(0);
@@ -147,12 +86,6 @@ export default function VideoPlayer({
       }
     } else {
       setShowNextMessage(false);
-    }
-
-    if (!scoreCalculated && dur - playedSeconds <= 45) {
-      const finalScore = calculateScore();
-      setScore(finalScore);
-      setScoreCalculated(true);
     }
   };
 
@@ -227,20 +160,6 @@ export default function VideoPlayer({
     }
   };
 
-  // --- EVENTOS ---
-  const handleSongStart = () => {
-    setScore(null);
-    setScoreCalculated(false);
-    // startMic();
-  };
-
-  const handleSongEnd = () => {
-    stopMic();
-    const finalScore = calculateScore();
-    setScore(finalScore);
-    nextVideo();
-  };
-
   // --- RENDER ---
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
@@ -257,6 +176,19 @@ export default function VideoPlayer({
       </div>
     );
   }
+
+  // --- CUANDO TERMINA UN VIDEO ---
+  const handleEnded = () => {
+    if (currentIndex < playlist.length - 1) {
+      // ✅ Aún hay canciones en la cola
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      // ⚠️ Cola terminada
+      if (onColaTerminada) {
+        onColaTerminada(); // avisa al componente padre
+      }
+    }
+  };
 
   return (
     <div
@@ -277,11 +209,10 @@ export default function VideoPlayer({
           controls={false}
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
-          onPlay={handleSongStart}
-          onPause={() => stopMic()}
+          onPause
           onProgress={handleProgress}
-          onEnded={handleSongEnd}
           onDuration={(d) => setDuration(d)}
+           onEnded={handleEnded}
         />
 
         {/* Botones navegación */}

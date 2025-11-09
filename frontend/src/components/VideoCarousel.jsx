@@ -135,13 +135,13 @@ export default function VideoCarousel() {
 
       // Evitar duplicados
       // if (!cola.some((c) => c._id === cancion._id)) {
-      addToQueue({
-        _id: cancion._id,
-        titulo: cancion.titulo,
-        artista: cancion.artista,
-        numero: cancion.numero,
-        videoUrl: cancion.videoUrl,
-      });
+      // addToQueue({
+      //   _id: cancion._id,
+      //   titulo: cancion.titulo,
+      //   artista: cancion.artista,
+      //   numero: cancion.numero,
+      //   videoUrl: cancion.videoUrl,
+      // });
       //   }
 
       setToastMsg("✅ Canción agregada a la cola");

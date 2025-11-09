@@ -41,16 +41,6 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
-
-          <li>
-            <Link to="/video-default" className="nav-link px-0 align-middle">
-              <i className="fs-4 bi-table"></i>
-              <span className="ms-1 d-none d-sm-inline text-light">
-                Video Preferido
-              </span>
-            </Link>
-          </li>
-
           <li>
             <Link to="/canciones" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
-import { FaBroom, FaCompactDisc } from "react-icons/fa";
+import {  FaCompactDisc } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import axios from "axios";
@@ -17,9 +17,7 @@ import RegistrationForm from "../components/RegistrationForm";
 import ListadoPDFCanciones from "../components/ListadoPDFCanciones";
 import AyudaPage from "./AyudaPage";
 import PlantTest from "../components/PlanTest";
-import Carrousel from "../components/Carrousel";
 import BuscadorTabla from "../components/BuscadorTabla";
-import MasReproducidas from "../components/MasReproducidas";
 
 import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
@@ -76,41 +74,9 @@ export default function Inicial() {
     }
   }, [userId]);
 
-  // useEffect(() => {
-  //   const fetchVideoPorDefecto = async () => {
-  //     try {
-  //       const res = await axios.get(`${API_URL}/song/default`);
-  //       if (res.data && res.data.length > 0) {
-  //         // 🧠 Si no hay canciones, los pone como la cola inicial
-  //         if (!cola || cola.length === 0) {
-  //           setCola(res.data);
-  //           setCurrentIndex(0);
-  //         }
-  //         // 🧠 Si ya está al final, agrega los videos default al final de la cola
-  //         else if (currentIndex >= cola.length - 1) {
-  //           setCola((prevCola) => [...prevCola, ...res.data]);
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Error al cargar video por defecto:", err);
-  //     }
-  //   };
-
-  //   // 🧠 Caso 1: cola vacía
-  //   if (!cola || cola.length === 0) {
-  //     fetchVideoPorDefecto();
-  //     return;
-  //   }
-
-  //   // 🧠 Caso 2: llegó al último video
-  //   if (currentIndex >= cola.length - 1) {
-  //     fetchVideoPorDefecto();
-  //   }
-  // }, [cola, currentIndex]);
-
-  // ------------------ Funciones ------------------
-
   const [colaDefault, setColaDefault] = useState([]);
+  const [esColaDefault, setEsColaDefault] = useState(false);
+
 
   useEffect(() => {
     const fetchDefaultVideos = async () => {
@@ -121,8 +87,8 @@ export default function Inicial() {
   }, []);
 
   const getColaActual = () => {
-    if (cola.length > 0 && currentIndex < cola.length) return cola;
-    return colaDefault;
+    const esColaVacia = !cola.length || currentIndex >= cola.length;
+    return esColaVacia ? colaDefault : cola;
   };
 
   const handleLoginSuccess = async () => {
@@ -257,6 +223,12 @@ export default function Inicial() {
             setCurrentIndex={handleCambiarCancion}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
+            onColaTerminada={() => {
+              // ⚡ Cuando se acaba la cola, usar los videos por defecto
+              setCola(colaDefault);
+              setCurrentIndex(0);
+              setEsColaDefault(true);
+            }}
           />
         );
     }
@@ -443,7 +415,9 @@ export default function Inicial() {
                 return (
                   <div
                     key={indexReal}
-                    onClick={() => handleCambiarCancion(indexReal)}
+                    onClick={() => {handleCambiarCancion(indexReal)
+                      setSeccionActiva("video")
+                    }}
                     className="song-icon position-relative"
                     style={{ cursor: "pointer" }}
                   >
@@ -473,30 +447,7 @@ export default function Inicial() {
               <img className="m-2" src="/limpiar.png" alt="" width={120} />
             </button>
           </div>
-        </div>
-
-        {/* <div style={{ margin: "1rem" }}>
-          <h2 style={{ color: "white" }}>Canciones a la cola</h2>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            {cola.map((cancion, idx) => (
-              <div
-                key={idx}
-                onClick={() => handleCambiarCancion(idx)}
-                style={{ cursor: "pointer", textAlign: "center" }}
-              >
-                <FaCompactDisc
-                  size={40}
-                  color={idx === currentIndex ? "red" : "blue"}
-                />
-                <div style={{ fontSize: "0.8rem" }}>
-                  <strong>{cancion.titulo}</strong>
-                  <br />
-                  <small>{cancion.artista}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div> */}
+        </div>    
       </div>
 
       <div className="fondo p-2">

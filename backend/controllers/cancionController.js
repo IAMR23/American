@@ -117,18 +117,20 @@ const actualizarCancion = async (req, res) => {
 const getVideoDefault = async (req, res) => {
   try {
     // Busca todas las canciones donde videoDefault es true
-    const canciones = await Cancion.find({ videoDefault: true })
-      .populate("generos") // opcional: si quieres traer los géneros completos
+    const canciones = await Cancion.find({ videoDefault: true }).populate(
+      "generos"
+    ); // opcional: si quieres traer los géneros completos
 
     if (!canciones.length)
-      return res.status(404).json({ mensaje: "No hay canciones con video default" });
+      return res
+        .status(404)
+        .json({ mensaje: "No hay canciones con video default" });
 
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 const eliminarCancion = async (req, res) => {
   try {
@@ -185,7 +187,7 @@ const eliminarCancion = async (req, res) => {
 
 const filtrarCanciones = async (req, res) => {
   try {
-    const { busqueda, ordenFecha, filtro } = req.query;
+    const { busqueda, filtro, videoDefault } = req.query;
 
     const pipeline = [
       {
@@ -196,60 +198,43 @@ const filtrarCanciones = async (req, res) => {
           as: "generos",
         },
       },
+      // 👇 Importante: desarma el array de géneros
       {
         $unwind: {
           path: "$generos",
-          preserveNullAndEmptyArrays: true, // mantiene las canciones sin género
+          preserveNullAndEmptyArrays: true, // por si alguna canción no tiene género
         },
       },
     ];
 
-    if (busqueda) {
-      const regex = new RegExp(busqueda, "i");
-
-      const filtros = [];
-
-      // Permitir filtrar por campo específico
-      switch (filtro) {
-        case "numero":
-          const numeroBuscado = parseInt(busqueda);
-          if (!isNaN(numeroBuscado)) {
-            filtros.push({ numero: numeroBuscado });
-          }
-          break;
-        case "titulo":
-          filtros.push({ titulo: { $regex: regex } });
-          break;
-        case "artista":
-          filtros.push({ artista: { $regex: regex } });
-          break;
-        case "generos":
-          filtros.push({ "generos.nombre": { $regex: regex } });
-          break;
-        default:
-          // Búsqueda general si no se pasa filtroActivo
-          filtros.push(
-            { titulo: { $regex: regex } },
-            { artista: { $regex: regex } },
-            { "generos.nombre": { $regex: regex } }
-          );
-          break;
-      }
-
-      pipeline.push({ $match: { $or: filtros } });
+    // ✅ Filtro especial por videoDefault
+    if (videoDefault === "true") {
+      pipeline.push({ $match: { videoDefault: true } });
     }
 
-    // Ordenar por fecha de creación
-    pipeline.push({
-      $sort: { createdAt: ordenFecha === "asc" ? 1 : -1 },
-    });
+    // ✅ Filtros de texto o número
+    if (busqueda && filtro) {
+      const regex = new RegExp(busqueda, "i");
 
+      const campos = {
+        titulo: { titulo: regex },
+        artista: { artista: regex },
+        numero: { numero: parseInt(busqueda) || 0 },
+        generos: { "generos.nombre": regex },
+      };
+
+      if (campos[filtro]) {
+        pipeline.push({ $match: campos[filtro] });
+      }
+    }
+
+    // Ejecutar el pipeline
     const canciones = await Cancion.aggregate(pipeline);
 
-    res.status(200).json({ canciones });
+    res.json({ canciones });
   } catch (error) {
-    console.error("❌ Error al filtrar canciones:", error);
-    res.status(500).json({ message: "Error al filtrar canciones", error });
+    console.error("Error al filtrar canciones:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -325,5 +310,5 @@ module.exports = {
   listarCancionesArtista,
   listarCancionesNumero,
   listarCancionesUltimas,
-  getVideoDefault
+  getVideoDefault,
 };
