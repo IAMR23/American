@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
-import {  FaCompactDisc } from "react-icons/fa";
+import { FaCompactDisc } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import axios from "axios";
@@ -76,7 +76,6 @@ export default function Inicial() {
 
   const [colaDefault, setColaDefault] = useState([]);
   const [esColaDefault, setEsColaDefault] = useState(false);
-
 
   useEffect(() => {
     const fetchDefaultVideos = async () => {
@@ -189,7 +188,8 @@ export default function Inicial() {
       case "favoritos":
         return (
           <FavoritePlaylist
-            playlists={playlists}
+            // playlists={playlists}
+            userId={userId}      
             onSelectAll={() => setSeccionActiva("video")}
           />
         );
@@ -415,8 +415,9 @@ export default function Inicial() {
                 return (
                   <div
                     key={indexReal}
-                    onClick={() => {handleCambiarCancion(indexReal)
-                      setSeccionActiva("video")
+                    onClick={() => {
+                      handleCambiarCancion(indexReal);
+                      setSeccionActiva("video");
                     }}
                     className="song-icon position-relative"
                     style={{ cursor: "pointer" }}
@@ -447,7 +448,7 @@ export default function Inicial() {
               <img className="m-2" src="/limpiar.png" alt="" width={120} />
             </button>
           </div>
-        </div>    
+        </div>
       </div>
 
       <div className="fondo p-2">

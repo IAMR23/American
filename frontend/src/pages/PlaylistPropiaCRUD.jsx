@@ -3,6 +3,8 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { getUserId } from "../utils/auth";
 import { Link } from "react-router-dom";
+import { FaTrash } from "react-icons/fa";
+import ToastModal from "../components/modal/ToastModal";
 
 export default function PlaylistPropiaCRUD() {
   const [playlists, setPlaylists] = useState([]);
@@ -10,6 +12,7 @@ export default function PlaylistPropiaCRUD() {
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [canciones, setCanciones] = useState([]);
   const [songIdToAdd, setSongIdToAdd] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
 
   const token = localStorage.getItem("token");
 
@@ -23,10 +26,7 @@ export default function PlaylistPropiaCRUD() {
 
   async function fetchPlaylists() {
     try {
-      const res = await axios.get(
-        `${API_URL}/t2/playlistpropia`,
-        axiosConfig
-      );
+      const res = await axios.get(`${API_URL}/t2/playlistpropia`, axiosConfig);
       setPlaylists(res.data);
     } catch (error) {
       console.error("Error al cargar playlists:", error);
@@ -48,7 +48,7 @@ export default function PlaylistPropiaCRUD() {
 
   async function handleCrearPlaylist(e) {
     e.preventDefault();
-    if (!nombreNueva.trim()) return alert("Ingrese un nombre");
+    if (!nombreNueva.trim()) return setToastMsg("Ingrese un nombre");
 
     try {
       await axios.post(
@@ -60,7 +60,7 @@ export default function PlaylistPropiaCRUD() {
       fetchPlaylists();
     } catch (error) {
       console.error("Error al crear playlist:", error);
-      alert(error.response?.data?.error || "Error al crear playlist");
+      setToastMsg(error.response?.data?.error || "Error al crear playlist");
     }
   }
 
@@ -83,15 +83,16 @@ export default function PlaylistPropiaCRUD() {
         setSelectedPlaylist(null);
         setCanciones([]);
       }
+      setToastMsg("Playlist eliminada correctamente ✅");
     } catch (error) {
       console.error("Error al eliminar playlist:", error);
-      alert("No se pudo eliminar la playlist");
+      setToastMsg("No se pudo eliminar la playlist");
     }
   }
 
   return (
     <div className="">
-      <h2>Mis Playlists</h2>
+      <h2>Playlists sugeridos</h2>
 
       <form onSubmit={handleCrearPlaylist} className="mb-3">
         <div className="input-group">
@@ -123,7 +124,7 @@ export default function PlaylistPropiaCRUD() {
               onClick={(e) => e.stopPropagation()} // para que no dispare el onClick del li
             >
               <span className="badge bg-secondary rounded-pill ms-2">
-                   {pl.nombre}  / {pl.canciones.length || 0} canciones
+                {pl.nombre} / {pl.canciones.length || 0} canciones
               </span>
             </Link>
 
@@ -132,11 +133,17 @@ export default function PlaylistPropiaCRUD() {
               onClick={(e) => handleEliminarPlaylist(e, pl._id)}
               title="Eliminar playlist"
             >
-              Eliminar
+              <FaTrash size={24} />
             </button>
           </li>
         ))}
       </ul>
+
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
 }

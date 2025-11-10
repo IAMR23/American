@@ -1,23 +1,78 @@
 import React, { useState } from "react";
-import { FaPlus } from "react-icons/fa";
+import { FaEye, FaPlus, FaTrash } from "react-icons/fa";
 import { BsMusicNote } from "react-icons/bs";
 import { Link } from "react-router-dom";
 import { useQueueContext } from "../hooks/QueueProvider";
+import { API_URL } from "../config";
+import axios from "axios";
+import { useEffect } from "react";
+import ToastModal from "./modal/ToastModal";
 
-const FavoritePlaylist = ({ playlists , onSelectAll}) => {
+const FavoritePlaylist = ({ userId, onSelectAll }) => {
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(null);
   const { setNuevaCola } = useQueueContext();
+  const [playlists, setPlaylists] = useState([]);
+  const [toastMsg, setToastMsg] = useState("");
 
   const isValidArray = Array.isArray(playlists);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (newPlaylistName.trim()) {
-      onAdd(newPlaylistName.trim());
-      setNewPlaylistName("");
-    }
+  const token = localStorage.getItem("token");
+
+  const axiosConfig = {
+    headers: { Authorization: `Bearer ${token}` },
   };
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, []);
+
+  async function fetchPlaylists() {
+    try {
+      const resPlaylists = await axios.get(`${API_URL}/t/playlist/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPlaylists(Array.isArray(resPlaylists.data) ? resPlaylists.data : []);
+    } catch (error) {
+      console.error("Error al cargar playlists:", error);
+    }
+  }
+  async function handleCrearPlaylist(e) {
+    e.preventDefault();
+    if (!newPlaylistName.trim()) return alert("Ingrese un nombre");
+
+    try {
+      await axios.post(
+        `${API_URL}/t/playlist`,
+        { nombre: newPlaylistName },
+        axiosConfig
+      );
+      setNewPlaylistName("");
+      fetchPlaylists();
+    } catch (error) {
+      console.log(error);
+      console.error("Error al crear playlist:", error);
+    }
+  }
+
+  async function handleEliminarPlaylist(e, playlistId) {
+    e.stopPropagation(); // evita que se dispare el onClick de <li> o <Link>
+    e.preventDefault(); // previene la navegación en caso de que esté dentro de <Link>
+
+    // if (!window.confirm("¿Seguro que quieres eliminar esta playlist?")) return;
+
+    try {
+      await axios.delete(`${API_URL}/t/playlist/${playlistId}`, axiosConfig);
+      // Actualizar lista sin recargar todo
+      setPlaylists(playlists.filter((pl) => pl._id !== playlistId));
+
+      setToastMsg("Playlist eliminada correctamente ✅")
+      // setCanciones([]);
+    } catch (error) {
+      console.error("Error al eliminar playlist:", error);
+      alert("No se pudo eliminar la playlist");
+    }
+  }
 
   return (
     <div
@@ -34,7 +89,7 @@ const FavoritePlaylist = ({ playlists , onSelectAll}) => {
         <h3 className="mb-0">Listados de Favoritos</h3>
       </div>
 
-      <form className="input-group mb-3" onSubmit={handleSubmit}>
+      <form className="input-group mb-3" onSubmit={handleCrearPlaylist}>
         <input
           type="text"
           className="form-control"
@@ -91,7 +146,7 @@ const FavoritePlaylist = ({ playlists , onSelectAll}) => {
                   to={`/mis-playlist/${playlist._id}`}
                   className="btn btn-outline-primary btn-sm"
                 >
-                  Ver
+                  <FaEye size={24} />
                 </Link>
 
                 <button
@@ -99,17 +154,31 @@ const FavoritePlaylist = ({ playlists , onSelectAll}) => {
                   onClick={() => {
                     if (playlist.canciones) {
                       setNuevaCola(playlist.canciones, 0);
-                      onSelectAll?.()
+                      onSelectAll?.();
                     }
                   }}
                 >
-                  Todo
+                  TODO
+                </button>
+
+                <button
+                  className="btn btn-sm btn-danger "
+                  onClick={(e) => handleEliminarPlaylist(e, playlist._id)}
+                  title="Eliminar playlist"
+                >
+                  <FaTrash size={24} />
                 </button>
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      <ToastModal
+        mensaje={toastMsg}
+        onClose={() => setToastMsg("")}
+        duracion={2000}
+      />
     </div>
   );
 };

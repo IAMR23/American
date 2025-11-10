@@ -174,7 +174,13 @@ router.post(
   playlistController.addCancionAPlaylist
 );
 router.post("/playlist/add", authenticate, playlistController.addSong);
-router.delete("/playlist/remove", playlistController.removeSong);
-router.delete("/playlist/clear/:userId", playlistController.clearList);
+// router.delete("/playlist/remove", playlistController.removeSong);
+// router.delete("/playlist/clear/:userId", playlistController.clearList);
+
+router.delete(
+  "/playlist/:playlistId",
+  authenticate,
+  playlistController.deletePlaylist
+);
 
 module.exports = router;

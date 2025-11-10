@@ -7,11 +7,14 @@ import { API_URL } from "../config";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import ToastModal from "./modal/ToastModal";
+import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
 export default function VideoCarousel() {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
+ const [selectedSongId, setSelectedSongId] = useState(null);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
   const itemsPerPage = 4;
   const moveBy = 3;
@@ -259,6 +262,16 @@ export default function VideoCarousel() {
         </button>
       </div>
 
+
+
+      {isAuthenticated && (
+        <PlaylistSelectorModal
+          show={showPlaylistModal}
+          onClose={() => setShowPlaylistModal(false)}
+          userId={userId}
+          songId={selectedSongId}
+        />
+      )}
       <ToastModal
         mensaje={toastMsg}
         onClose={() => setToastMsg("")}

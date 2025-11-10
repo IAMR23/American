@@ -7,16 +7,19 @@ import { API_URL } from "../config";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import ToastModal from "./modal/ToastModal";
+import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/visibles`;
 
 export default function VideoCarouselVisibles() {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
+  const [selectedSongId, setSelectedSongId] = useState(null);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
 
   const itemsPerPage = 4;
   const moveBy = 3;
 
-  const [toastMsg, setToastMsg] = useState("");
 
   const next = () => {
     setIndice((prev) => (prev + moveBy) % videos.length);
@@ -257,6 +260,15 @@ export default function VideoCarouselVisibles() {
           <FaChevronRight />
         </button>
       </div>
+
+      {isAuthenticated && (
+        <PlaylistSelectorModal
+          show={showPlaylistModal}
+          onClose={() => setShowPlaylistModal(false)}
+          userId={userId}
+          songId={selectedSongId}
+        />
+      )}
 
       <ToastModal
         mensaje={toastMsg}
