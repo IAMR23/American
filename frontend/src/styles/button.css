@@ -1,3 +1,15 @@
+.boto {
+  background: none;       /* sin fondo */
+  border: none;           /* sin borde */
+  padding: 0;             /* sin espacio alrededor */
+  cursor: pointer;        /* cursor de mano */
+}
+
+.boto img {
+  display: block;         /* elimina espacios debajo de la imagen */
+}
+
+
 .boton0 {
   display: inline-block;
   padding-top: 35px;

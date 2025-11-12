@@ -34,7 +34,7 @@ import { getToken } from "./utils/auth";
 import { SocketProvider } from "./hooks/SocketContext";
 import { QueueProvider } from "./hooks/QueueProvider";
 import { ReproductorProvider } from "./hooks/ReproductorContext";
-import VideoDefault from "./components/VideoDefault";
+import PuntajeCrud from "./pages/PuntajeCrud";
 
 function App() {
   const [auth, setAuth] = useState({ isAuthenticated: false, rol: null, userId: null });
@@ -90,7 +90,7 @@ function App() {
                     <Route path="solicitudes" element={<SolicitudesPage />} />
                     <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
                     <Route path="playlist/:id" element={<MiPlaylist />} />
-                    <Route path="video-default" element={<VideoDefault />} />
+                    <Route path="calificaciones" element={<PuntajeCrud />} />
                   </Route>
 
                   <Route path="/playlistPopular/:id" element={<MiPlaylistAdmin />} />

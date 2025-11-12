@@ -18,6 +18,7 @@ const publicacionRoutes = require("./routes/publicacionRoutes");
 const paypalRoutes = require("./routes/paypalRoutes");
 const suscripcionRoutes = require("./routes/suscripcionRoutes");
 const playlistPropiaRoutes = require("./routes/PlaylistPropiaRoutes");
+const puntajeRoutes = require("./routes/PuntajeRoutes");
 const Cola = require("./models/Cola");
 
 const app = express();
@@ -79,6 +80,7 @@ conectarDB()
     app.use("/publicacion", publicacionRoutes);
     app.use("/paypal", paypalRoutes);
     app.use("/suscripcion", suscripcionRoutes);
+    app.use("/p", puntajeRoutes);
     app.use("/t2", playlistPropiaRoutes);
 
     // io.on("connection", (socket) => {

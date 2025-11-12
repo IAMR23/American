@@ -369,7 +369,7 @@ export default function Inicial() {
               >
                 Listado PDF
               </button>
-              <button className="boton10">Calificación</button>
+              <button className="boto"><img src="./cal.png" alt="" width={250} /></button>
               <button
                 className="boton9"
                 onClick={() => setSeccionActiva("suscribir")}

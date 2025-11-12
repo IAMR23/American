@@ -186,19 +186,6 @@ export default function CancionCRUD() {
       {/* NUEVO: bloque de filtro */}
 
       <div className="d-flex align-items-center flex-wrap mb-3">
-        {/* {["numero", "artista", "titulo", "generos"].map((tipo) => (
-          <button
-            key={tipo}
-            onClick={() => setFiltroActivo(tipo)}
-            className={`btn me-2 ${
-              filtroActivo === tipo ? "btn-danger" : "btn-primary"
-            }`}
-          >
-            {tipo === "generos"
-              ? "Género"
-              : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-          </button>
-        ))} */}
 
         {["numero", "artista", "titulo", "generos", "videoDefault"].map(
           (tipo) => (
