@@ -163,7 +163,7 @@ export default function PuntajeCrud() {
                 </div>
 
                 <div className="col-12">
-                  <label className="form-label">Peso (Weight)</label>
+                  <label className="form-label">Probabilidad de Salir</label>
                   <input
                     type="number"
                     className="form-control"
