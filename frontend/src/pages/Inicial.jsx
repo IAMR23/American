@@ -193,7 +193,7 @@ export default function Inicial() {
     try {
       const res = await axios.get(API_PUNTAJE);
       setPuntajes(res.data);
-      console.log(puntajes)
+      console.log(puntajes);
     } catch (error) {
       console.error("Error al obtener los puntajes:", error);
     }
@@ -390,6 +390,7 @@ export default function Inicial() {
                 Listado PDF
               </button>
               <button
+                disabled={!suscrito}
                 onClick={() => setModoCalificacion(!modoCalificacion)}
                 className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
               >
