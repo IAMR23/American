@@ -10,8 +10,12 @@ export default function VideoPlayer({
   fullscreenRequested = false,
   onFullscreenHandled,
   onColaTerminada,
+  //new props
+  modoCalificacion = false,
+  calificaciones = [],
 }) {
   const playlist = cola || [];
+
 
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
@@ -23,11 +27,51 @@ export default function VideoPlayer({
 
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimeoutRef = useRef(null);
+  const [videoCalificacion, setVideoCalificacion] = useState(null);
 
   const playerRef = useRef();
   const containerRef = useRef();
+  const poolRef = useRef([]);
 
   const currentVideo = playlist[currentIndex];
+
+
+  // Construye una lista ÚNICA con orden aleatorio según peso
+  function refillPool() {
+    const weightedList = [];
+
+    // Crear una lista ponderada (permite elegir)
+    calificaciones.forEach((item) => {
+      for (let i = 0; i < item.weight; i++) {
+        weightedList.push(item);
+      }
+    });
+
+    const used = new Set();
+    const orderedUniqueList = [];
+
+    // Elegir videos únicos en orden aleatorio según peso
+    while (orderedUniqueList.length < calificaciones.length) {
+      const rand = Math.floor(Math.random() * weightedList.length);
+      const candidate = weightedList[rand];
+
+      if (!used.has(candidate._id)) {
+        used.add(candidate._id);
+        orderedUniqueList.push(candidate);
+      }
+    }
+
+    poolRef.current = orderedUniqueList;
+  }
+
+  function getVideoByWeightNoRepeat() {
+    if (!poolRef.current || poolRef.current.length === 0) {
+      refillPool();
+    }
+
+    const video = poolRef.current.shift(); // toma el primero y lo elimina
+    return video;
+  }
 
   // --- FULLSCREEN ---
   useEffect(() => {
@@ -177,16 +221,35 @@ export default function VideoPlayer({
     );
   }
 
-  // --- CUANDO TERMINA UN VIDEO ---
   const handleEnded = () => {
+    // --- MODO CALIFICACIÓN ---
+    if (modoCalificacion && !videoCalificacion) {
+      if (calificaciones.length > 0) {
+        const randomVideo = getVideoByWeightNoRepeat();
+        playerRef.current?.seekTo(0);
+        setVideoCalificacion(randomVideo);
+        return;
+      }
+    }
+
+    // --- REGRESA AL VIDEO ORIGINAL DESPUÉS DE LA CALIFICACIÓN ---
+    if (videoCalificacion) {
+      setVideoCalificacion(false);
+
+      if (currentIndex < playlist.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+        return;
+      } else {
+        onColaTerminada?.();
+        return;
+      }
+    }
+
+    // --- FLUJO NORMAL ---
     if (currentIndex < playlist.length - 1) {
-      // ✅ Aún hay canciones en la cola
       setCurrentIndex(currentIndex + 1);
     } else {
-      // ⚠️ Cola terminada
-      if (onColaTerminada) {
-        onColaTerminada(); // avisa al componente padre
-      }
+      onColaTerminada?.();
     }
   };
 
@@ -204,15 +267,18 @@ export default function VideoPlayer({
         <ReactPlayer
           className="react-player"
           ref={playerRef}
-          url={currentVideo.videoUrl || ""}
+          url={
+            videoCalificacion
+              ? videoCalificacion.videoUrl
+              : currentVideo.videoUrl
+          }
           playing={isPlaying}
           controls={false}
           width="100%"
           height={isFullscreen ? "100vh" : "85vh"}
-          onPause
           onProgress={handleProgress}
           onDuration={(d) => setDuration(d)}
-           onEnded={handleEnded}
+          onEnded={handleEnded}
         />
 
         {/* Botones navegación */}

@@ -3,11 +3,41 @@
   border: none;           /* sin borde */
   padding: 0;             /* sin espacio alrededor */
   cursor: pointer;        /* cursor de mano */
+  
 }
 
 .boto img {
   display: block;         /* elimina espacios debajo de la imagen */
 }
+
+.boto {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: 0.3s ease;
+  border-radius: 45px; 
+}
+
+/* 🔥 Modo calificación activado */
+.boto-activo {
+  box-shadow: 0 0 5px 6px rgba(255, 215, 0, 0.9); /* brillo dorado */
+  border-radius: 45px;
+  transform: scale(1.05);
+  animation: pulsoBrillo 1.5s infinite ease-in-out;
+}
+
+/* 🔥 Animación de pulso */
+/* @keyframes pulsoBrillo {
+  0% {
+    box-shadow: 0 0 12px 4px rgba(255, 215, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 22px 10px rgba(255, 215, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 12px 4px rgba(255, 215, 0, 0.6);
+  }
+} */
 
 
 .boton0 {

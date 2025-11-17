@@ -27,6 +27,8 @@ import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 
+const API_PUNTAJE = `${API_URL}/p/puntaje`;
+
 export default function Inicial() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState(null);
@@ -35,6 +37,8 @@ export default function Inicial() {
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [user, setUser] = useState(null);
+  const [modoCalificacion, setModoCalificacion] = useState(false);
+  const [puntajes, setPuntajes] = useState([]);
 
   // ------------------ Hooks personalizados ------------------
 
@@ -181,6 +185,20 @@ export default function Inicial() {
     }
   };
 
+  useEffect(() => {
+    obtenerPuntajes();
+  }, []);
+
+  const obtenerPuntajes = async () => {
+    try {
+      const res = await axios.get(API_PUNTAJE);
+      setPuntajes(res.data);
+      console.log(puntajes)
+    } catch (error) {
+      console.error("Error al obtener los puntajes:", error);
+    }
+  };
+
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
@@ -189,7 +207,7 @@ export default function Inicial() {
         return (
           <FavoritePlaylist
             // playlists={playlists}
-            userId={userId}      
+            userId={userId}
             onSelectAll={() => setSeccionActiva("video")}
           />
         );
@@ -219,6 +237,8 @@ export default function Inicial() {
         return (
           <VideoPlayer
             cola={getColaActual()}
+            calificaciones={puntajes} // ⬅️ nuevo
+            modoCalificacion={modoCalificacion} // ⬅️ nuevo
             currentIndex={currentIndex}
             setCurrentIndex={handleCambiarCancion}
             fullscreenRequested={shouldFullscreen}
@@ -369,13 +389,19 @@ export default function Inicial() {
               >
                 Listado PDF
               </button>
-              <button className="boto"><img src="./cal.png" alt="" width={250} /></button>
               <button
+                onClick={() => setModoCalificacion(!modoCalificacion)}
+                className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
+              >
+                <img src="./cal.png" alt="" width={250} />
+              </button>
+
+              {/* <button
                 className="boton9"
                 onClick={() => setSeccionActiva("suscribir")}
               >
                 Suscribir
-              </button>
+              </button> */}
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("ayuda")}
