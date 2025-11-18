@@ -184,7 +184,7 @@ export default function BuscadorTabla({ onSelectAll }) {
                     <button
                       class="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async () => {
-                        await masReproducida(video._id);
+                        await masReproducida(fila._id);
                         handlePlay(fila);
                         onSelectAll?.();
                       }}
@@ -194,7 +194,9 @@ export default function BuscadorTabla({ onSelectAll }) {
 
                     <button
                       class="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
-                      onClick={() => agregarACola(fila)}
+                      onClick={async() => {agregarACola(fila) ; 
+                        await masReproducida(fila._id)
+                      }}
                     >
                       <img src="./mas.png" alt="add" width="40" />
                     </button>

@@ -95,11 +95,19 @@ export default function Canciones() {
       const headers = isAuthenticated
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
+
       const url = usarFiltro ? FILTRO_URL : SONG_URL;
+
       const params = usarFiltro
-        ? { busqueda: filtros.busqueda, ordenFecha: filtros.ordenFecha }
+        ? {
+            busqueda: filtros.busqueda,
+            filtro: "artista", // 👈 NECESARIO
+            ordenFecha: filtros.ordenFecha,
+          }
         : {};
+
       const res = await axios.get(url, { headers, params });
+
       setVideos(res.data.canciones || res.data);
     } catch (err) {
       console.error("Error al cargar videos", err);
@@ -137,13 +145,6 @@ export default function Canciones() {
         setToastMsg("No se encontró la canción");
         return;
       }
-      addToQueue({
-        _id: cancion._id,
-        titulo: cancion.titulo,
-        artista: cancion.artista,
-        numero: cancion.numero,
-        videoUrl: cancion.videoUrl,
-      });
 
       setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
@@ -190,7 +191,10 @@ export default function Canciones() {
 
               <button
                 className="video-btn list-btn"
-                onClick={() => agregarACola(video._id)}
+                onClick={async () => {
+                  await masReproducida(video._id);
+                  agregarACola(video._id);
+                }}
                 title="Agregar a cola"
                 disabled={!isAuthenticated}
               >

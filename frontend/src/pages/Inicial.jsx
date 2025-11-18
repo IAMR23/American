@@ -418,7 +418,12 @@ export default function Inicial() {
                 Galería Otros
               </button>
               {getToken() && (
-                <button className="boton3" onClick={cerrarSesion}>
+                <button
+                  className="boton3"
+                  onClick={() => {
+                    cerrarSesion();
+                  }}
+                >
                   Cerrar Sesión
                 </button>
               )}

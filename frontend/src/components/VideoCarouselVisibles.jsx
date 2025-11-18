@@ -20,7 +20,6 @@ export default function VideoCarouselVisibles() {
   const itemsPerPage = 4;
   const moveBy = 3;
 
-
   const next = () => {
     setIndice((prev) => (prev + moveBy) % videos.length);
   };
@@ -226,7 +225,10 @@ export default function VideoCarouselVisibles() {
 
                   <button
                     className="btn-list"
-                    onClick={() => agregarACola(video._id)}
+                    onClick={async () => {
+                      await masReproducida(video._id);
+                      agregarACola(video._id);
+                    }}
                     title="Agregar a cola"
                     //  disabled={!isAuthenticated}
                   >

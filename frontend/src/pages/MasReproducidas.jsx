@@ -2,10 +2,28 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
 
-const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#8dd1e1", "#d0ed57", "#a4de6c", "#d88884"];
+const COLORS = [
+  "#8884d8",
+  "#82ca9d",
+  "#ffc658",
+  "#ff8042",
+  "#8dd1e1",
+  "#d0ed57",
+  "#a4de6c",
+  "#d88884",
+];
 
 export default function MasReproducidas() {
   const [canciones, setCanciones] = useState([]);
@@ -38,20 +56,46 @@ export default function MasReproducidas() {
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h2 className=" mb-4">🎶 Top 10 Canciones Más cantadas</h2>
+      <h2 className=" mb-4">🎶 Top 20 Canciones Más cantadas</h2>
 
       <div className="mb-4">
-        <ul className="list-group">
-          {canciones.map((c, i) => (
-            <li key={c._id} className="list-group-item d-flex justify-content-between align-items-center">
-              <div>
-                <strong>#{c.numero}</strong> - {c.titulo} <small>({c.artista})</small>
-                <br />
-                <span className="">{c.generos?.nombre || "Sin género"}</span>
+        <ul className="list-group shadow-sm rounded overflow-hidden">
+          {canciones.map((c) => (
+            <li
+              key={c._id}
+              className="
+          list-group-item 
+          d-flex 
+          justify-content-between 
+          align-items-center 
+          py-3 
+          px-3 
+          flex-column flex-md-row
+        "
+              style={{
+                borderLeft: "4px solid #0d6efd",
+                background: "#ffffff",
+              }}
+            >
+              {/* Texto */}
+              <div className="text-center text-md-start">
+                <h6 className="mb-1 fw-bold">
+                  #{c.numero} — {c.titulo}
+                </h6>
+
+                <small className="text-muted d-block">{c.artista}</small>
+
+                <span className="badge bg-secondary mt-2">
+                  {c.generos?.nombre || "Sin género"}
+                </span>
               </div>
-              <span className="badge rounded-pill">
-                {c.reproducciones} reproducciones
-              </span>
+
+              {/* Reproducciones */}
+              <div className="mt-3 mt-md-0">
+                <span className="badge bg-primary p-2 px-3 fs-6 shadow-sm">
+                  🎧 {c.reproducciones}
+                </span>
+              </div>
             </li>
           ))}
         </ul>
@@ -69,8 +113,6 @@ export default function MasReproducidas() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-  
       </div>
     </div>
   );

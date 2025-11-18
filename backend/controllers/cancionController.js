@@ -189,46 +189,62 @@ const filtrarCanciones = async (req, res) => {
   try {
     const { busqueda, filtro, videoDefault } = req.query;
 
-    const pipeline = [
-      {
-        $lookup: {
-          from: "generos",
-          localField: "generos",
-          foreignField: "_id",
-          as: "generos",
-        },
-      },
-      // 👇 Importante: desarma el array de géneros
-      {
-        $unwind: {
-          path: "$generos",
-          preserveNullAndEmptyArrays: true, // por si alguna canción no tiene género
-        },
-      },
-    ];
+    const pipeline = [];
 
-    // ✅ Filtro especial por videoDefault
-    if (videoDefault === "true") {
-      pipeline.push({ $match: { videoDefault: true } });
-    }
-
-    // ✅ Filtros de texto o número
+    // 🔥 MATCH PRIMERO (para no romper coincidencias)
     if (busqueda && filtro) {
       const regex = new RegExp(busqueda, "i");
 
       const campos = {
         titulo: { titulo: regex },
         artista: { artista: regex },
-        numero: { numero: parseInt(busqueda) || 0 },
-        generos: { "generos.nombre": regex },
+        generos: {}, // este se hace después del lookup
+        numero: {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$numero" },
+              regex: regex,
+            },
+          },
+        },
       };
 
-      if (campos[filtro]) {
+      // Solo meter $match si no es generos
+      if (filtro !== "generos" && campos[filtro]) {
         pipeline.push({ $match: campos[filtro] });
       }
     }
 
-    // Ejecutar el pipeline
+    // Lookup de géneros
+    pipeline.push({
+      $lookup: {
+        from: "generos",
+        localField: "generos",
+        foreignField: "_id",
+        as: "generos",
+      },
+    });
+
+    // Si el filtro es por género, hacemos match ahora sí
+    if (filtro === "generos" && busqueda) {
+      const regex = new RegExp(busqueda, "i");
+      pipeline.push({
+        $match: { "generos.nombre": regex },
+      });
+    }
+
+    pipeline.push({
+      $unwind: {
+        path: "$generos",
+        preserveNullAndEmptyArrays: true,
+      },
+    });
+
+    // Video default si aplica
+    if (videoDefault === "true") {
+      pipeline.push({ $match: { videoDefault: true } });
+    }
+
     const canciones = await Cancion.aggregate(pipeline);
 
     res.json({ canciones });

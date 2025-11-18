@@ -13,7 +13,7 @@ const SONG_URL = `${API_URL}/song/masreproducidas`;
 export default function VideoCarousel() {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
- const [selectedSongId, setSelectedSongId] = useState(null);
+  const [selectedSongId, setSelectedSongId] = useState(null);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
   const itemsPerPage = 4;
@@ -76,49 +76,10 @@ export default function VideoCarousel() {
     fetchVideos();
   }, []);
 
-  // const agregarACola = async (songId) => {
-  //   if (!isAuthenticated) {
-  //     setToastMsg("Inicia sesión para agregar a cola");
-  //     return;
-  //   }
-
-  //   try {
-  //     const res = await axios.post(
-  //       `${API_URL}/t/cola/add`,
-  //       { userId, songId },
-  //       { headers: { Authorization: `Bearer ${getToken()}` } }
-  //     );
-
-  //     const cancion = res.data.cancion || videos.find((v) => v._id === songId);
-  //     if (!cancion) {
-  //       setToastMsg("No se encontró la canción");
-  //       return;
-  //     }
-
-  //     // Evitar duplicados
-  //     if (!cola.some((c) => c._id === cancion._id)) {
-  //       addToQueue({
-  //         _id: cancion._id,
-  //         titulo: cancion.titulo,
-  //         artista: cancion.artista,
-  //         numero: cancion.numero,
-  //         videoUrl: cancion.videoUrl,
-  //       });
-  //     }
-
-  //     setToastMsg("✅ Canción agregada a la cola");
-  //   } catch (err) {
-  //     console.error("Error al agregar a cola:", err.response?.data || err);
-  //     setToastMsg("❌ No se pudo agregar la canción");
-  //   }
-  // };
-
   const agregarACola = async (songId) => {
     try {
       let res;
-      console.log("cd");
       if (isAuthenticated) {
-        // 🔐 Usuario autenticado
         res = await axios.post(
           `${API_URL}/t/cola/add`,
           { userId, songId },
@@ -215,6 +176,7 @@ export default function VideoCarousel() {
                     src={dropboxUrlToRaw(video.imagenUrl) || null}
                     alt={`Miniatura de ${video.titulo}`}
                     loading="lazy"
+                    className="w-full h-full object-contain"
                   />
 
                   <button
@@ -228,7 +190,10 @@ export default function VideoCarousel() {
 
                   <button
                     className="btn-list"
-                    onClick={() => agregarACola(video._id)}
+                    onClick={async () => {
+                      await masReproducida(video._id);
+                      agregarACola(video._id);
+                    }}
                     title="Agregar a cola"
                   >
                     <img src="./mas.png" alt="" width={"40px"} />
@@ -260,8 +225,6 @@ export default function VideoCarousel() {
           <FaChevronRight />
         </button>
       </div>
-
-
 
       {isAuthenticated && (
         <PlaylistSelectorModal
