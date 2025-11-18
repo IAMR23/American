@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
@@ -10,12 +10,12 @@ export default function VideoPlayer({
   fullscreenRequested = false,
   onFullscreenHandled,
   onColaTerminada,
-  //new props
+
+  // NEW props
   modoCalificacion = false,
   calificaciones = [],
 }) {
   const playlist = cola || [];
-
 
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
@@ -27,81 +27,85 @@ export default function VideoPlayer({
 
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimeoutRef = useRef(null);
+
   const [videoCalificacion, setVideoCalificacion] = useState(null);
 
   const playerRef = useRef();
   const containerRef = useRef();
+
+  // Pool seguro: cada ronda contiene todos los videos ordenados por peso
   const poolRef = useRef([]);
 
   const currentVideo = playlist[currentIndex];
 
-
-  // Construye una lista ÚNICA con orden aleatorio según peso
-  function refillPool() {
-    const weightedList = [];
-
-    // Crear una lista ponderada (permite elegir)
-    calificaciones.forEach((item) => {
-      for (let i = 0; i < item.weight; i++) {
-        weightedList.push(item);
-      }
-    });
-
-    const used = new Set();
-    const orderedUniqueList = [];
-
-    // Elegir videos únicos en orden aleatorio según peso
-    while (orderedUniqueList.length < calificaciones.length) {
-      const rand = Math.floor(Math.random() * weightedList.length);
-      const candidate = weightedList[rand];
-
-      if (!used.has(candidate._id)) {
-        used.add(candidate._id);
-        orderedUniqueList.push(candidate);
-      }
+  // ============================================================
+  //  🔥 FUNCIÓN CORREGIDA: REFILLPOOL (NO BUCLES INFINITOS)
+  // ============================================================
+  const refillPool = useCallback(() => {
+    if (!Array.isArray(calificaciones) || calificaciones.length === 0) {
+      poolRef.current = [];
+      return;
     }
 
-    poolRef.current = orderedUniqueList;
-  }
+    // Asignamos un valor aleatorio ponderado
+    const list = calificaciones.map((item) => ({
+      ...item,
+      sortValue: Math.random() * item.weight,
+    }));
 
-  function getVideoByWeightNoRepeat() {
+    // Ordenar de mayor ponderación a menor
+    list.sort((a, b) => b.sortValue - a.sortValue);
+
+    poolRef.current = list;
+  }, [calificaciones]);
+
+  // ============================================================
+  //  🔥 Obtener siguiente video PONDERADO sin repetición
+  // ============================================================
+  const getVideoByWeightNoRepeat = useCallback(() => {
     if (!poolRef.current || poolRef.current.length === 0) {
       refillPool();
     }
+    return poolRef.current.shift();
+  }, [refillPool]);
 
-    const video = poolRef.current.shift(); // toma el primero y lo elimina
-    return video;
-  }
-
-  // --- FULLSCREEN ---
+  // ============================================================
+  //  FULLSCREEN
+  // ============================================================
   useEffect(() => {
     if (fullscreenRequested) {
       const el = containerRef.current;
       if (el && !document.fullscreenElement) {
         el.requestFullscreen?.();
       }
-      if (onFullscreenHandled) onFullscreenHandled();
+      onFullscreenHandled?.();
     }
   }, [fullscreenRequested, onFullscreenHandled]);
 
-  // --- LOOP INDEX ---
+  // ============================================================
+  //  RESET INDEX SI SE SALE DE RANGO
+  // ============================================================
   useEffect(() => {
     if (currentIndex >= playlist.length) {
       setCurrentIndex(0);
     }
   }, [currentIndex, playlist.length, setCurrentIndex]);
 
-  // --- CAMBIO DE CANCIÓN ---
+  // ============================================================
+  //  CAMBIO DE VIDEO EN COLA
+  // ============================================================
   useEffect(() => {
     if (!currentVideo) return;
+
     setIsPlaying(false);
+
     if (playerRef.current) {
       playerRef.current.seekTo(0);
     }
-    setIsPlaying(true);
+
+    setTimeout(() => setIsPlaying(true), 20);
   }, [currentIndex]);
 
-  // --- NAVIGATION ---
   const nextVideo = () => {
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -116,7 +120,9 @@ export default function VideoPlayer({
     }
   };
 
-  // --- PROGRESS ---
+  // ============================================================
+  //  PROGRESO
+  // ============================================================
   const handleProgress = ({ playedSeconds }) => {
     setProgress(playedSeconds);
     const dur = playerRef.current?.getDuration?.();
@@ -148,12 +154,16 @@ export default function VideoPlayer({
       .padStart(2, "0")}`;
   };
 
-  // --- CONTROLES AUTOMÁTICOS EN FULLSCREEN ---
+  // ============================================================
+  //  OCULTAR CONTROLES
+  // ============================================================
   const resetHideControlsTimer = () => {
     setShowControls(true);
+
     if (hideControlsTimeoutRef.current) {
       clearTimeout(hideControlsTimeoutRef.current);
     }
+
     if (isFullscreen) {
       hideControlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
@@ -163,31 +173,27 @@ export default function VideoPlayer({
 
   useEffect(() => {
     const handleMouseMove = () => resetHideControlsTimer();
+
     const container = containerRef.current;
     container?.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       container?.removeEventListener("mousemove", handleMouseMove);
-      if (hideControlsTimeoutRef.current)
-        clearTimeout(hideControlsTimeoutRef.current);
+      clearTimeout(hideControlsTimeoutRef.current);
     };
   }, [isFullscreen]);
 
-  // --- FULLSCREEN STATE ---
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const fsElement =
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement;
+      const fsElement = document.fullscreenElement;
 
       setIsFullscreen(!!fsElement);
-      if (!!fsElement) resetHideControlsTimer();
+      if (fsElement) resetHideControlsTimer();
       else setShowControls(true);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
@@ -197,14 +203,13 @@ export default function VideoPlayer({
     const el = containerRef.current;
     if (!el) return;
 
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
-    }
+    if (!document.fullscreenElement) el.requestFullscreen?.();
+    else document.exitFullscreen?.();
   };
 
-  // --- RENDER ---
+  // ============================================================
+  //  RENDER SI NO HAY VIDEO
+  // ============================================================
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
       <div style={emptyStyle}>
@@ -221,6 +226,9 @@ export default function VideoPlayer({
     );
   }
 
+  // ============================================================
+  //  ON ENDED — LÓGICA COMPLETA Y CORREGIDA
+  // ============================================================
   const handleEnded = () => {
     // --- MODO CALIFICACIÓN ---
     if (modoCalificacion && !videoCalificacion) {
@@ -232,9 +240,9 @@ export default function VideoPlayer({
       }
     }
 
-    // --- REGRESA AL VIDEO ORIGINAL DESPUÉS DE LA CALIFICACIÓN ---
+    // --- TERMINÓ VIDEO DE CALIFICAR ---
     if (videoCalificacion) {
-      setVideoCalificacion(false);
+      setVideoCalificacion(null);
 
       if (currentIndex < playlist.length - 1) {
         setCurrentIndex(currentIndex + 1);
@@ -253,6 +261,9 @@ export default function VideoPlayer({
     }
   };
 
+  // ============================================================
+  //  RENDER COMPLETO
+  // ============================================================
   return (
     <div
       ref={containerRef}
@@ -281,10 +292,9 @@ export default function VideoPlayer({
           onEnded={handleEnded}
         />
 
-        {/* Botones navegación */}
-
+        {/* NAV - LEFT */}
         <img
-          src="izq.png" // reemplaza con tu imagen
+          src="izq.png"
           alt="Anterior"
           onClick={currentIndex === 0 ? undefined : prevVideo}
           style={{
@@ -294,8 +304,9 @@ export default function VideoPlayer({
           }}
         />
 
+        {/* NAV - RIGHT */}
         <img
-          src="der.png" // reemplaza con tu imagen
+          src="der.png"
           alt="Siguiente"
           onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
           style={{
@@ -306,7 +317,7 @@ export default function VideoPlayer({
           }}
         />
 
-        {/* Barra de controles personalizada */}
+        {/* CONTROLES */}
         {showControls && (
           <div
             style={{
@@ -323,7 +334,6 @@ export default function VideoPlayer({
               transition: "opacity 0.3s",
             }}
           >
-            {/* Play/Pause */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               style={{
@@ -339,12 +349,10 @@ export default function VideoPlayer({
               {isPlaying ? "⏸" : "▶"}
             </button>
 
-            {/* Tiempo transcurrido */}
             <span style={{ fontSize: "14px", minWidth: "45px" }}>
               {formatTime(progress)}
             </span>
 
-            {/* Barra progreso */}
             <input
               type="range"
               min={0}
@@ -360,12 +368,10 @@ export default function VideoPlayer({
               }}
             />
 
-            {/* Tiempo total */}
             <span style={{ fontSize: "14px", minWidth: "45px" }}>
               {formatTime(duration)}
             </span>
 
-            {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
               style={{
@@ -376,7 +382,6 @@ export default function VideoPlayer({
                 borderRadius: "6px",
                 cursor: "pointer",
                 fontSize: "16px",
-                whiteSpace: "nowrap",
               }}
             >
               ⛶
@@ -419,7 +424,9 @@ export default function VideoPlayer({
   );
 }
 
-// --- ESTILOS ---
+// ======================
+// ESTILOS
+// ======================
 const emptyStyle = {
   background: "#000",
   color: "white",

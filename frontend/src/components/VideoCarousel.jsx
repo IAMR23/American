@@ -148,7 +148,6 @@ export default function VideoCarousel() {
       //   }
 
       setToastMsg("✅ Canción agregada a la cola");
-      console.log("cds");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
       setToastMsg("❌ No se pudo agregar la canción");
