@@ -224,8 +224,12 @@ export default function PuntajeCrud() {
                     </a>
                   </h5>
                   <p className="card-text">
-                    <strong>Peso:</strong> {p.weight}
+                    <strong>Probabilidad:</strong> {p.weight}
                   </p>
+                   <p className="card-text">
+                    <strong>TECLA CONFIGURADA:</strong> F1
+                  </p>
+
                 </div>
 
                 <div className="card-footer bg-transparent border-0 d-flex justify-content-between">

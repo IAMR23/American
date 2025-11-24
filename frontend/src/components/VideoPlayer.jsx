@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
+import { API_URL } from "../config";
+import axios from "axios";
+
+const API_PUNTAJE = `${API_URL}/p/puntaje`;
 
 export default function VideoPlayer({
   cola = [],
@@ -13,7 +17,6 @@ export default function VideoPlayer({
 
   // NEW props
   modoCalificacion = false,
-  calificaciones = [],
 }) {
   const playlist = cola || [];
 
@@ -27,11 +30,28 @@ export default function VideoPlayer({
 
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimeoutRef = useRef(null);
+  const [calificaciones, setCalificaciones] = useState([]);
 
   const [videoCalificacion, setVideoCalificacion] = useState(null);
 
   const playerRef = useRef();
   const containerRef = useRef();
+
+
+
+  const obtenerPuntajes = async () => {
+    try {
+      const res = await axios.get(API_PUNTAJE);
+      setCalificaciones(res.data);
+      console.log(calificaciones);
+    } catch (error) {
+      console.error("Error al obtener los puntajes:", error);
+    }
+  };
+
+    useEffect(() => {
+    obtenerPuntajes(); 
+  }, []);
 
   // Pool seguro: cada ronda contiene todos los videos ordenados por peso
   const poolRef = useRef([]);
@@ -154,9 +174,15 @@ export default function VideoPlayer({
       .padStart(2, "0")}`;
   };
 
-  // ============================================================
-  //  OCULTAR CONTROLES
-  // ============================================================
+
+        useEffect(() => {
+  if (modoCalificacion || videoCalificacion) {
+    setShowNextMessage(false);
+    setNextSongName("");
+  }
+}, [modoCalificacion, videoCalificacion]);
+
+
   const resetHideControlsTimer = () => {
     setShowControls(true);
 
@@ -207,9 +233,6 @@ export default function VideoPlayer({
     else document.exitFullscreen?.();
   };
 
-  // ============================================================
-  //  RENDER SI NO HAY VIDEO
-  // ============================================================
   if (!Array.isArray(cola) || cola.length === 0) {
     return (
       <div style={emptyStyle}>
@@ -226,9 +249,7 @@ export default function VideoPlayer({
     );
   }
 
-  // ============================================================
-  //  ON ENDED — LÓGICA COMPLETA Y CORREGIDA
-  // ============================================================
+
   const handleEnded = () => {
     // --- MODO CALIFICACIÓN ---
     if (modoCalificacion && !videoCalificacion) {
@@ -253,6 +274,9 @@ export default function VideoPlayer({
       }
     }
 
+
+
+
     // --- FLUJO NORMAL ---
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -261,9 +285,8 @@ export default function VideoPlayer({
     }
   };
 
-  // ============================================================
-  //  RENDER COMPLETO
-  // ============================================================
+
+
   return (
     <div
       ref={containerRef}
@@ -389,11 +412,12 @@ export default function VideoPlayer({
           </div>
         )}
 
-        {showNextMessage && (
+        {showNextMessage && !videoCalificacion && (
           <BarraDeslizante
             texto={
               <>
                 <div className="d-flex justify-content-center align-items-center ">
+                  
                   <img
                     className="m-2"
                     src="/ci.png"

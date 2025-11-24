@@ -49,8 +49,8 @@ const UsuariosPage = () => {
         subscriptionStart: user.editStart,
         subscriptionEnd: user.editEnd,
       });
-      alert("Usuario actualizado");
       fetchUsuarios();
+      alert("Usuario Guardado")
     } catch (err) {
       console.error("Error actualizando usuario:", err);
       alert("Error al actualizar");
@@ -63,7 +63,6 @@ const UsuariosPage = () => {
     if (!confirmDelete) return;
     try {
       await axios.delete(`${API_URL}/user/${id}`);
-      alert("Usuario eliminado");
       fetchUsuarios();
     } catch (err) {
       console.error("Error eliminando usuario:", err);

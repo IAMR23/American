@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { registerUser } from "../services/userServices";
+import { loginUser, registerUser } from "../services/userServices";
 
-function RegistrationForm() {
+function RegistrationForm({ onRegisterSuccess }) {
   const [formData, setFormData] = useState({
     nombre: "",
     email: "",
@@ -14,6 +14,10 @@ function RegistrationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+    const [credentials, setCredentials] = useState({ email: "", password: "" });
+  
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,6 +39,15 @@ function RegistrationForm() {
     try {
       const { nombre, email, password } = formData;
       await registerUser({ nombre, email, password });
+
+      const loginResponse = await loginUser({ email, password });
+
+      // 3️⃣ GUARDA TOKEN PARA PLANES Y ACCESO
+      localStorage.setItem("token", loginResponse.token);
+
+      if (onRegisterSuccess) {
+        onRegisterSuccess();
+      }
       setSuccess("Usuario registrado exitosamente.");
       setFormData({
         nombre: "",
@@ -50,7 +63,8 @@ function RegistrationForm() {
   };
 
   const contrasenasCoinciden =
-    formData.password === formData.confirmPassword && formData.confirmPassword.length > 0;
+    formData.password === formData.confirmPassword &&
+    formData.confirmPassword.length > 0;
 
   return (
     <div className="d-flex justify-content-center align-items-center">
@@ -130,7 +144,9 @@ function RegistrationForm() {
                 required
               />
               {formData.confirmPassword.length > 0 && !contrasenasCoinciden && (
-                <div className="invalid-feedback">Las contraseñas no coinciden</div>
+                <div className="invalid-feedback">
+                  Las contraseñas no coinciden
+                </div>
               )}
               {formData.confirmPassword.length > 0 && contrasenasCoinciden && (
                 <div className="valid-feedback">Las contraseñas coinciden</div>
@@ -150,7 +166,11 @@ function RegistrationForm() {
               </label>
             </div>
 
-            <button type="submit" className="btn btn-dark w-100" disabled={loading}>
+            <button
+              type="submit"
+              className="btn btn-dark w-100"
+              disabled={loading}
+            >
               {loading ? "Registrando..." : "Registrarse"}
             </button>
           </form>

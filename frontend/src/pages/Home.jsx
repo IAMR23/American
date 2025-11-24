@@ -27,9 +27,7 @@ import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 
-const API_PUNTAJE = `${API_URL}/p/puntaje`;
-
-export default function Inicial() {
+export default function Home() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -38,8 +36,8 @@ export default function Inicial() {
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [user, setUser] = useState(null);
   const [modoCalificacion, setModoCalificacion] = useState(false);
-  const [puntajes, setPuntajes] = useState([]);
 
+  const [auth, setAuth] = useState(false);
   // ------------------ Hooks personalizados ------------------
 
   const { cola, currentIndex, setCola, setCurrentIndex, emitirCambiarCancion } =
@@ -56,6 +54,28 @@ export default function Inicial() {
 
   const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
     usePlaylists(userId);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+
+        // 🔹 Verificar expiración del token
+        if (decodedToken.exp * 1000 < Date.now()) {
+          console.log("Token expirado, cerrando sesión...");
+          localStorage.removeItem("token");
+          setAuth(false);
+        } else {
+          setAuth(true);
+        }
+      } catch (error) {
+        console.error("Error al decodificar el token", error);
+        localStorage.removeItem("token");
+        setAuth(false);
+      }
+    }
+  }, []);
 
   // ------------------ Manejo de token ------------------
   useEffect(() => {
@@ -111,6 +131,7 @@ export default function Inicial() {
       }
     }
     setSeccionActiva("video");
+    setAuth(true);
   };
   const cerrarSesion = async () => {
     try {
@@ -133,6 +154,7 @@ export default function Inicial() {
     setUserRole(null);
     setCola([]);
     setCurrentIndex(0);
+    setAuth(false);
     // Recarga la página
     window.location.reload();
   };
@@ -155,6 +177,8 @@ export default function Inicial() {
         });
         setCola([]);
         setCurrentIndex(0);
+      } else {
+        setCola([]);
       }
     } catch (err) {
       console.error("Error al eliminar la cola:", err);
@@ -175,6 +199,7 @@ export default function Inicial() {
       });
 
       setUser(res.data.user);
+      console.log(user);
       return res.data; // contiene nombre, correo, rol, etc.
     } catch (err) {
       console.error(
@@ -186,17 +211,25 @@ export default function Inicial() {
   };
 
   useEffect(() => {
-    obtenerPuntajes();
-  }, []);
+    if (user === null) return; // aún no cargado
 
-  const obtenerPuntajes = async () => {
-    try {
-      const res = await axios.get(API_PUNTAJE);
-      setPuntajes(res.data);
-      console.log(puntajes);
-    } catch (error) {
-      console.error("Error al obtener los puntajes:", error);
+    // Si el usuario es admin, no aplicar validación
+    if (user.rol === "admin") {
+      return; // no redirige ni cambia la sección
     }
+
+    const vigente =
+      user.suscrito && new Date(user.subscriptionEnd) > new Date();
+
+    console.log(vigente);
+
+    if (!vigente) {
+      setSeccionActiva("suscribir");
+    }
+  }, [user]);
+
+  const handleRegisterSuccess = () => {
+    setSeccionActiva("suscribir"); // esto muestra <PlanTest />
   };
 
   const renderContenido = () => {
@@ -223,7 +256,8 @@ export default function Inicial() {
       case "ingresar":
         return <LoginForm onLoginSuccess={handleLoginSuccess} />;
       case "registrar":
-        return <RegistrationForm />;
+        return <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />;
+
       case "listadoPdf":
         return <ListadoPDFCanciones />;
       case "suscribir":
@@ -237,7 +271,7 @@ export default function Inicial() {
         return (
           <VideoPlayer
             cola={getColaActual()}
-            calificaciones={puntajes} // ⬅️ nuevo
+            //   calificaciones={puntajes} // ⬅️ nuevo
             modoCalificacion={modoCalificacion} // ⬅️ nuevo
             currentIndex={currentIndex}
             setCurrentIndex={handleCambiarCancion}
@@ -487,8 +521,12 @@ export default function Inicial() {
         <AnunciosVisibles />
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
-        <h1 className="p-2 text-white">Las más populares</h1>
-        <VideoCarousel />
+        {auth && (
+          <>
+            <h1 className="p-2 text-white">Las más populares</h1>
+            <VideoCarousel />
+          </>
+        )}
       </div>
     </>
   );

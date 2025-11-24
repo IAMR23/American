@@ -78,7 +78,6 @@ export default function VideoCarouselVisibles() {
   const agregarACola = async (songId) => {
     try {
       let res;
-      console.log("cd");
       if (isAuthenticated) {
         // 🔐 Usuario autenticado
         res = await axios.post(
@@ -89,7 +88,6 @@ export default function VideoCarouselVisibles() {
       } else {
         // 👥 Usuario no autenticado (cola temporal/global)
         res = await axios.post(`${API_URL}/t/cola/without/aut/add`, { songId });
-        console.log("cd");
       }
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
@@ -99,19 +97,18 @@ export default function VideoCarouselVisibles() {
       }
 
       // Evitar duplicados
-      // addToQueue({
-      //   _id: cancion._id,
-      //   titulo: cancion.titulo,
-      //   artista: cancion.artista,
-      //   numero: cancion.numero,
-      //   videoUrl: cancion.videoUrl,
-      // });
+      addToQueue({
+        _id: cancion._id,
+        titulo: cancion.titulo,
+        artista: cancion.artista,
+        numero: cancion.numero,
+        videoUrl: cancion.videoUrl,
+      });
 
       setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
       setToastMsg("❌ No se pudo agregar la canción");
-      console.log("cssds");
     }
   };
 
