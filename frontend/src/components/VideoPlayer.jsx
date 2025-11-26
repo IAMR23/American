@@ -41,7 +41,6 @@ export default function VideoPlayer({
     try {
       const res = await axios.get(API_PUNTAJE);
       setCalificaciones(res.data);
-      console.log("res", res.data);
     } catch (error) {
       console.error("Error al obtener los puntajes:", error);
     }
@@ -51,7 +50,6 @@ export default function VideoPlayer({
     obtenerPuntajes();
   }, []);
 
-  console.log("Calificaciones obtenidas:", calificaciones);
 
 
   // Pool seguro: cada ronda contiene todos los videos ordenados por peso
@@ -123,8 +121,6 @@ export default function VideoPlayer({
     const key = video.titulo ?? "sin_calificacion";
     contador[key] = (contador[key] || 0) + 1;
   }
-
-  console.log("Distribución de 100 videos:", contador);
 }, [calificaciones]);
 
 
