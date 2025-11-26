@@ -4,6 +4,8 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import PlanesActivos from "./PlanesActivos";
+import { API_URL } from "../config"
+
 
 export default function ProductoDetalle() {
   const { id } = useParams();

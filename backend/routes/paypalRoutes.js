@@ -105,12 +105,83 @@ router.get("/productos", async (req, res) => {
 
 //crear un plan para un producto 
 
+// router.post("/producto/:productId/plan", async (req, res) => {
+//   try {
+//     const { productId } = req.params;
+//     const { nombre, descripcion, precio, duracionDias } = req.body;
+
+//     if (!nombre || !descripcion || !precio || !duracionDias) {
+//       return res.status(400).json({ error: "Faltan campos obligatorios" });
+//     }
+
+//     const accessToken = await generateAccessToken();
+
+//     const planResponse = await axios.post(
+//       "https://api-m.sandbox.paypal.com/v1/billing/plans",
+//       {
+//         product_id: productId,
+//         name: nombre,
+//         description: descripcion,
+//         billing_cycles: [
+//           {
+//             frequency: {
+//               interval_unit: "DAY",
+//               interval_count: duracionDias,
+//             },
+//             tenure_type: "REGULAR",
+//             sequence: 1,
+//             total_cycles: 1,
+//             pricing_scheme: {
+//               fixed_price: {
+//                 value: precio.toFixed(2),
+//                 currency_code: "USD",
+//               },
+//             },
+//           },
+//         ],
+//         payment_preferences: {
+//           auto_bill_outstanding: true,
+//           setup_fee_failure_action: "CONTINUE",
+//           payment_failure_threshold: 3,
+//         },
+//       },
+//       {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//           "Content-Type": "application/json",
+//         },
+//       }
+//     );
+
+//     const planData = planResponse.data;
+
+//     const nuevoPlan = new Plan({
+//       paypalPlanId: planData.id,
+//       productId,
+//       nombre,
+//       descripcion,
+//       precio,
+//       duracionDias,
+//       currency: planData.billing_cycles?.[0]?.pricing_scheme?.fixed_price?.currency_code || "USD",
+//       estado: planData.status || "INACTIVE",
+//       create_time: new Date(planData.create_time || Date.now())
+//     });
+
+//     await nuevoPlan.save();
+
+//     res.status(201).json({ message: "Plan creado y guardado con éxito", plan: nuevoPlan });
+//   } catch (error) {
+//     console.error("Error al crear plan:", error?.response?.data || error.message);
+//     res.status(500).json({ error: "Error al crear y guardar el plan" });
+//   }
+// });
+
 router.post("/producto/:productId/plan", async (req, res) => {
   try {
     const { productId } = req.params;
-    const { nombre, descripcion, precio, duracionDias } = req.body;
+    const { nombre, descripcion, precio, interval_unit, interval_count } = req.body;
 
-    if (!nombre || !descripcion || !precio || !duracionDias) {
+    if (!nombre || !descripcion || !precio || !interval_unit || !interval_count) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
@@ -122,15 +193,16 @@ router.post("/producto/:productId/plan", async (req, res) => {
         product_id: productId,
         name: nombre,
         description: descripcion,
+
         billing_cycles: [
           {
             frequency: {
-              interval_unit: "DAY",
-              interval_count: duracionDias,
+              interval_unit,       // <-- AHORA VIENE DEL FRONT
+              interval_count,      // <-- AHORA VIENE DEL FRONT
             },
             tenure_type: "REGULAR",
             sequence: 1,
-            total_cycles: 1,
+            total_cycles: 0,       // 0 = renovación infinita
             pricing_scheme: {
               fixed_price: {
                 value: precio.toFixed(2),
@@ -139,6 +211,7 @@ router.post("/producto/:productId/plan", async (req, res) => {
             },
           },
         ],
+
         payment_preferences: {
           auto_bill_outstanding: true,
           setup_fee_failure_action: "CONTINUE",
@@ -155,26 +228,17 @@ router.post("/producto/:productId/plan", async (req, res) => {
 
     const planData = planResponse.data;
 
-    const nuevoPlan = new Plan({
-      paypalPlanId: planData.id,
-      productId,
-      nombre,
-      descripcion,
-      precio,
-      duracionDias,
-      currency: planData.billing_cycles?.[0]?.pricing_scheme?.fixed_price?.currency_code || "USD",
-      estado: planData.status || "INACTIVE",
-      create_time: new Date(planData.create_time || Date.now())
-    });
+    res.status(201).json({ message: "Plan creado con éxito", plan: planData });
 
-    await nuevoPlan.save();
-
-    res.status(201).json({ message: "Plan creado y guardado con éxito", plan: nuevoPlan });
   } catch (error) {
     console.error("Error al crear plan:", error?.response?.data || error.message);
-    res.status(500).json({ error: "Error al crear y guardar el plan" });
+    res.status(500).json({ error: "Error al crear el plan" });
   }
 });
+
+
+
+//PLAN DIAS, MESES, SEMANAS Y AÑOS 
 
 //obtner los planes de un producto 
 // router.get("/planes/:productId", async (req, res) => {

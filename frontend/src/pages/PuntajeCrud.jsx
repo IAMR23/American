@@ -96,9 +96,9 @@ export default function PuntajeCrud() {
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold">Gestión de Puntajes</h2>
+        <h2 className="fw-bold">Gestión de Calificaciones</h2>
         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <i className="bi bi-plus-lg"></i> Agregar Puntaje
+          <i className="bi bi-plus-lg"></i> Agregar Calificación
         </button>
       </div>
 

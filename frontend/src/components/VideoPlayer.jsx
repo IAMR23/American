@@ -37,57 +37,97 @@ export default function VideoPlayer({
   const playerRef = useRef();
   const containerRef = useRef();
 
-
-
   const obtenerPuntajes = async () => {
     try {
       const res = await axios.get(API_PUNTAJE);
       setCalificaciones(res.data);
-      console.log(calificaciones);
+      console.log("res", res.data);
     } catch (error) {
       console.error("Error al obtener los puntajes:", error);
     }
   };
 
-    useEffect(() => {
-    obtenerPuntajes(); 
+  useEffect(() => {
+    obtenerPuntajes();
   }, []);
+
+  console.log("Calificaciones obtenidas:", calificaciones);
+
 
   // Pool seguro: cada ronda contiene todos los videos ordenados por peso
   const poolRef = useRef([]);
 
   const currentVideo = playlist[currentIndex];
 
-  // ============================================================
-  //  🔥 FUNCIÓN CORREGIDA: REFILLPOOL (NO BUCLES INFINITOS)
-  // ============================================================
   const refillPool = useCallback(() => {
     if (!Array.isArray(calificaciones) || calificaciones.length === 0) {
       poolRef.current = [];
       return;
     }
 
-    // Asignamos un valor aleatorio ponderado
-    const list = calificaciones.map((item) => ({
-      ...item,
-      sortValue: Math.random() * item.weight,
-    }));
+    let pool = [];
 
-    // Ordenar de mayor ponderación a menor
-    list.sort((a, b) => b.sortValue - a.sortValue);
+    // --- Paso 1: crear array según weight ---
+    calificaciones.forEach((item) => {
+      const count = Math.round(item.weight); // peso %
+      for (let i = 0; i < count; i++) {
+        pool.push(item);
+      }
+    });
 
-    poolRef.current = list;
+    // --- Paso 2: mezclar evitando repetición consecutiva ---
+    const shuffled = [];
+    const tempPool = [...pool];
+
+    while (tempPool.length > 0) {
+      // filtrar los candidatos que no sean igual al último agregado
+      const last = shuffled.length
+        ? shuffled[shuffled.length - 1].calificacion
+        : null;
+      const candidates = tempPool.filter((v) => v.calificacion !== last);
+
+      // si no hay candidatos diferentes, podemos tomar cualquiera
+      const pickPool = candidates.length ? candidates : tempPool;
+
+      // escoger aleatorio del pickPool
+      const index = Math.floor(Math.random() * pickPool.length);
+      const selected = pickPool[index];
+      shuffled.push(selected);
+
+      // eliminar del tempPool el seleccionado (la primera aparición)
+      const removeIndex = tempPool.findIndex((v) => v === selected);
+      tempPool.splice(removeIndex, 1);
+    }
+
+    poolRef.current = shuffled;
   }, [calificaciones]);
 
-  // ============================================================
-  //  🔥 Obtener siguiente video PONDERADO sin repetición
-  // ============================================================
   const getVideoByWeightNoRepeat = useCallback(() => {
     if (!poolRef.current || poolRef.current.length === 0) {
       refillPool();
     }
     return poolRef.current.shift();
   }, [refillPool]);
+
+ 
+  useEffect(() => {
+  if (!calificaciones || calificaciones.length === 0) return;
+
+  refillPool(); // asegurarnos de que el pool esté lleno
+
+  const contador = {};
+  for (let i = 0; i < 100; i++) {
+    const video = getVideoByWeightNoRepeat();
+    if (!video) continue;
+
+    const key = video.titulo ?? "sin_calificacion";
+    contador[key] = (contador[key] || 0) + 1;
+  }
+
+  console.log("Distribución de 100 videos:", contador);
+}, [calificaciones]);
+
+
 
   // ============================================================
   //  FULLSCREEN
@@ -174,14 +214,12 @@ export default function VideoPlayer({
       .padStart(2, "0")}`;
   };
 
-
-        useEffect(() => {
-  if (modoCalificacion || videoCalificacion) {
-    setShowNextMessage(false);
-    setNextSongName("");
-  }
-}, [modoCalificacion, videoCalificacion]);
-
+  useEffect(() => {
+    if (modoCalificacion || videoCalificacion) {
+      setShowNextMessage(false);
+      setNextSongName("");
+    }
+  }, [modoCalificacion, videoCalificacion]);
 
   const resetHideControlsTimer = () => {
     setShowControls(true);
@@ -249,7 +287,6 @@ export default function VideoPlayer({
     );
   }
 
-
   const handleEnded = () => {
     // --- MODO CALIFICACIÓN ---
     if (modoCalificacion && !videoCalificacion) {
@@ -274,9 +311,6 @@ export default function VideoPlayer({
       }
     }
 
-
-
-
     // --- FLUJO NORMAL ---
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -284,8 +318,6 @@ export default function VideoPlayer({
       onColaTerminada?.();
     }
   };
-
-
 
   return (
     <div
@@ -417,7 +449,6 @@ export default function VideoPlayer({
             texto={
               <>
                 <div className="d-flex justify-content-center align-items-center ">
-                  
                   <img
                     className="m-2"
                     src="/ci.png"
