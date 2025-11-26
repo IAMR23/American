@@ -24,7 +24,6 @@ const Productos = () => {
       console.error("Error al cargar productos:", err);
     }
   };
-  console.log(productos);
 
   useEffect(() => {
     cargarProductos();

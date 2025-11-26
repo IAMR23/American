@@ -99,7 +99,6 @@ export default function Carrousel() {
   const agregarACola = async (songId) => {
     try {
       let res;
-      console.log("cd")
       if (isAuthenticated) {
         // 🔐 Usuario autenticado
         res = await axios.post(

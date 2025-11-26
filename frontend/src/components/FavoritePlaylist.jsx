@@ -50,7 +50,6 @@ const FavoritePlaylist = ({ userId, onSelectAll }) => {
       setNewPlaylistName("");
       fetchPlaylists();
     } catch (error) {
-      console.log(error);
       console.error("Error al crear playlist:", error);
     }
   }

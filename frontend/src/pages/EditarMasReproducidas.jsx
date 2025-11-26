@@ -29,7 +29,6 @@ export default function EditarMasReproducidas() {
       const res = await axios.get(`${API_URL}/song/masreproducidas`, {
         headers,
       });
-      console.log(res.data);
       setCanciones(res.data);
     } catch (error) {
       console.error("Error al obtener canciones:", error);

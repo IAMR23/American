@@ -38,8 +38,6 @@ export default function ProductoDetalle() {
     }
   }, [id]);
 
-  console.log(planes)
-
   return (
     <>
       <h1>Producto: {id}</h1>

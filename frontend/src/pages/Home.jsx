@@ -124,8 +124,6 @@ export default function Home() {
         // LIMPIAR LA COLA AL HACER LOGIN
         setCola([]);
         setCurrentIndex(0);
-
-        console.log("Cola limpiada después del login");
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -199,7 +197,6 @@ export default function Home() {
       });
 
       setUser(res.data.user);
-      console.log(user);
       return res.data; // contiene nombre, correo, rol, etc.
     } catch (err) {
       console.error(
@@ -220,9 +217,6 @@ export default function Home() {
 
     const vigente =
       user.suscrito && new Date(user.subscriptionEnd) > new Date();
-
-    console.log(vigente);
-
     if (!vigente) {
       setSeccionActiva("suscribir");
     }
