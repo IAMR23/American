@@ -5,12 +5,16 @@ const Producto = require("../models/Producto");
 const Plan = require("../models/Plan");
 const router = express.Router();
 
+const API_PAYPAL = process.env.PAYPAL_API
+
+
 async function generateAccessToken() {
+
   const auth = Buffer.from(
     `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
   ).toString("base64");
 
-  const res = await fetch(`${process.env.PAYPAL_API}/v1/oauth2/token`, {
+  const res = await fetch(`${API_PAYPAL}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${auth}`,
@@ -34,7 +38,7 @@ router.post("/crear-producto", async (req, res) => {
     const accessToken = await generateAccessToken();
 
     const response = await axios.post(
-      "https://api-m.sandbox.paypal.com/v1/catalogs/products",
+      `${API_PAYPAL}/v1/catalogs/products`,
       {
         name,
         description,
@@ -86,7 +90,7 @@ router.get("/productos", async (req, res) => {
     const token = await generateAccessToken(); // Tu función para obtener el access_token
 
     const response = await axios.get(
-      "https://api-m.sandbox.paypal.com/v1/catalogs/products",
+      `${API_PAYPAL}/v1/catalogs/products`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -103,79 +107,6 @@ router.get("/productos", async (req, res) => {
   }
 });
 
-//crear un plan para un producto 
-
-// router.post("/producto/:productId/plan", async (req, res) => {
-//   try {
-//     const { productId } = req.params;
-//     const { nombre, descripcion, precio, duracionDias } = req.body;
-
-//     if (!nombre || !descripcion || !precio || !duracionDias) {
-//       return res.status(400).json({ error: "Faltan campos obligatorios" });
-//     }
-
-//     const accessToken = await generateAccessToken();
-
-//     const planResponse = await axios.post(
-//       "https://api-m.sandbox.paypal.com/v1/billing/plans",
-//       {
-//         product_id: productId,
-//         name: nombre,
-//         description: descripcion,
-//         billing_cycles: [
-//           {
-//             frequency: {
-//               interval_unit: "DAY",
-//               interval_count: duracionDias,
-//             },
-//             tenure_type: "REGULAR",
-//             sequence: 1,
-//             total_cycles: 1,
-//             pricing_scheme: {
-//               fixed_price: {
-//                 value: precio.toFixed(2),
-//                 currency_code: "USD",
-//               },
-//             },
-//           },
-//         ],
-//         payment_preferences: {
-//           auto_bill_outstanding: true,
-//           setup_fee_failure_action: "CONTINUE",
-//           payment_failure_threshold: 3,
-//         },
-//       },
-//       {
-//         headers: {
-//           Authorization: `Bearer ${accessToken}`,
-//           "Content-Type": "application/json",
-//         },
-//       }
-//     );
-
-//     const planData = planResponse.data;
-
-//     const nuevoPlan = new Plan({
-//       paypalPlanId: planData.id,
-//       productId,
-//       nombre,
-//       descripcion,
-//       precio,
-//       duracionDias,
-//       currency: planData.billing_cycles?.[0]?.pricing_scheme?.fixed_price?.currency_code || "USD",
-//       estado: planData.status || "INACTIVE",
-//       create_time: new Date(planData.create_time || Date.now())
-//     });
-
-//     await nuevoPlan.save();
-
-//     res.status(201).json({ message: "Plan creado y guardado con éxito", plan: nuevoPlan });
-//   } catch (error) {
-//     console.error("Error al crear plan:", error?.response?.data || error.message);
-//     res.status(500).json({ error: "Error al crear y guardar el plan" });
-//   }
-// });
-
 router.post("/producto/:productId/plan", async (req, res) => {
   try {
     const { productId } = req.params;
@@ -188,7 +119,7 @@ router.post("/producto/:productId/plan", async (req, res) => {
     const accessToken = await generateAccessToken();
 
     const planResponse = await axios.post(
-      "https://api-m.sandbox.paypal.com/v1/billing/plans",
+      `${API_PAYPAL}/v1/billing/plans`,
       {
         product_id: productId,
         name: nombre,
@@ -236,40 +167,10 @@ router.post("/producto/:productId/plan", async (req, res) => {
   }
 });
 
-
-
-//PLAN DIAS, MESES, SEMANAS Y AÑOS 
-
-//obtner los planes de un producto 
-// router.get("/planes/:productId", async (req, res) => {
-//   const { productId } = req.params;
-
-//   try {
-//     const accessToken = await generateAccessToken();
-
-//     const response = await axios.get("https://api-m.sandbox.paypal.com/v1/billing/plans", {
-//       headers: {
-//         Authorization: `Bearer ${accessToken}`,
-//         "Content-Type": "application/json"
-//       },
-//       params: {
-//         product_id: productId,
-//         page_size: 20
-//       }
-//     });
-
-//     res.json(response.data.plans || []);
-//   } catch (error) {
-//     console.error("Error al obtener planes:", error.response?.data || error.message);
-//     res.status(500).json({ error: "No se pudieron obtener los planes del producto." });
-//   }
-// });
-
-
 async function getPlanDetalle(planId, accessToken) {
   try {
     const response = await axios.get(
-      `https://api-m.sandbox.paypal.com/v1/billing/plans/${planId}`,
+      `${API_PAYPAL}/v1/billing/plans/${planId}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -291,7 +192,7 @@ router.get("/planes/:productId", async (req, res) => {
     const accessToken = await generateAccessToken();
 
     // Obtener lista básica de planes para el producto
-    const response = await axios.get("https://api-m.sandbox.paypal.com/v1/billing/plans", {
+    const response = await axios.get(`${API_PAYPAL}/v1/billing/plans`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"

@@ -5,11 +5,12 @@ const Usuario = require("../models/User"); // Asegúrate de tener esto
 const { authenticate } = require("../middleware/authMiddleware");
 const { generateAccessToken } = require("../paypal");
 
+const API_PAYPAL = process.env.PAYPAL_API
 
 async function getSubscriptionDetails(subscriptionID) {
   const accessToken = await generateAccessToken();
 
-  const url = `https://api-m.sandbox.paypal.com/v1/billing/subscriptions/${subscriptionID}`;
+  const url = `${API_PAYPAL}/v1/billing/subscriptions/${subscriptionID}`;
 
   try {
     const response = await axios.get(url, {

@@ -24,7 +24,7 @@ function PaypalSuscripcion({ planId }) {
   }
   const initialOptions = {
     "client-id":
-      "AX-QrOl40YLb-vOl8j3wdMGcTsgAGTjxiSrTaSLiiMeqIpOQTRGpcXm8djIVNv6zgbOj-SN9x3ALlaxO",
+      import.meta.env.VITE_CLIENT_ID,
     vault: true,
     intent: "subscription",
     currency: "USD",

@@ -107,8 +107,6 @@ export default function ProductoDetalle() {
           
         </table>
       )}
-
-      <PlanesActivos/>
     </>
   );
 }

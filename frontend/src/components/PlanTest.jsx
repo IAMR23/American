@@ -75,6 +75,22 @@ const PlantTest = () => {
     return <p className="text-light">Cargando productos...</p>;
   if (errorProductos) return <p className="text-danger">{errorProductos}</p>;
 
+
+  const mapIntervalUnit = (unit) => {
+  switch (unit) {
+    case "DAY":
+      return "Día";
+    case "WEEK":
+      return "Semana";
+    case "MONTH":
+      return "Mes";
+    case "YEAR":
+      return "Año";
+    default:
+      return unit.toLowerCase();
+  }
+};
+
   return (
     <div className="p-2">
       {errorPlanes && <div className="alert alert-danger">{errorPlanes}</div>}
@@ -93,9 +109,13 @@ const PlantTest = () => {
           <div className="row g-4 justify-content-center">
             {planesActivos.map((plan, index) => {
               const ciclo = plan.billing_cycles?.[0];
-              const frecuencia = ciclo?.frequency
-                ? `${ciclo.frequency.interval_unit} x${ciclo.frequency.interval_count}`
-                : "—";
+
+const frecuencia = ciclo?.frequency
+  ? `x${ciclo.frequency.interval_count} ${mapIntervalUnit(ciclo.frequency.interval_unit)}`
+  : "—";
+
+
+
 
               const precioValor =
                 ciclo?.pricing_scheme?.fixed_price?.value || "—";
@@ -109,19 +129,19 @@ const PlantTest = () => {
                   <div className={`card border-${borderColor} bg-dark h-100`}>
                     <div className="card-body d-flex flex-column">
                       <div className="text-light">
-                        <h3 className="fw-bold">{plan.name}</h3>
+                        <h3 className="">{plan.name}</h3>
                         <p>
                           {plan.description || "Sin descripción disponible."}
                         </p>
                       </div>
 
-                      <div className="mt-auto">
+                      <div className="mt-auto text-light">
                         <div className="d-flex align-items-center mb-2">
                           <span className="fs-3">{precioMoneda}</span>
                           <span className="display-1 fw-semibold">
                             {precioValor}
                           </span>
-                          <span className="fs-2">/ {frecuencia}</span>
+                       
                         </div>
 
                         <ul className="list-unstyled text-light">
