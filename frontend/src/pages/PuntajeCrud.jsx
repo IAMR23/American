@@ -187,7 +187,7 @@ export default function PuntajeCrud() {
                     onChange={handleChange}
                     maxLength={3}
                     placeholder="Ej: 1, 2, F1, A"
-                    required
+                    
                   />
                 </div>
 
