@@ -40,6 +40,30 @@ export default function VideoPlayer({
   const playerRef = useRef();
   const containerRef = useRef();
 
+  const insertarVideoDespuesActual = (video) => {
+  if (!video) return;
+
+  // Clonar playlist
+  const nuevaCola = [...playlist];
+
+  // Insertar video después del actual
+  nuevaCola.splice(currentIndex + 1, 0, {
+    ...video,
+    esCalificacion: true,
+  });
+
+  // Actualizar cola usando el controlador del padre
+  if (typeof setCola === "function") {
+    setCola(nuevaCola);
+  }
+
+  // Forzar que siga sonando lo actual sin alterar nada
+  setVideoCalificacion(null);
+  setCalificacionForzada(false);
+};
+
+
+
   const obtenerPuntajes = async () => {
     try {
       const res = await axios.get(API_PUNTAJE);
@@ -119,11 +143,8 @@ export default function VideoPlayer({
       console.log(item)
       if (!item) return;
 
-      setVideoCalificacion(item);
-      setCalificacionForzada(true);
+      insertarVideoDespuesActual(item);
 
-      playerRef.current?.seekTo(0);
-      setIsPlaying(true);
     };
 
     window.addEventListener("keydown", handleKeyDown);
