@@ -6,7 +6,8 @@ const PuntajeSchema = new mongoose.Schema(
     titulo : String, 
     videoUrl: String,
     imagenUrl: String,
-    weight : Number
+    weight : Number, 
+    key : String
   },
   { timestamps: true }
 );

@@ -7,10 +7,11 @@ const API_PUNTAJE = `${API_URL}/p/puntaje`;
 export default function PuntajeCrud() {
   const [puntajes, setPuntajes] = useState([]);
   const [formData, setFormData] = useState({
-    titulo : "",
+    titulo: "",
     videoUrl: "",
     imagenUrl: "",
     weight: "",
+    key: "",
   });
   const [editId, setEditId] = useState(null);
 
@@ -43,8 +44,14 @@ export default function PuntajeCrud() {
         await axios.post(API_PUNTAJE, formData);
       }
 
-      // Reiniciar formulario y estado
-      setFormData({ titulo :"",videoUrl: "", imagenUrl: "", weight: "" });
+      setFormData({
+        titulo: "",
+        videoUrl: "",
+        imagenUrl: "",
+        weight: "",
+        key: "",
+      });
+
       setEditId(null);
       obtenerPuntajes();
       cerrarModal();
@@ -53,24 +60,24 @@ export default function PuntajeCrud() {
     }
   };
 
-  // 🔹 Nuevo: abrir modal (como tu ejemplo de canciones)
   const handleOpenModal = (puntaje = null) => {
     if (puntaje) {
-      // Modo editar
       setEditId(puntaje._id);
       setFormData({
-        titulo : puntaje.titulo || "",
+        titulo: puntaje.titulo || "",
         videoUrl: puntaje.videoUrl || "",
         imagenUrl: puntaje.imagenUrl || "",
         weight: puntaje.weight || "",
+        key: puntaje.key || "",
       });
     } else {
-      // Modo nuevo → limpiar campos
       setEditId(null);
       setFormData({
+        titulo: "",
         videoUrl: "",
         imagenUrl: "",
         weight: "",
+        key: "",
       });
     }
     new window.bootstrap.Modal(document.getElementById("puntajeModal")).show();
@@ -116,19 +123,14 @@ export default function PuntajeCrud() {
               <h5 className="modal-title" id="puntajeModalLabel">
                 {editId ? "Editar Puntaje" : "Agregar Puntaje"}
               </h5>
-              <button
-                type="button"
-                className="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
+              <button type="button" className="btn-close"></button>
             </div>
 
             <div className="modal-body">
               <form onSubmit={handleSubmit} className="row g-3">
-
-                 <div className="col-12">
-                  <label className="form-label">Titulo</label>
+                
+                <div className="col-12">
+                  <label className="form-label">Título</label>
                   <input
                     type="text"
                     className="form-control"
@@ -174,6 +176,21 @@ export default function PuntajeCrud() {
                   />
                 </div>
 
+                {/* 🔹 NUEVO CAMPO: TECLA */}
+                <div className="col-12">
+                  <label className="form-label">Tecla Asignada</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="key"
+                    value={formData.key}
+                    onChange={handleChange}
+                    maxLength={3}
+                    placeholder="Ej: 1, 2, F1, A"
+                    required
+                  />
+                </div>
+
                 <div className="col-12 text-end">
                   <button type="submit" className="btn btn-success">
                     {editId ? "Actualizar" : "Guardar"}
@@ -185,51 +202,32 @@ export default function PuntajeCrud() {
         </div>
       </div>
 
-      {/* Cards de puntajes */}
+      {/* Cards */}
       {puntajes.length === 0 ? (
-        <div className="alert alert-info text-center">
-          No hay registros aún.
-        </div>
+        <div className="alert alert-info text-center">No hay registros aún.</div>
       ) : (
         <div className="row g-4">
           {puntajes.map((p) => (
             <div className="col-md-4" key={p._id}>
               <div className="card h-100 shadow-sm border-0">
-                <h1>{p.titulo}</h1>
-                {/* {p.imagenUrl ? (
-                  <img
-                    src={p.imagenUrl}
-                    className="card-img-top"
-                    alt="Preview"
-                    style={{ height: "180px", objectFit: "cover" }}
-                  />
-                ) : (
-                  <div
-                    className="bg-light d-flex align-items-center justify-content-center"
-                    style={{ height: "180px" }}
-                  >
-                    <i className="bi bi-image text-secondary fs-1"></i>
-                  </div>
-                )} */}
 
                 <div className="card-body">
-                  <h5 className="card-title text-truncate">
-                    <a
-                      href={p.videoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="link-primary"
-                    >
-                      Ver Video
+                  <h4 className="card-title fw-bold">{p.titulo}</h4>
+
+                  <p className="card-text">
+                    <strong>Video:</strong>{" "}
+                    <a href={p.videoUrl} target="_blank" rel="noreferrer">
+                      Ver
                     </a>
-                  </h5>
+                  </p>
+
                   <p className="card-text">
                     <strong>Probabilidad:</strong> {p.weight}
                   </p>
-                   <p className="card-text">
-                    <strong>TECLA CONFIGURADA:</strong> F1
-                  </p>
 
+                  <p className="card-text">
+                    <strong>Tecla:</strong> {p.key}
+                  </p>
                 </div>
 
                 <div className="card-footer bg-transparent border-0 d-flex justify-content-between">
@@ -237,15 +235,17 @@ export default function PuntajeCrud() {
                     className="btn btn-outline-warning btn-sm"
                     onClick={() => handleOpenModal(p)}
                   >
-                    <i className="bi bi-pencil"></i> Editar
+                    Editar
                   </button>
+
                   <button
                     className="btn btn-outline-danger btn-sm"
                     onClick={() => handleDelete(p._id)}
                   >
-                    <i className="bi bi-trash"></i> Eliminar
+                    Eliminar
                   </button>
                 </div>
+
               </div>
             </div>
           ))}

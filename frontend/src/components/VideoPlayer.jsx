@@ -14,8 +14,6 @@ export default function VideoPlayer({
   fullscreenRequested = false,
   onFullscreenHandled,
   onColaTerminada,
-
-  // NEW props
   modoCalificacion = false,
 }) {
   const playlist = cola || [];
@@ -30,9 +28,14 @@ export default function VideoPlayer({
 
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimeoutRef = useRef(null);
+
   const [calificaciones, setCalificaciones] = useState([]);
 
+  // 🔥 VIDEO ACTUAL DE CALIFICACIÓN
   const [videoCalificacion, setVideoCalificacion] = useState(null);
+
+  // 🔥 PARA SABER SI EL USUARIO INTERVINO POR TECLA
+  const [calificacionForzada, setCalificacionForzada] = useState(false);
 
   const playerRef = useRef();
   const containerRef = useRef();
@@ -50,12 +53,10 @@ export default function VideoPlayer({
     obtenerPuntajes();
   }, []);
 
-
-
-  // Pool seguro: cada ronda contiene todos los videos ordenados por peso
+  // ============================================================
+  //  POOL DE PESOS
+  // ============================================================
   const poolRef = useRef([]);
-
-  const currentVideo = playlist[currentIndex];
 
   const refillPool = useCallback(() => {
     if (!Array.isArray(calificaciones) || calificaciones.length === 0) {
@@ -65,34 +66,25 @@ export default function VideoPlayer({
 
     let pool = [];
 
-    // --- Paso 1: crear array según weight ---
     calificaciones.forEach((item) => {
-      const count = Math.round(item.weight); // peso %
-      for (let i = 0; i < count; i++) {
-        pool.push(item);
-      }
+      const count = Math.round(item.weight);
+      for (let i = 0; i < count; i++) pool.push(item);
     });
 
-    // --- Paso 2: mezclar evitando repetición consecutiva ---
+    // Mezclar evitando repetición consecutiva
     const shuffled = [];
     const tempPool = [...pool];
 
     while (tempPool.length > 0) {
-      // filtrar los candidatos que no sean igual al último agregado
-      const last = shuffled.length
-        ? shuffled[shuffled.length - 1].calificacion
-        : null;
+      const last = shuffled.length ? shuffled[shuffled.length - 1].calificacion : null;
       const candidates = tempPool.filter((v) => v.calificacion !== last);
 
-      // si no hay candidatos diferentes, podemos tomar cualquiera
       const pickPool = candidates.length ? candidates : tempPool;
 
-      // escoger aleatorio del pickPool
       const index = Math.floor(Math.random() * pickPool.length);
       const selected = pickPool[index];
       shuffled.push(selected);
 
-      // eliminar del tempPool el seleccionado (la primera aparición)
       const removeIndex = tempPool.findIndex((v) => v === selected);
       tempPool.splice(removeIndex, 1);
     }
@@ -107,23 +99,36 @@ export default function VideoPlayer({
     return poolRef.current.shift();
   }, [refillPool]);
 
- 
   useEffect(() => {
-  if (!calificaciones || calificaciones.length === 0) return;
+    refillPool();
+  }, [calificaciones]);
 
-  refillPool(); // asegurarnos de que el pool esté lleno
+  // ============================================================
+  //  TECLAS PRESIONADAS (1–9)
+  // ============================================================
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!modoCalificacion) return; // solo funciona en modo calificación
+      if (videoCalificacion) return; // si ya hay video, ignorar
 
-  const contador = {};
-  for (let i = 0; i < 100; i++) {
-    const video = getVideoByWeightNoRepeat();
-    if (!video) continue;
+      const key = e.key;
 
-    const key = video.titulo ?? "sin_calificacion";
-    contador[key] = (contador[key] || 0) + 1;
-  }
-}, [calificaciones]);
+      if (!/^[1-9]$/.test(key)) return;
 
+      const item = calificaciones.find((c) => String(c.key) === key);
+      console.log(item)
+      if (!item) return;
 
+      setVideoCalificacion(item);
+      setCalificacionForzada(true);
+
+      playerRef.current?.seekTo(0);
+      setIsPlaying(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [calificaciones, modoCalificacion, videoCalificacion]);
 
   // ============================================================
   //  FULLSCREEN
@@ -139,29 +144,21 @@ export default function VideoPlayer({
   }, [fullscreenRequested, onFullscreenHandled]);
 
   // ============================================================
-  //  RESET INDEX SI SE SALE DE RANGO
+  //  CAMBIO VIDEO COLA
   // ============================================================
-  useEffect(() => {
-    if (currentIndex >= playlist.length) {
-      setCurrentIndex(0);
-    }
-  }, [currentIndex, playlist.length, setCurrentIndex]);
+  const currentVideo = playlist[currentIndex];
 
-  // ============================================================
-  //  CAMBIO DE VIDEO EN COLA
-  // ============================================================
   useEffect(() => {
     if (!currentVideo) return;
 
     setIsPlaying(false);
-
-    if (playerRef.current) {
-      playerRef.current.seekTo(0);
-    }
-
+    playerRef.current?.seekTo(0);
     setTimeout(() => setIsPlaying(true), 20);
   }, [currentIndex]);
 
+  // ============================================================
+  //  BOTONES NAVEGACIÓN
+  // ============================================================
   const nextVideo = () => {
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -181,8 +178,15 @@ export default function VideoPlayer({
   // ============================================================
   const handleProgress = ({ playedSeconds }) => {
     setProgress(playedSeconds);
+
     const dur = playerRef.current?.getDuration?.();
     if (!dur) return;
+
+    // 🔥 OCULTAR mensaje si es videoCalificacion
+    if (videoCalificacion) {
+      setShowNextMessage(false);
+      return;
+    }
 
     if (dur - playedSeconds <= 40) {
       const next = playlist[currentIndex + 1];
@@ -203,38 +207,28 @@ export default function VideoPlayer({
 
   const formatTime = (sec) => {
     if (!sec || isNaN(sec)) return "00:00";
-    const minutes = Math.floor(sec / 60);
-    const seconds = Math.floor(sec % 60);
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  useEffect(() => {
-    if (modoCalificacion || videoCalificacion) {
-      setShowNextMessage(false);
-      setNextSongName("");
-    }
-  }, [modoCalificacion, videoCalificacion]);
-
+  // ============================================================
+  //  OCULTAR CONTROLES
+  // ============================================================
   const resetHideControlsTimer = () => {
     setShowControls(true);
 
-    if (hideControlsTimeoutRef.current) {
-      clearTimeout(hideControlsTimeoutRef.current);
-    }
+    if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
 
     if (isFullscreen) {
-      hideControlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
+      hideControlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
     }
   };
 
   useEffect(() => {
     const handleMouseMove = () => resetHideControlsTimer();
-
     const container = containerRef.current;
+
     container?.addEventListener("mousemove", handleMouseMove);
 
     return () => {
@@ -246,17 +240,13 @@ export default function VideoPlayer({
   useEffect(() => {
     const handleFullscreenChange = () => {
       const fsElement = document.fullscreenElement;
-
       setIsFullscreen(!!fsElement);
       if (fsElement) resetHideControlsTimer();
       else setShowControls(true);
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   const toggleFullscreen = () => {
@@ -267,47 +257,52 @@ export default function VideoPlayer({
     else document.exitFullscreen?.();
   };
 
+  // ============================================================
+  //  NO HAY VIDEOS
+  // ============================================================
   if (!Array.isArray(cola) || cola.length === 0) {
-    return (
-      <div style={emptyStyle}>
-        🎧 No hay canciones en la cola. Añade una desde el buscador o playlist.
-      </div>
-    );
+    return <div style={emptyStyle}>🎧 No hay canciones en la cola.</div>;
   }
 
   if (!currentVideo || !currentVideo.videoUrl) {
-    return (
-      <div style={emptyStyle}>
-        ⚠️ Esta canción no tiene un video disponible para reproducir.
-      </div>
-    );
+    return <div style={emptyStyle}>⚠️ Canción sin video disponible.</div>;
   }
 
+  // ============================================================
+  //  CUANDO EL VIDEO TERMINA
+  // ============================================================
   const handleEnded = () => {
-    // --- MODO CALIFICACIÓN ---
-    if (modoCalificacion && !videoCalificacion) {
-      if (calificaciones.length > 0) {
-        const randomVideo = getVideoByWeightNoRepeat();
-        playerRef.current?.seekTo(0);
-        setVideoCalificacion(randomVideo);
-        return;
-      }
+    // 🔥 SI ESTOY REPRODUCIENDO UN VIDEO QUE EL USUARIO FORZÓ POR TECLA
+    if (calificacionForzada && videoCalificacion) {
+      setVideoCalificacion(null);
+      setCalificacionForzada(false);
+      refillPool(); // restaurar pesos normales
+
+      return; // no avanzar la cola
     }
 
-    // --- TERMINÓ VIDEO DE CALIFICAR ---
+    // 🔥 SI ES UN VIDEO NORMAL DE CALIFICACIÓN
+    if (modoCalificacion && !videoCalificacion) {
+      const v = getVideoByWeightNoRepeat();
+      setVideoCalificacion(v);
+      playerRef.current.seekTo(0);
+      return;
+    }
+
+    // 🔥 SI TERMINÓ UN VIDEO CALIFICACIÓN NORMAL
     if (videoCalificacion) {
       setVideoCalificacion(null);
 
       if (currentIndex < playlist.length - 1) {
         setCurrentIndex(currentIndex + 1);
         return;
-      } else {
-        onColaTerminada?.();
-        return;
       }
+
+      onColaTerminada?.();
+      return;
     }
 
-    // --- FLUJO NORMAL ---
+    // 🔥 FLUJO NORMAL
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -315,6 +310,9 @@ export default function VideoPlayer({
     }
   };
 
+  // ============================================================
+  //  RENDER
+  // ============================================================
   return (
     <div
       ref={containerRef}
@@ -329,11 +327,7 @@ export default function VideoPlayer({
         <ReactPlayer
           className="react-player"
           ref={playerRef}
-          url={
-            videoCalificacion
-              ? videoCalificacion.videoUrl
-              : currentVideo.videoUrl
-          }
+          url={videoCalificacion ? videoCalificacion.videoUrl : currentVideo.videoUrl}
           playing={isPlaying}
           controls={false}
           width="100%"
@@ -343,7 +337,7 @@ export default function VideoPlayer({
           onEnded={handleEnded}
         />
 
-        {/* NAV - LEFT */}
+        {/* NAV LEFT */}
         <img
           src="izq.png"
           alt="Anterior"
@@ -355,15 +349,14 @@ export default function VideoPlayer({
           }}
         />
 
-        {/* NAV - RIGHT */}
+        {/* NAV RIGHT */}
         <img
           src="der.png"
           alt="Siguiente"
           onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
           style={{
             ...navButtonStyle("right", currentIndex === playlist.length - 1),
-            cursor:
-              currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
+            cursor: currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
             opacity: currentIndex === playlist.length - 1 ? 0.5 : 1,
           }}
         />
@@ -400,9 +393,7 @@ export default function VideoPlayer({
               {isPlaying ? "⏸" : "▶"}
             </button>
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>
-              {formatTime(progress)}
-            </span>
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>{formatTime(progress)}</span>
 
             <input
               type="range"
@@ -419,9 +410,7 @@ export default function VideoPlayer({
               }}
             />
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>
-              {formatTime(duration)}
-            </span>
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>{formatTime(duration)}</span>
 
             <button
               onClick={toggleFullscreen}
@@ -440,17 +429,13 @@ export default function VideoPlayer({
           </div>
         )}
 
+        {/* 🔥 OCULTAR PRÓXIMA CANCIÓN SI HAY videoCalificacion */}
         {showNextMessage && !videoCalificacion && (
           <BarraDeslizante
             texto={
               <>
                 <div className="d-flex justify-content-center align-items-center ">
-                  <img
-                    className="m-2"
-                    src="/ci.png"
-                    alt=""
-                    width={isFullscreen ? 45 : 30}
-                  />
+                  <img className="m-2" src="/ci.png" alt="" width={isFullscreen ? 45 : 30} />
 
                   <span className="outlined">Próxima canción: </span>
 
@@ -458,12 +443,7 @@ export default function VideoPlayer({
                     {nextSongName}
                   </span>
 
-                  <img
-                    className="m-2"
-                    src="/cd.png"
-                    alt=""
-                    width={isFullscreen ? 40 : 25}
-                  />
+                  <img className="m-2" src="/cd.png" alt="" width={isFullscreen ? 40 : 25} />
                 </div>
               </>
             }

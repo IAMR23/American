@@ -1,12 +1,22 @@
 const express = require("express");
 const router = express.Router();
-const Puntaje = require("../models/Puntaje"); 
+const Puntaje = require("../models/Puntaje");
 
+// ---------------------------
 // ✅ Crear puntaje
+// ---------------------------
 router.post("/puntaje/", async (req, res) => {
   try {
-    const { titulo , videoUrl , imagenUrl, weight } = req.body;
-    const nuevoPuntaje = new Puntaje({ titulo , videoUrl , imagenUrl, weight });
+    const { titulo, videoUrl, imagenUrl, weight, key } = req.body;
+
+    const nuevoPuntaje = new Puntaje({
+      titulo,
+      videoUrl,
+      imagenUrl,
+      weight,
+      key,
+    });
+
     const guardado = await nuevoPuntaje.save();
     res.status(201).json(guardado);
   } catch (error) {
@@ -14,7 +24,9 @@ router.post("/puntaje/", async (req, res) => {
   }
 });
 
+// ---------------------------
 // ✅ Obtener todos los puntajes
+// ---------------------------
 router.get("/puntaje/", async (req, res) => {
   try {
     const puntajes = await Puntaje.find().sort({ createdAt: -1 });
@@ -24,40 +36,53 @@ router.get("/puntaje/", async (req, res) => {
   }
 });
 
-// ✅ Obtener un puntaje por ID
+// ---------------------------
+// ✅ Obtener puntaje por ID
+// ---------------------------
 router.get("/puntaje/:id", async (req, res) => {
   try {
     const puntaje = await Puntaje.findById(req.params.id);
-    if (!puntaje) return res.status(404).json({ message: "Puntaje no encontrado" });
+    if (!puntaje) {
+      return res.status(404).json({ message: "Puntaje no encontrado" });
+    }
     res.json(puntaje);
   } catch (error) {
     res.status(500).json({ message: "Error al obtener el puntaje", error });
   }
 });
 
+// ---------------------------
 // ✅ Actualizar puntaje
+// ---------------------------
 router.put("/puntaje/:id", async (req, res) => {
   try {
-    const { titulo , videoUrl , imagenUrl, weight } = req.body;
+    const { titulo, videoUrl, imagenUrl, weight, key } = req.body;
+
     const actualizado = await Puntaje.findByIdAndUpdate(
       req.params.id,
-      { titulo , videoUrl , imagenUrl, weight },
+      { titulo, videoUrl, imagenUrl, weight, key },
       { new: true }
     );
-    if (!actualizado)
+
+    if (!actualizado) {
       return res.status(404).json({ message: "Puntaje no encontrado" });
+    }
+
     res.json(actualizado);
   } catch (error) {
     res.status(500).json({ message: "Error al actualizar el puntaje", error });
   }
 });
 
+// ---------------------------
 // ✅ Eliminar puntaje
+// ---------------------------
 router.delete("/puntaje/:id", async (req, res) => {
   try {
     const eliminado = await Puntaje.findByIdAndDelete(req.params.id);
-    if (!eliminado)
+    if (!eliminado) {
       return res.status(404).json({ message: "Puntaje no encontrado" });
+    }
     res.json({ message: "Puntaje eliminado correctamente" });
   } catch (error) {
     res.status(500).json({ message: "Error al eliminar el puntaje", error });
