@@ -39,30 +39,28 @@ export default function VideoPlayer({
 
   const playerRef = useRef();
   const containerRef = useRef();
-
-  const insertarVideoDespuesActual = (video) => {
+const [colaCalificaciones, setColaCalificaciones] = useState([]);
+const insertarVideoDespuesActual = (video) => {
   if (!video) return;
 
-  // Clonar playlist
-  const nuevaCola = [...playlist];
-
-  // Insertar video después del actual
-  nuevaCola.splice(currentIndex + 1, 0, {
-    ...video,
-    esCalificacion: true,
-  });
-
-  // Actualizar cola usando el controlador del padre
-  if (typeof setCola === "function") {
-    setCola(nuevaCola);
-  }
-
-  // Forzar que siga sonando lo actual sin alterar nada
-  setVideoCalificacion(null);
-  setCalificacionForzada(false);
+  setColaCalificaciones(prev => [
+    ...prev,
+    { ...video, esForzado: true }
+  ]);
 };
 
+  useEffect(() => {
+    if (!videoCalificacion) return;
 
+    // asegurarnos que el player cargue el nuevo url y comience desde 0
+    setIsPlaying(false);
+    setTimeout(() => {
+      try {
+        playerRef.current?.seekTo(0);
+      } catch (e) {}
+      setIsPlaying(true);
+    }, 20);
+  }, [videoCalificacion]);
 
   const obtenerPuntajes = async () => {
     try {
@@ -100,7 +98,9 @@ export default function VideoPlayer({
     const tempPool = [...pool];
 
     while (tempPool.length > 0) {
-      const last = shuffled.length ? shuffled[shuffled.length - 1].calificacion : null;
+      const last = shuffled.length
+        ? shuffled[shuffled.length - 1].calificacion
+        : null;
       const candidates = tempPool.filter((v) => v.calificacion !== last);
 
       const pickPool = candidates.length ? candidates : tempPool;
@@ -140,11 +140,10 @@ export default function VideoPlayer({
       if (!/^[1-9]$/.test(key)) return;
 
       const item = calificaciones.find((c) => String(c.key) === key);
-      console.log(item)
+      console.log(item);
       if (!item) return;
 
       insertarVideoDespuesActual(item);
-
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -239,10 +238,14 @@ export default function VideoPlayer({
   const resetHideControlsTimer = () => {
     setShowControls(true);
 
-    if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+    if (hideControlsTimeoutRef.current)
+      clearTimeout(hideControlsTimeoutRef.current);
 
     if (isFullscreen) {
-      hideControlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+      hideControlsTimeoutRef.current = setTimeout(
+        () => setShowControls(false),
+        3000
+      );
     }
   };
 
@@ -267,7 +270,8 @@ export default function VideoPlayer({
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   const toggleFullscreen = () => {
@@ -289,51 +293,49 @@ export default function VideoPlayer({
     return <div style={emptyStyle}>⚠️ Canción sin video disponible.</div>;
   }
 
-  // ============================================================
-  //  CUANDO EL VIDEO TERMINA
-  // ============================================================
-  const handleEnded = () => {
-    // 🔥 SI ESTOY REPRODUCIENDO UN VIDEO QUE EL USUARIO FORZÓ POR TECLA
-    if (calificacionForzada && videoCalificacion) {
-      setVideoCalificacion(null);
-      setCalificacionForzada(false);
-      refillPool(); // restaurar pesos normales
 
-      return; // no avanzar la cola
-    }
+const handleEnded = () => {
 
-    // 🔥 SI ES UN VIDEO NORMAL DE CALIFICACIÓN
-    if (modoCalificacion && !videoCalificacion) {
-      const v = getVideoByWeightNoRepeat();
-      setVideoCalificacion(v);
-      playerRef.current.seekTo(0);
-      return;
-    }
+  // 1️⃣ Si hay un video forzado en la cola → reproducirlo
+  if (colaCalificaciones.length > 0) {
+    const siguiente = colaCalificaciones[0];
+    setColaCalificaciones(colaCalificaciones.slice(1));
 
-    // 🔥 SI TERMINÓ UN VIDEO CALIFICACIÓN NORMAL
-    if (videoCalificacion) {
-      setVideoCalificacion(null);
+    setVideoCalificacion(siguiente);
+    playerRef.current.seekTo(0);
+    return;
+  }
 
-      if (currentIndex < playlist.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        return;
-      }
+  // 2️⃣ Si es videoCalificación NORMAL
+  if (videoCalificacion) {
+    setVideoCalificacion(null);
 
-      onColaTerminada?.();
-      return;
-    }
-
-    // 🔥 FLUJO NORMAL
+    // avanzar la cola de karaoke
     if (currentIndex < playlist.length - 1) {
       setCurrentIndex(currentIndex + 1);
-    } else {
-      onColaTerminada?.();
+      return;
     }
-  };
 
-  // ============================================================
-  //  RENDER
-  // ============================================================
+    onColaTerminada?.();
+    return;
+  }
+
+  // 3️⃣ Si estoy en modo calificación, insertar uno random después del karaoke
+  if (modoCalificacion && !videoCalificacion) {
+    const random = getVideoByWeightNoRepeat();
+    setVideoCalificacion(random);
+    playerRef.current.seekTo(0);
+    return;
+  }
+
+  // 4️⃣ Flujo normal del karaoke
+  if (currentIndex < playlist.length - 1) {
+    setCurrentIndex(currentIndex + 1);
+  } else {
+    onColaTerminada?.();
+  }
+};
+
   return (
     <div
       ref={containerRef}
@@ -348,7 +350,11 @@ export default function VideoPlayer({
         <ReactPlayer
           className="react-player"
           ref={playerRef}
-          url={videoCalificacion ? videoCalificacion.videoUrl : currentVideo.videoUrl}
+          url={
+            videoCalificacion
+              ? videoCalificacion.videoUrl
+              : currentVideo.videoUrl
+          }
           playing={isPlaying}
           controls={false}
           width="100%"
@@ -377,7 +383,8 @@ export default function VideoPlayer({
           onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
           style={{
             ...navButtonStyle("right", currentIndex === playlist.length - 1),
-            cursor: currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
+            cursor:
+              currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
             opacity: currentIndex === playlist.length - 1 ? 0.5 : 1,
           }}
         />
@@ -414,7 +421,9 @@ export default function VideoPlayer({
               {isPlaying ? "⏸" : "▶"}
             </button>
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>{formatTime(progress)}</span>
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(progress)}
+            </span>
 
             <input
               type="range"
@@ -431,7 +440,9 @@ export default function VideoPlayer({
               }}
             />
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>{formatTime(duration)}</span>
+            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+              {formatTime(duration)}
+            </span>
 
             <button
               onClick={toggleFullscreen}
@@ -456,7 +467,12 @@ export default function VideoPlayer({
             texto={
               <>
                 <div className="d-flex justify-content-center align-items-center ">
-                  <img className="m-2" src="/ci.png" alt="" width={isFullscreen ? 45 : 30} />
+                  <img
+                    className="m-2"
+                    src="/ci.png"
+                    alt=""
+                    width={isFullscreen ? 45 : 30}
+                  />
 
                   <span className="outlined">Próxima canción: </span>
 
@@ -464,7 +480,12 @@ export default function VideoPlayer({
                     {nextSongName}
                   </span>
 
-                  <img className="m-2" src="/cd.png" alt="" width={isFullscreen ? 40 : 25} />
+                  <img
+                    className="m-2"
+                    src="/cd.png"
+                    alt=""
+                    width={isFullscreen ? 40 : 25}
+                  />
                 </div>
               </>
             }
