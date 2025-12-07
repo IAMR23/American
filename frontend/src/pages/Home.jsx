@@ -26,6 +26,7 @@ import CelularPage from "./CelularPage";
 import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
+import { useBackground } from "../hooks/BackgroundContext";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -282,10 +283,22 @@ export default function Home() {
     }
   };
 
+    const { background } = useBackground();
+
+
+
   return (
     <>
-      <div className="bg-primary container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center">
-        {/* Header */}
+     <div
+        className="container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center"
+        style={{
+          backgroundImage: background ? `url(${background})` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          minHeight: "100vh",
+        }}
+      >        {/* Header */}
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
