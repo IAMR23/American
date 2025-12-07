@@ -4,8 +4,8 @@ const BackgroundContext = createContext();
 
 export const BackgroundProvider = ({ children }) => {
   const [background, setBackground] = useState(() => {
-    //👇 Cargar desde localStorage al iniciar
-    return localStorage.getItem("bg") || "";
+    //👇 Cargar desde localStorage o usar un fondo por defecto
+    return localStorage.getItem("bg") || "/fondos/1.webp";
   });
 
   useEffect(() => {
