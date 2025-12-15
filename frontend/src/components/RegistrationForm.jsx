@@ -168,7 +168,7 @@ function RegistrationForm({ onRegisterSuccess }) {
 
             <button
               type="submit"
-              className="btn btn-dark w-100"
+              className="btn btn-danger w-100"
               disabled={loading}
             >
               {loading ? "Registrando..." : "Registrarse"}

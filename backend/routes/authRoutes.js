@@ -1,6 +1,8 @@
 const express = require("express");
 const { login } = require("../controllers/authController");
 const { authenticate, verificarSuscripcionActiva } = require("../middleware/authMiddleware");
+const { forgotPassword } = require("../middleware/forgotPassword");
+const { resetPassword } = require("../middleware/resetPassword");
 
 const router = express.Router();
 
@@ -14,4 +16,11 @@ router.get("/user/suscripcion", authenticate, verificarSuscripcionActiva, (req, 
   });
 });
 
+// Recuperar contraseña
+router.post("/forgot-password", forgotPassword);
+
+// Resetear contraseña
+router.post("/reset-password", resetPassword);
+
 module.exports = router;
+  

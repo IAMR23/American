@@ -76,7 +76,7 @@ export default function VideoCarousel() {
     fetchVideos();
   }, []);
 
-    const agregarACola = async (songId) => {
+  const agregarACola = async (songId) => {
     try {
       let res;
       if (isAuthenticated) {
@@ -192,6 +192,7 @@ export default function VideoCarousel() {
                       agregarACola(video._id);
                     }}
                     title="Agregar a cola"
+                    disabled={!isAuthenticated}
                   >
                     <img src="./mas.png" alt="" width={"40px"} />
                   </button>

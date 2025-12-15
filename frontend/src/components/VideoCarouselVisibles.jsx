@@ -215,7 +215,6 @@ export default function VideoCarouselVisibles() {
                     className="btn-heart"
                     onClick={() => handleOpenModal(video._id)}
                     title="Agregar a playlist"
-                    disabled={!isAuthenticated}
                   >
                     <img src="./heart.png" alt="" />
                   </button>

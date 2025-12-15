@@ -27,6 +27,7 @@ import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 import { useBackground } from "../hooks/BackgroundContext";
+import ForgotPassword from "./ForgotPassword";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -249,12 +250,20 @@ export default function Home() {
       case "sugerirCanciones":
         return <SolicitudesCancion />;
       case "ingresar":
-        return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+        return (
+          <LoginForm
+            onLoginSuccess={handleLoginSuccess}
+            onGoRegister={() => setSeccionActiva("registrar")}
+            onGoPasswordReset={() => setSeccionActiva("password")}
+          />
+        );
       case "registrar":
         return <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />;
 
       case "listadoPdf":
         return <ListadoPDFCanciones />;
+      case "password":
+        return <ForgotPassword />;
       case "suscribir":
         return <PlantTest />;
       case "ayuda":
@@ -283,13 +292,11 @@ export default function Home() {
     }
   };
 
-    const { background } = useBackground();
-
-
+  const { background } = useBackground();
 
   return (
     <>
-     <div
+      <div
         className="container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center"
         style={{
           backgroundImage: background ? `url(${background})` : "none",
@@ -298,7 +305,9 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
           minHeight: "100vh",
         }}
-      >        {/* Header */}
+      >
+        {" "}
+        {/* Header */}
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
@@ -335,7 +344,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
         {/* Botones laterales y contenido */}
         <div className="container-fluid">
           <div className="row">
@@ -471,9 +479,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-
         {/* Cola dinámica */}
-
         <div className="m-2 ">
           <div className="d-flex justify-content-center align-items-center gap-3">
             <h2 className="text-white">Canciones a la cola</h2>
@@ -528,12 +534,8 @@ export default function Home() {
         <AnunciosVisibles />
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
-        {auth && (
-          <>
-            <h1 className="p-2 text-white">Las más populares</h1>
-            <VideoCarousel />
-          </>
-        )}
+        <h1 className="p-2 text-white">Las más populares</h1>
+        <VideoCarousel />
       </div>
     </>
   );

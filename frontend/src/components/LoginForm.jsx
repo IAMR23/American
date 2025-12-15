@@ -4,7 +4,7 @@ import { loginUser } from "../services/userServices";
 import { jwtDecode } from "jwt-decode"; // Sin llaves en jwtDecode
 import { AuthContext } from "../utils/AuthContext";
 
-function LoginForm({ onLoginSuccess }) {
+function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
   const { setAuth } = useContext(AuthContext);
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ function LoginForm({ onLoginSuccess }) {
     <div className="d-flex justify-content-center align-items-center h-full">
       <div
         className="card shadow mx-2"
-        style={{ maxWidth: "400px", width: "100%" }}
+        style={{ maxWidth: "600px", width: "100%" }}
       >
         <div className="card-body bg-primary text-white">
           <h2 className="card-title text-center mb-4">Iniciar Sesión</h2>
@@ -131,10 +131,28 @@ function LoginForm({ onLoginSuccess }) {
             </div>
           )}
 
-          <div className="text-center mt-3">
-            <a href="/registro" className="text-decoration-none text-white">
-              ¿No tienes cuenta? Regístrate
-            </a>
+          <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+            <button
+              type="button"
+              className="btn btn-link text-white text-decoration-none px-0"
+              onClick={onGoRegister}
+            >
+              <span className="fw-semibold ">
+                ¿No tienes cuenta? Regístrate
+              </span>
+            </button>
+
+            <span className="text-white-50">|</span>
+
+            <button
+              type="button"
+              className="btn btn-link text-white text-decoration-none px-0"
+              onClick={onGoPasswordReset}
+            >
+              <span className="fw-semibold ">
+                ¿Olvidaste tu contraseña?
+              </span>
+            </button>
           </div>
         </div>
       </div>

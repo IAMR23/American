@@ -36,6 +36,7 @@ import { QueueProvider } from "./hooks/QueueProvider";
 import { ReproductorProvider } from "./hooks/ReproductorContext";
 import PuntajeCrud from "./pages/PuntajeCrud";
 import { BackgroundProvider } from "./hooks/BackgroundContext";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   const [auth, setAuth] = useState({
@@ -131,11 +132,18 @@ function App() {
                       path="/login"
                       element={<LoginForm setAuth={setAuth} />}
                     />
-                    <Route path="/registro" element={<RegistrationForm />} />
+                    {/* <Route path="/registro" element={<RegistrationForm />} /> */}
                     <Route
                       path="/publicaciones"
                       element={<PublicacionesPage />}
                     />
+
+{/* Resest password */}
+                       <Route
+  path="/reset-password"
+  element={<ResetPassword />}
+/>
+                    
                   </Routes>
                 </main>
                 <Footer />
