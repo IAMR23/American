@@ -337,7 +337,7 @@ export default function Home() {
               }}
             >
               <div>
-                <h3 className="outlined-black">Bienvenido:</h3>
+                <h3 className="outlined-black">Bienvenidosss:</h3>
               </div>
 
               <button className="boton0">{user.nombre}</button>
