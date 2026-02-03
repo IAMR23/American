@@ -1,15 +1,14 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/userServices";
-import { jwtDecode } from "jwt-decode"; // Sin llaves en jwtDecode
-import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode";
 
-function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
-  const { setAuth } = useContext(AuthContext);
+function LoginForm({ setToken, onLoginSuccess, onGoRegister, onGoPasswordReset }) {
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showPassword, setShowPassword] = useState(false); // Estado para mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -29,31 +28,33 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
     }
 
     try {
-      const response = await loginUser(credentials);
-      localStorage.setItem("token", response.token);
+      // ✅ loginUser devuelve directamente data
+      const data = await loginUser(credentials);
 
-      const decoded = jwtDecode(response.token);
+      if (!data?.token) {
+        throw new Error("El servidor no devolvió el token");
+      }
+
+      // ✅ Guardar token correctamente
+      localStorage.setItem("token", data.token);
+      setToken(data.token);
+
+      // ✅ Decodificar token correcto
+      const decoded = jwtDecode(data.token);
       const userRole = decoded.rol;
-      const userId = decoded.userId;
 
       localStorage.setItem("rol", userRole);
 
-      setAuth({
-        isAuthenticated: true,
-        rol: userRole,
-        userId: userId,
-      });
-
       if (userRole === "admin" || userRole === "cantante") {
         navigate("/");
-        onLoginSuccess();
+        onLoginSuccess?.();
       }
 
       setCredentials({ email: "", password: "" });
-    } catch (error) {
+    } catch (err) {
       setError(
-        error.response?.data?.message ||
-          error.message ||
+        err.response?.data?.message ||
+          err.message ||
           "Error al iniciar sesión."
       );
     } finally {
@@ -63,10 +64,7 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
 
   return (
     <div className="d-flex justify-content-center align-items-center h-full">
-      <div
-        className="card shadow mx-2"
-        style={{ maxWidth: "600px", width: "100%" }}
-      >
+      <div className="card shadow mx-2" style={{ maxWidth: "600px", width: "100%" }}>
         <div className="card-body bg-primary text-white">
           <h2 className="card-title text-center mb-4">Iniciar Sesión</h2>
 
@@ -74,11 +72,8 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="email" className="form-label">
-                Email
-              </label>
+              <label className="form-label">Email</label>
               <input
-                id="email"
                 type="email"
                 name="email"
                 value={credentials.email}
@@ -89,12 +84,9 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="password" className="form-label">
-                Contraseña
-              </label>
+              <label className="form-label">Contraseña</label>
               <input
-                id="password"
-                type={showPassword ? "text" : "password"} // Aquí se cambia el tipo
+                type={showPassword ? "text" : "password"}
                 name="password"
                 value={credentials.password}
                 onChange={handleChange}
@@ -107,20 +99,15 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
               <input
                 type="checkbox"
                 className="form-check-input"
-                id="showPassword"
                 checked={showPassword}
                 onChange={() => setShowPassword(!showPassword)}
               />
-              <label className="form-check-label" htmlFor="showPassword">
+              <label className="form-check-label">
                 Mostrar contraseña
               </label>
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-dark w-100"
-              disabled={loading}
-            >
+            <button type="submit" className="btn btn-dark w-100" disabled={loading}>
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
@@ -134,24 +121,20 @@ function LoginForm({ onLoginSuccess, onGoRegister, onGoPasswordReset }) {
           <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none px-0"
+              className="btn btn-link text-white px-0"
               onClick={onGoRegister}
             >
-              <span className="fw-semibold ">
-                ¿No tienes cuenta? Regístrate
-              </span>
+              ¿No tienes cuenta? Regístrate
             </button>
 
             <span className="text-white-50">|</span>
 
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none px-0"
+              className="btn btn-link text-white px-0"
               onClick={onGoPasswordReset}
             >
-              <span className="fw-semibold ">
-                ¿Olvidaste tu contraseña?
-              </span>
+              ¿Olvidaste tu contraseña?
             </button>
           </div>
         </div>

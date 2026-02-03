@@ -116,21 +116,20 @@ const actualizarCancion = async (req, res) => {
 
 const getVideoDefault = async (req, res) => {
   try {
-    // Busca todas las canciones donde videoDefault es true
-    const canciones = await Cancion.find({ videoDefault: true }).populate(
-      "generos"
-    ); // opcional: si quieres traer los géneros completos
+    const canciones = await Cancion.aggregate([
+      { $match: { videoDefault: true } },
+      { $sample: { size: 20 } } // cambia el tamaño si quieres
+    ]);
 
-    if (!canciones.length)
-      return res
-        .status(404)
-        .json({ mensaje: "No hay canciones con video default" });
+    // Populate manual (aggregate no soporta populate directo)
+    await Cancion.populate(canciones, { path: "generos" });
 
     res.json(canciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const eliminarCancion = async (req, res) => {
   try {

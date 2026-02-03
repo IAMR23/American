@@ -123,7 +123,6 @@ export default function Home() {
         const decoded = jwtDecode(token);
         setUserId(decoded.userId);
         setUserRole(decoded.rol);
-        // LIMPIAR LA COLA AL HACER LOGIN
         setCola([]);
         setCurrentIndex(0);
       } catch (err) {
@@ -228,6 +227,8 @@ export default function Home() {
     setSeccionActiva("suscribir"); // esto muestra <PlanTest />
   };
 
+    const [token, setToken] = useState(getToken());
+
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
@@ -252,6 +253,7 @@ export default function Home() {
       case "ingresar":
         return (
           <LoginForm
+           setToken={setToken}
             onLoginSuccess={handleLoginSuccess}
             onGoRegister={() => setSeccionActiva("registrar")}
             onGoPasswordReset={() => setSeccionActiva("password")}
@@ -337,7 +339,7 @@ export default function Home() {
               }}
             >
               <div>
-                <h3 className="outlined-black">Bienvenidosss:</h3>
+                <h3 className="outlined-black">Bienvenido:</h3>
               </div>
 
               <button className="boton0">{user.nombre}</button>

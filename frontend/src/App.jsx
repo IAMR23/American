@@ -37,7 +37,9 @@ import { ReproductorProvider } from "./hooks/ReproductorContext";
 import PuntajeCrud from "./pages/PuntajeCrud";
 import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
-
+import axios from "axios";
+import { API_URL } from "./config";
+import WhatsAppButton from "./components/WhatsAppButton.jsx";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
@@ -45,31 +47,60 @@ function App() {
     userId: null,
   });
 
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [token, setToken] = useState(getToken());
 
-        // 🔹 Verificar expiración del token
-        if (decodedToken.exp * 1000 < Date.now()) {
-          console.log("Token expirado, cerrando sesión...");
-          localStorage.removeItem("token");
-          setAuth({ isAuthenticated: false, rol: null, userId: null });
-        } else {
-          setAuth({
-            isAuthenticated: true,
-            rol: decodedToken.rol,
-            userId: decodedToken.id || decodedToken.userId, // ajusta según tu backend
-          });
-        }
-      } catch (error) {
-        console.error("Error al decodificar el token", error);
-        localStorage.removeItem("token");
-        setAuth({ isAuthenticated: false, rol: null, userId: null });
-      }
+  useEffect(() => {
+    if (!token) {
+      setIsSubscribed(false);
+      return;
     }
-  }, []);
+
+    const verificarSuscripcion = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/user/suscripcion`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+
+        const { suscrito, subscriptionEnd } = res.data;
+        const ahora = new Date();
+        const fin = new Date(subscriptionEnd);
+
+        setIsSubscribed(suscrito && ahora <= fin);
+      } catch {
+        setIsSubscribed(false);
+      } 
+    };
+
+    verificarSuscripcion();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setAuth({ isAuthenticated: false, rol: null, userId: null });
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+
+      if (decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem("token");
+        setToken(null);
+        setAuth({ isAuthenticated: false, rol: null, userId: null });
+      } else {
+        setAuth({
+          isAuthenticated: true,
+          rol: decoded.rol,
+          userId: decoded.id || decoded.userId,
+        });
+      }
+    } catch {
+      setToken(null);
+      setAuth({ isAuthenticated: false, rol: null, userId: null });
+    }
+  }, [token]);
 
   return (
     // Descomenta si lo necesitas
@@ -77,79 +108,69 @@ function App() {
     <BackgroundProvider>
       <SocketProvider>
         <QueueProvider userId={auth.userId}>
-          <AuthProvider>
-            <BrowserRouter>
-              <div>
-                <main className="flex-grow w-full">
-                  <Routes>
-                    <Route path="/" element={<SidebarLayout />}>
-                      <Route path="anuncios" element={<AnunciosCRUD />} />
-                      <Route path="canciones" element={<CancionesCRUD />} />
-                      <Route path="genero" element={<GeneroCRUD />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="promociones" element={<PromocionesPage />} />
-                      <Route path="usuarios" element={<UsuariosPage />} />
-                      <Route path="register-user" element={<UsuariosCrud />} />
-                      <Route path="productos" element={<Productos />} />
-                      <Route
-                        path="producto/:id"
-                        element={<ProductoDetalle />}
-                      />
-                      <Route
-                        path="mas-reproducidas"
-                        element={<MasReproducidas />}
-                      />
-                      <Route
-                        path="editar-mas-reproducidas"
-                        element={<EditarMasReproducidas />}
-                      />
-                      <Route path="solicitudes" element={<SolicitudesPage />} />
-                      <Route
-                        path="miplaylist"
-                        element={<PlaylistPropiaCRUD />}
-                      />
-                      <Route path="playlist/:id" element={<MiPlaylist />} />
-                      <Route path="calificaciones" element={<PuntajeCrud />} />
-                    </Route>
+          <BrowserRouter>
+            <div>
+              <main className="flex-grow w-full">
+                <Routes>
+                  <Route path="/" element={<SidebarLayout />}>
+                    <Route path="anuncios" element={<AnunciosCRUD />} />
+                    <Route path="canciones" element={<CancionesCRUD />} />
+                    <Route path="genero" element={<GeneroCRUD />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="promociones" element={<PromocionesPage />} />
+                    <Route path="usuarios" element={<UsuariosPage />} />
+                    <Route path="register-user" element={<UsuariosCrud />} />
+                    <Route path="productos" element={<Productos />} />
+                    <Route path="producto/:id" element={<ProductoDetalle />} />
+                    <Route
+                      path="mas-reproducidas"
+                      element={<MasReproducidas />}
+                    />
+                    <Route
+                      path="editar-mas-reproducidas"
+                      element={<EditarMasReproducidas />}
+                    />
+                    <Route path="solicitudes" element={<SolicitudesPage />} />
+                    <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
+                    <Route path="playlist/:id" element={<MiPlaylist />} />
+                    <Route path="calificaciones" element={<PuntajeCrud />} />
+                  </Route>
 
-                    <Route
-                      path="/playlistPopular/:id"
-                      element={<MiPlaylistAdmin />}
-                    />
-                    <Route
-                      path="/mis-playlist/:id"
-                      element={<MiPlaylistUser2 />}
-                    />
-                    <Route path="listacanciones" element={<ListaCanciones />} />
-                    <Route
-                      path="ultimas-subidas"
-                      element={<ListaCancionesUltimas />}
-                    />
-                    <Route path="test" element={<PublicacionesCrud />} />
-                    <Route index element={<Home />} />
-                    <Route path="/planes" element={<PlanTest />} />
-                    <Route
-                      path="/login"
-                      element={<LoginForm setAuth={setAuth} />}
-                    />
-                    {/* <Route path="/registro" element={<RegistrationForm />} /> */}
-                    <Route
-                      path="/publicaciones"
-                      element={<PublicacionesPage />}
-                    />
+                  <Route
+                    path="/playlistPopular/:id"
+                    element={<MiPlaylistAdmin />}
+                  />
+                  <Route
+                    path="/mis-playlist/:id"
+                    element={<MiPlaylistUser2 />}
+                  />
+                  <Route path="listacanciones" element={<ListaCanciones />} />
+                  <Route
+                    path="ultimas-subidas"
+                    element={<ListaCancionesUltimas />}
+                  />
+                  <Route path="test" element={<PublicacionesCrud />} />
+                  <Route index element={<Home />} />
+                  <Route path="/planes" element={<PlanTest />} />
+                  <Route
+                    path="/login"
+                    element={<LoginForm setToken={setToken} />}
+                  />
+                  {/* <Route path="/registro" element={<RegistrationForm />} /> */}
+                  <Route
+                    path="/publicaciones"
+                    element={<PublicacionesPage />}
+                  />
 
-{/* Resest password */}
-                       <Route
-  path="/reset-password"
-  element={<ResetPassword />}
-/>
-                    
-                  </Routes>
-                </main>
-                <Footer />
-              </div>
-            </BrowserRouter>
-          </AuthProvider>
+                  {/* Resest password */}
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                </Routes>
+              </main>
+              {!isSubscribed && <WhatsAppButton />}
+
+              <Footer />
+            </div>
+          </BrowserRouter>
         </QueueProvider>
       </SocketProvider>
     </BackgroundProvider>

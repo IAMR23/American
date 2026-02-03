@@ -67,7 +67,7 @@ function RegistrationForm({ onRegisterSuccess }) {
     formData.confirmPassword.length > 0;
 
   return (
-    <div className="d-flex justify-content-center align-items-center">
+    <div className="d-flex text-white justify-content-center align-items-center">
       <div
         className="card shadow bg-primary"
         style={{ maxWidth: "700px", width: "100%" }}
@@ -80,7 +80,7 @@ function RegistrationForm({ onRegisterSuccess }) {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="nombre" className="form-label">
+              <label htmlFor="nombre" className="form-label text-white text-white">
                 Nombre
               </label>
               <input
@@ -95,7 +95,7 @@ function RegistrationForm({ onRegisterSuccess }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="email" className="form-label">
+              <label htmlFor="email" className="form-label text-white">
                 Email
               </label>
               <input
@@ -110,7 +110,7 @@ function RegistrationForm({ onRegisterSuccess }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="password" className="form-label">
+              <label htmlFor="password" className="form-label text-white">
                 Contraseña
               </label>
               <input
@@ -125,7 +125,7 @@ function RegistrationForm({ onRegisterSuccess }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="confirmPassword" className="form-label">
+              <label htmlFor="confirmPassword" className="form-label text-white">
                 Confirmar Contraseña
               </label>
               <input
@@ -161,7 +161,7 @@ function RegistrationForm({ onRegisterSuccess }) {
                 checked={mostrarPassword}
                 onChange={() => setMostrarPassword(!mostrarPassword)}
               />
-              <label className="form-check-label" htmlFor="mostrarPassword">
+              <label className="form-check-label text-white" htmlFor="mostrarPassword">
                 Mostrar Contraseña
               </label>
             </div>

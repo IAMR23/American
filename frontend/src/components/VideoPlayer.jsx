@@ -39,15 +39,12 @@ export default function VideoPlayer({
 
   const playerRef = useRef();
   const containerRef = useRef();
-const [colaCalificaciones, setColaCalificaciones] = useState([]);
-const insertarVideoDespuesActual = (video) => {
-  if (!video) return;
+  const [colaCalificaciones, setColaCalificaciones] = useState([]);
+  const insertarVideoDespuesActual = (video) => {
+    if (!video) return;
 
-  setColaCalificaciones(prev => [
-    ...prev,
-    { ...video, esForzado: true }
-  ]);
-};
+    setColaCalificaciones((prev) => [...prev, { ...video, esForzado: true }]);
+  };
 
   useEffect(() => {
     if (!videoCalificacion) return;
@@ -244,7 +241,7 @@ const insertarVideoDespuesActual = (video) => {
     if (isFullscreen) {
       hideControlsTimeoutRef.current = setTimeout(
         () => setShowControls(false),
-        3000
+        3000,
       );
     }
   };
@@ -293,48 +290,46 @@ const insertarVideoDespuesActual = (video) => {
     return <div style={emptyStyle}>⚠️ Canción sin video disponible.</div>;
   }
 
+  const handleEnded = () => {
+    // 1️⃣ Si hay un video forzado en la cola → reproducirlo
+    if (colaCalificaciones.length > 0) {
+      const siguiente = colaCalificaciones[0];
+      setColaCalificaciones(colaCalificaciones.slice(1));
 
-const handleEnded = () => {
-
-  // 1️⃣ Si hay un video forzado en la cola → reproducirlo
-  if (colaCalificaciones.length > 0) {
-    const siguiente = colaCalificaciones[0];
-    setColaCalificaciones(colaCalificaciones.slice(1));
-
-    setVideoCalificacion(siguiente);
-    playerRef.current.seekTo(0);
-    return;
-  }
-
-  // 2️⃣ Si es videoCalificación NORMAL
-  if (videoCalificacion) {
-    setVideoCalificacion(null);
-
-    // avanzar la cola de karaoke
-    if (currentIndex < playlist.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setVideoCalificacion(siguiente);
+      playerRef.current.seekTo(0);
       return;
     }
 
-    onColaTerminada?.();
-    return;
-  }
+    // 2️⃣ Si es videoCalificación NORMAL
+    if (videoCalificacion) {
+      setVideoCalificacion(null);
 
-  // 3️⃣ Si estoy en modo calificación, insertar uno random después del karaoke
-  if (modoCalificacion && !videoCalificacion) {
-    const random = getVideoByWeightNoRepeat();
-    setVideoCalificacion(random);
-    playerRef.current.seekTo(0);
-    return;
-  }
+      // avanzar la cola de karaoke
+      if (currentIndex < playlist.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+        return;
+      }
 
-  // 4️⃣ Flujo normal del karaoke
-  if (currentIndex < playlist.length - 1) {
-    setCurrentIndex(currentIndex + 1);
-  } else {
-    onColaTerminada?.();
-  }
-};
+      onColaTerminada?.();
+      return;
+    }
+
+    // 3️⃣ Si estoy en modo calificación, insertar uno random después del karaoke
+    if (modoCalificacion && !videoCalificacion) {
+      const random = getVideoByWeightNoRepeat();
+      setVideoCalificacion(random);
+      playerRef.current.seekTo(0);
+      return;
+    }
+
+    // 4️⃣ Flujo normal del karaoke
+    if (currentIndex < playlist.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      onColaTerminada?.();
+    }
+  };
 
   return (
     <div
@@ -344,6 +339,7 @@ const handleEnded = () => {
         position: "relative",
         background: "#000",
         height: isFullscreen ? "100vh" : "auto",
+        aspectRatio: "16/9",
       }}
     >
       <div style={{ position: "relative" }}>
@@ -358,7 +354,7 @@ const handleEnded = () => {
           playing={isPlaying}
           controls={false}
           width="100%"
-          height={isFullscreen ? "100vh" : "85vh"}
+          height="100%"
           onProgress={handleProgress}
           onDuration={(d) => setDuration(d)}
           onEnded={handleEnded}
