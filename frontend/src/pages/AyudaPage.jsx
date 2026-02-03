@@ -21,7 +21,7 @@ const AyudaPage = () => {
   return (
     <div className="bg-primary p-2 m-2">
       <div style={{ padding: "20px", color: "white" }}>
-        <h1>Selecciona un fondo</h1>
+        <h1 style={{ color: "white" }}>Selecciona un fondo</h1>
 
         {/* CONTENEDOR FLEX RESPONSIVE */}
         <div

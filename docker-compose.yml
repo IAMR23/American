@@ -2,12 +2,16 @@ services:
   mongo:
     image: mongo:6.0
     container_name: mongodb
-    ports:
-      - "27017:27017"
+    command: ["--auth"]   # Fuerza autenticación 
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=super_clave_larga_y_segura
     volumes:
       - mongo-data:/data/db
       - ./mongo-backups:/data/backup
-
+    # ❌ NO expongas el puerto 27017 al exterior
+    # ports:
+    #   - "27017:27017"
 
   backend:
     build: ./backend
@@ -16,7 +20,7 @@ services:
       - "5000:5000"
     environment:
       - PORT=5000
-      - MONGO_URI=${MONGO_URI}
+      - MONGO_URI=mongodb://admin:super_clave_larga_y_segura@mongo:27017/karaoke?authSource=admin
       - JWT_SECRET=${JWT_SECRET}
       - PAYPAL_API=${PAYPAL_API}
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
@@ -29,8 +33,9 @@ services:
     container_name: frontend
     ports:
       - "5173:5173"
-    environment : 
+    environment:
       - VITE_API_URL=${VITE_API_URL}
+      - VITE_CLIENT_ID=${VITE_CLIENT_ID}
     depends_on:
       - backend
 
