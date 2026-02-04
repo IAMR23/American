@@ -124,7 +124,6 @@ export default function Home() {
         setUserRole(decoded.rol);
         setCola([]);
         setCurrentIndex(0);
-        console.log("Usuario logueado con ID:", decoded);
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -133,11 +132,10 @@ export default function Home() {
     setAuth(true);
   };
 
-    const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
-
-    useEffect(() => {
-          const token = getToken();
+  useEffect(() => {
+    const token = getToken();
 
     if (!token) {
       setIsSubscribed(false);
@@ -150,7 +148,6 @@ export default function Home() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-
         const { suscrito, subscriptionEnd } = res.data;
         const ahora = new Date();
         const fin = new Date(subscriptionEnd);
@@ -158,7 +155,7 @@ export default function Home() {
         setIsSubscribed(suscrito && ahora <= fin);
       } catch {
         setIsSubscribed(false);
-      } 
+      }
     };
 
     verificarSuscripcion();
@@ -234,7 +231,7 @@ export default function Home() {
     } catch (err) {
       console.error(
         "Error al traer usuario:",
-        err.response?.data || err.message
+        err.response?.data || err.message,
       );
       return null;
     }
@@ -259,7 +256,7 @@ export default function Home() {
     setSeccionActiva("suscribir"); // esto muestra <PlanTest />
   };
 
-    const [token, setToken] = useState(getToken());
+  const [token, setToken] = useState(getToken());
 
   const renderContenido = () => {
     switch (seccionActiva) {
@@ -285,7 +282,7 @@ export default function Home() {
       case "ingresar":
         return (
           <LoginForm
-           setToken={setToken}
+            setToken={setToken}
             onLoginSuccess={handleLoginSuccess}
             onGoRegister={() => setSeccionActiva("registrar")}
             onGoPasswordReset={() => setSeccionActiva("password")}
@@ -572,7 +569,7 @@ export default function Home() {
         <VideoCarousel />
       </div>
 
-              {!isSubscribed && <WhatsAppButton />}
+      {!isSubscribed && <WhatsAppButton />}
     </>
   );
 }

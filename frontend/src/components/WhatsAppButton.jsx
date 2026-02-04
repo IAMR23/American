@@ -2,7 +2,7 @@ import "../styles/Whatsapp.css";
 
 
 export default function WhatsAppButton() {
-  const phoneNumber = "593999999999";
+  const phoneNumber = "593978807996";
   const mensaje = encodeURIComponent(
     "Hola, quiero activar mi cuenta de American Karaoke 🎤"
   );
