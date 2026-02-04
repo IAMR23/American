@@ -102,7 +102,7 @@ const actualizarCancion = async (req, res) => {
         visiblePrincipal,
         videoDefault,
       },
-      { new: true }
+      { new: true },
     );
 
     if (!cancionActualizada)
@@ -118,7 +118,7 @@ const getVideoDefault = async (req, res) => {
   try {
     const canciones = await Cancion.aggregate([
       { $match: { videoDefault: true } },
-      { $sample: { size: 20 } } // cambia el tamaño si quieres
+      { $sample: { size: 20 } } 
     ]);
 
     // Populate manual (aggregate no soporta populate directo)
@@ -130,7 +130,21 @@ const getVideoDefault = async (req, res) => {
   }
 };
 
-
+/* const getVideoDefault = async (req, res) => {
+  try {
+    const canciones = await Cancion.find({ videoDefault: true }).populate(
+      "generos",
+    );
+    if (!canciones.length)
+      return res
+        .status(404)
+        .json({ mensaje: "No hay canciones con video default" });
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+ */
 const eliminarCancion = async (req, res) => {
   try {
     const cancionEliminada = await Cancion.findByIdAndDelete(req.params.id);

@@ -25,6 +25,7 @@ export default function VideoPlayer({
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [ready, setReady] = useState(false);
 
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimeoutRef = useRef(null);
@@ -40,6 +41,7 @@ export default function VideoPlayer({
   const playerRef = useRef();
   const containerRef = useRef();
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
+
   const insertarVideoDespuesActual = (video) => {
     if (!video) return;
 
@@ -338,11 +340,30 @@ export default function VideoPlayer({
         margin: "auto",
         position: "relative",
         background: "#000",
-        height: isFullscreen ? "100vh" : "auto",
-        aspectRatio: "16/9",
+        width: "100%",
+        aspectRatio: "16 / 9",
+        height: isFullscreen ? "100vh" : undefined,
+        overflow: "hidden",
       }}
     >
-      <div style={{ position: "relative" }}>
+{/*       {!ready && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#999",
+            zIndex: 2,
+          }}
+        >
+          Cargando video…
+        </div>
+      )} */}
+
+      <div className="player-wrapper" /* style={{ position: "relative" }} */>
         <ReactPlayer
           className="react-player"
           ref={playerRef}
@@ -356,8 +377,13 @@ export default function VideoPlayer({
           width="100%"
           height="100%"
           onProgress={handleProgress}
-          onDuration={(d) => setDuration(d)}
+          onDuration={setDuration}
           onEnded={handleEnded}
+          onReady={() => {
+            setReady(true);
+            playerRef.current?.seekTo(0);
+            setIsPlaying(true);
+          }}
         />
 
         {/* NAV LEFT */}

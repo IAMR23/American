@@ -68,13 +68,17 @@
     width: 20px;
   }
 }
-/*  .react-player video {
-  object-fit: cover;
-} 
 
+.player-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: black;
+  overflow: hidden;
+}
 
-.react-player video {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-} */
+.react-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
