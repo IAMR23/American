@@ -379,11 +379,7 @@ export default function VideoPlayer({
           onProgress={handleProgress}
           onDuration={setDuration}
           onEnded={handleEnded}
-          onReady={() => {
-            setReady(true);
-            playerRef.current?.seekTo(0);
-            setIsPlaying(true);
-          }}
+        
         />
 
         {/* NAV LEFT */}
