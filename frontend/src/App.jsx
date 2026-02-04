@@ -37,9 +37,6 @@ import { ReproductorProvider } from "./hooks/ReproductorContext";
 import PuntajeCrud from "./pages/PuntajeCrud";
 import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
-import axios from "axios";
-import { API_URL } from "./config";
-import WhatsAppButton from "./components/WhatsAppButton.jsx";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
@@ -47,34 +44,8 @@ function App() {
     userId: null,
   });
 
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [token, setToken] = useState(getToken());
 
-  useEffect(() => {
-    if (!token) {
-      setIsSubscribed(false);
-      return;
-    }
-
-    const verificarSuscripcion = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-
-        const { suscrito, subscriptionEnd } = res.data;
-        const ahora = new Date();
-        const fin = new Date(subscriptionEnd);
-
-        setIsSubscribed(suscrito && ahora <= fin);
-      } catch {
-        setIsSubscribed(false);
-      } 
-    };
-
-    verificarSuscripcion();
-  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -166,7 +137,6 @@ function App() {
                   <Route path="/reset-password" element={<ResetPassword />} />
                 </Routes>
               </main>
-              {!isSubscribed && <WhatsAppButton />}
 
               <Footer />
             </div>

@@ -28,6 +28,8 @@ import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 import { useBackground } from "../hooks/BackgroundContext";
 import ForgotPassword from "./ForgotPassword";
+import WhatsappButton from "../components/WhatsappButton";
+import WhatsAppButton from "../components/WhatsappButton";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -35,7 +37,6 @@ export default function Home() {
   const [userRole, setUserRole] = useState(null);
   const [seccionActiva, setSeccionActiva] = useState("video");
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [user, setUser] = useState(null);
   const [modoCalificacion, setModoCalificacion] = useState(false);
 
@@ -65,7 +66,6 @@ export default function Home() {
 
         // 🔹 Verificar expiración del token
         if (decodedToken.exp * 1000 < Date.now()) {
-          console.log("Token expirado, cerrando sesión...");
           localStorage.removeItem("token");
           setAuth(false);
         } else {
@@ -125,6 +125,7 @@ export default function Home() {
         setUserRole(decoded.rol);
         setCola([]);
         setCurrentIndex(0);
+        console.log("Usuario logueado con ID:", decoded);
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -132,6 +133,38 @@ export default function Home() {
     setSeccionActiva("video");
     setAuth(true);
   };
+
+    const [isSubscribed, setIsSubscribed] = useState(false);
+
+
+    useEffect(() => {
+          const token = getToken();
+
+    if (!token) {
+      setIsSubscribed(false);
+      return;
+    }
+
+    const verificarSuscripcion = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/user/suscripcion`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+
+        const { suscrito, subscriptionEnd } = res.data;
+        const ahora = new Date();
+        const fin = new Date(subscriptionEnd);
+
+        setIsSubscribed(suscrito && ahora <= fin);
+      } catch {
+        setIsSubscribed(false);
+      } 
+    };
+
+    verificarSuscripcion();
+  });
+
   const cerrarSesion = async () => {
     try {
       const token = getToken();
@@ -539,6 +572,8 @@ export default function Home() {
         <h1 className="p-2 text-white">Las más populares</h1>
         <VideoCarousel />
       </div>
+
+              {!isSubscribed && <WhatsAppButton />}
     </>
   );
 }
