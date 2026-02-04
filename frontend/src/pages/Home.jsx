@@ -28,7 +28,7 @@ import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 import { useBackground } from "../hooks/BackgroundContext";
 import ForgotPassword from "./ForgotPassword";
-import WhatsAppButton from "../components/WhatsappButton";
+import WhatsAppButton from "../components/WhatsAppButton";
 
 export default function Home() {
   const navigate = useNavigate();
