@@ -40,7 +40,6 @@ export default function ForgotPassword() {
   return (
     <div
       className="d-flex justify-content-center align-items-center  "
-
     >
       <div className="card shadow-lg" style={{ maxWidth: "600px"}}>
         <div className="card-body bg-primary rounded text-light">

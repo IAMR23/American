@@ -29,6 +29,7 @@ import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
 import { useBackground } from "../hooks/BackgroundContext";
 import ForgotPassword from "./ForgotPassword";
 import WhatsAppButton from "../components/WhatsAppButton";
+import User from "./User";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -301,6 +302,8 @@ export default function Home() {
         return <AyudaPage />;
       case "Celular":
         return <CelularPage />;
+      case "user":
+        return <User />;
       case "video":
       default:
         return (
@@ -371,7 +374,12 @@ export default function Home() {
                 <h3 className="outlined-black">Bienvenido:</h3>
               </div>
 
-              <button className="boton0">{user.nombre}</button>
+              <button
+                onClick={() => setSeccionActiva("user")}
+                className="boton0"
+              >
+                {user.nombre}
+              </button>
             </div>
           )}
         </div>
