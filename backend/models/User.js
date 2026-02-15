@@ -1,17 +1,15 @@
 const mongoose = require("mongoose");
 
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+const passwordRegex = /^.{6,}$/;
 
 const UsuarioSchema = new mongoose.Schema(
   {
     nombre: String,
-
     email: {
       type: String,
       unique: true,
       required: true,
     },
-
     password: {
       type: String,
       required: true,
@@ -20,7 +18,7 @@ const UsuarioSchema = new mongoose.Schema(
           return passwordRegex.test(value);
         },
         message:
-          "La contraseña debe tener mínimo 8 caracteres, incluyendo mayúsculas, minúsculas, números y un carácter especial.",
+          "La contraseña debe tener mínimo 6 caracteres.",
       },
     },
 
@@ -59,6 +57,11 @@ const UsuarioSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+  tokenVersion: {
+    type: Number,
+    default: 0
+  }
   },
 
   { timestamps: true }

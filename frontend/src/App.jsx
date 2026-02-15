@@ -37,6 +37,7 @@ import { ReproductorProvider } from "./hooks/ReproductorContext";
 import PuntajeCrud from "./pages/PuntajeCrud";
 import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
+import SubirPDF from "./pages/SubirPdf";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
@@ -93,6 +94,8 @@ function App() {
                     <Route path="register-user" element={<UsuariosCrud />} />
                     <Route path="productos" element={<Productos />} />
                     <Route path="producto/:id" element={<ProductoDetalle />} />
+                                      <Route path="/subir-pdf" element={<SubirPDF/>} />
+
                     <Route
                       path="mas-reproducidas"
                       element={<MasReproducidas />}

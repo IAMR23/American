@@ -4,27 +4,37 @@ const User = require("../models/User");
 // Middleware para verificar que el usuario está autenticado
 const authenticate = async (req, res, next) => {
   try {
-    // Obtener el token del encabezado Authorization (Bearer <token>)
     const token = req.headers.authorization?.split(" ")[1];
+
     if (!token) {
       return res.status(401).json({ message: "No se proporcionó token" });
     }
 
-    // Verificar y decodificar el token
+    // Verificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Buscar el usuario en la base de datos
+
+    // Buscar usuario
     const user = await User.findById(decoded.userId);
+
     if (!user) {
       return res.status(401).json({ message: "Usuario no encontrado" });
     }
 
-    // Asignar el usuario a la solicitud para su uso en los controladores
+    // 🔴 VALIDACIÓN CLAVE PARA LOGOUT GLOBAL
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({
+        message: "Sesión expirada. Inicie sesión nuevamente."
+      });
+    }
+
     req.user = user;
 
-    // Continuar al siguiente middleware o controlador
     next();
+
   } catch (error) {
-    res.status(401).json({ message: "Token inválido o expirado", error });
+    return res.status(401).json({
+      message: "Token inválido o expirado"
+    });
   }
 };
 

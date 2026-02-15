@@ -1,4 +1,3 @@
-// POST /auth/reset-password
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 
@@ -17,15 +16,23 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
+    // Hashear nueva contraseña
     user.password = await bcrypt.hash(newPassword, 10);
+
+    // Limpiar token de recuperación
     user.resetToken = undefined;
     user.resetTokenExpire = undefined;
+
+    // 🔴 INVALIDAR TODAS LAS SESIONES ACTIVAS
+    user.tokenVersion += 1;
 
     await user.save();
 
     res.json({
-      message: "Contraseña actualizada correctamente",
+      message:
+        "Contraseña actualizada correctamente. Inicie sesión nuevamente.",
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({

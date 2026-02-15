@@ -82,6 +82,8 @@ conectarDB()
     app.use("/suscripcion", suscripcionRoutes);
     app.use("/p", puntajeRoutes);
     app.use("/t2", playlistPropiaRoutes);
+    app.use("/pdf", require("./routes/pdf.routes"));
+    app.use("/uploads", express.static("uploads"));
 
     // io.on("connection", (socket) => {
     //   console.log("🟢 Cliente conectado:", socket.id);

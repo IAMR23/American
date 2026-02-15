@@ -1,18 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useBackground } from "../hooks/BackgroundContext";
 
 const fondos = Array.from({ length: 21 }, (_, i) => `/fondos/${i + 1}.webp`);
 
-const datosSistema = [
-  {
-    titulo: "Cómo funciona el sistema",
-    pdfUrl: "/pdfs/ayuda.pdf",
-  },
-];
-
 const AyudaPage = () => {
   const [activo, setActivo] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { setBackground } = useBackground();
+
+  useEffect(() => {
+    const obtenerUltimoPdf = async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:5000/pdf/ultimo-pdf"
+        );
+
+        if (res.data.file) {
+          setPdfUrl(
+            `http://localhost:5000/uploads/${res.data.file}`
+          );
+        }
+      } catch (error) {
+        console.error("Error obteniendo PDF:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    obtenerUltimoPdf();
+  }, []);
 
   const toggle = (index) => {
     setActivo(activo === index ? null : index);
@@ -20,10 +38,11 @@ const AyudaPage = () => {
 
   return (
     <div className="bg-primary p-2 m-2">
+      
+      {/* ================= FONDOS ================= */}
       <div style={{ padding: "20px", color: "white" }}>
         <h1 style={{ color: "white" }}>Selecciona un fondo</h1>
 
-        {/* CONTENEDOR FLEX RESPONSIVE */}
         <div
           style={{
             display: "flex",
@@ -59,36 +78,50 @@ const AyudaPage = () => {
         </div>
       </div>
 
+      {/* ================= PDF ================= */}
       <h3 className="text-white mt-3">Funcionamiento del Sistema</h3>
 
       <div
-        className="border rounded p-2"
-        style={{ maxHeight: "700px", overflowY: "auto" }}
+        className="border rounded p-2 bg-white"
+        style={{ maxHeight: "800px", overflowY: "auto" }}
       >
-        {datosSistema.map((item, index) => (
-          <div key={index} className="mb-2">
-            <button
-              className="btn text-white w-100 text-start"
-              onClick={() => toggle(index)}
-              aria-expanded={activo === index}
-            >
-              {item.titulo}
-            </button>
+        <div className="mb-2">
+          <button
+            className="btn btn-dark w-100 text-start"
+            onClick={() => toggle(0)}
+            aria-expanded={activo === 0}
+          >
+            Cómo funciona el sistema
+          </button>
 
-            <div className={`collapse ${activo === index ? "show" : ""}`}>
-              {item.pdfUrl && (
+          <div className={`collapse ${activo === 0 ? "show" : ""}`}>
+            {loading && (
+              <div className="text-center p-3">
+                Cargando documento...
+              </div>
+            )}
+
+            {!loading && pdfUrl && (
+              <div className="mt-3 shadow rounded">
                 <iframe
-                  src={item.pdfUrl}
-                  title={`PDF-${index}`}
+                  src={pdfUrl}
+                  title="Manual del Sistema"
                   width="100%"
                   height="900px"
-                  style={{ border: "1px solid #ccc" }}
+                  style={{ border: "none", borderRadius: "8px" }}
                 />
-              )}
-            </div>
+              </div>
+            )}
+
+            {!loading && !pdfUrl && (
+              <div className="alert alert-warning mt-3">
+                No hay documento disponible.
+              </div>
+            )}
           </div>
-        ))}
+        </div>
       </div>
+
     </div>
   );
 };

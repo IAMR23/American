@@ -17,6 +17,15 @@ export default function Sidebar() {
               </span>
             </Link>
           </li>
+            <li>
+            <Link to="/subir-pdf" className="nav-link px-0 align-middle">
+              <i className="fs-4 bi-table"></i>
+              <span className="ms-1 d-none d-sm-inline text-light">
+                Subir Pdf
+              </span>
+            </Link>
+          </li>
+
           <li>
             <Link to="/promociones" className="nav-link px-0 align-middle">
               <i className="fs-4 bi-table"></i>
