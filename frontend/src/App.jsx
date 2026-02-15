@@ -37,7 +37,7 @@ import { ReproductorProvider } from "./hooks/ReproductorContext";
 import PuntajeCrud from "./pages/PuntajeCrud";
 import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
-import SubirPDF from "./pages/SubirPdf";
+import SubirPDF from "./pages/SubirPDF";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
