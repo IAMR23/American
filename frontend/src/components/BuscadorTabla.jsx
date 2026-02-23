@@ -11,7 +11,7 @@ const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
 export default function BuscadorTabla({ onSelectAll }) {
-  const [filtroActivo, setFiltroActivo] = useState("titulo");
+  const [filtroActivo, setFiltroActivo] = useState("numero");
   const [busqueda, setBusqueda] = useState("");
   const [data, setData] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);

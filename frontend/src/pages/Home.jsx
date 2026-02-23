@@ -184,8 +184,9 @@ export default function Home() {
     setCola([]);
     setCurrentIndex(0);
     setAuth(false);
+    setUser(null);
     // Recarga la página
-    window.location.reload();
+   // window.location.reload();
   };
 
   // Función mejorada para cambiar canción con sincronización

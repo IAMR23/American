@@ -46,7 +46,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.options("*", cors());
@@ -84,6 +84,7 @@ conectarDB()
     app.use("/t2", playlistPropiaRoutes);
     app.use("/pdf", require("./routes/pdf.routes"));
     app.use("/uploads", express.static("uploads"));
+    app.use("/sesion", require("./routes/sesionRoutes"));
 
     // io.on("connection", (socket) => {
     //   console.log("🟢 Cliente conectado:", socket.id);
@@ -122,7 +123,7 @@ conectarDB()
         console.log(`Usuario ${userId} unido a su sala`);
 
         const colaUsuario = await Cola.findOne({ user: userId }).populate(
-          "canciones"
+          "canciones",
         );
         if (colaUsuario) {
           socket.emit("colaActualizada", {
@@ -143,11 +144,11 @@ conectarDB()
               canciones: nuevaCola.map((c) => c._id),
               currentIndex: indexActual || 0,
             },
-            { upsert: true, new: true }
+            { upsert: true, new: true },
           );
 
           io.in(userId).emit("colaActualizada", { nuevaCola, indexActual });
-        }
+        },
       );
 
       socket.on("cambiarCancion", ({ userId, index }) => {
@@ -158,7 +159,59 @@ conectarDB()
       socket.on("disconnect", () => {
         console.log("🔴 Cliente desconectado:", socket.id);
       });
+    }); 
+/* 
+    io.on("connection", (socket) => {
+  console.log("🟢 Cliente conectado:", socket.id);
+
+  // 🔹 UNIR A SESIÓN (QR)
+  socket.on("joinSession", async (sessionCode) => {
+    if (!sessionCode) return;
+
+    socket.join(sessionCode);
+    console.log(`Cliente unido a sesión ${sessionCode}`);
+
+    // 🔹 Cargar cola de la sesión
+    const colaSesion = await Cola.findOne({ sessionCode }).populate("canciones");
+
+    if (colaSesion) {
+      socket.emit("colaActualizada", {
+        nuevaCola: colaSesion.canciones,
+        indexActual: colaSesion.currentIndex || 0,
+      });
+    }
+  });
+
+  // 🔹 ACTUALIZAR COLA POR SESIÓN
+  socket.on("actualizarColaSesion", async ({ sessionCode, nuevaCola, indexActual }) => {
+    if (!sessionCode || !nuevaCola) return;
+
+    await Cola.findOneAndUpdate(
+      { sessionCode },
+      {
+        canciones: nuevaCola.map((c) => c._id),
+        currentIndex: indexActual || 0,
+      },
+      { upsert: true, new: true }
+    );
+
+    io.in(sessionCode).emit("colaActualizada", {
+      nuevaCola,
+      indexActual,
     });
+  });
+
+  // 🔹 CAMBIAR CANCIÓN (TODOS SINCRONIZADOS)
+  socket.on("cambiarCancion", ({ sessionCode, index }) => {
+    if (!sessionCode || index == null) return;
+
+    io.in(sessionCode).emit("cambiarCancion", { index });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔴 Cliente desconectado:", socket.id);
+  });
+}); */
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);

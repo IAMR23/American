@@ -63,7 +63,7 @@ export default function SubirPDFPremium() {
               onChange={(e) => setArchivo(e.target.files[0])}
             />
             <div className="form-text">
-              Tamaño máximo permitido: 5MB
+              Tamaño máximo permitido: 50MB
             </div>
           </div>
 
