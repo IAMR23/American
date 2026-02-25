@@ -186,7 +186,7 @@ export default function Home() {
     setAuth(false);
     setUser(null);
     // Recarga la página
-   // window.location.reload();
+    // window.location.reload();
   };
 
   // Función mejorada para cambiar canción con sincronización
@@ -304,7 +304,7 @@ export default function Home() {
       case "Celular":
         return <CelularPage />;
       case "user":
-        return <User />;
+        return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
       case "video":
       default:
         return (

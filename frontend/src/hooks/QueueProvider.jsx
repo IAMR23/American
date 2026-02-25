@@ -22,7 +22,7 @@ export const QueueProvider = ({ children, userId }) => {
   useEffect(() => {
     if (!socket || !userId) return;
 
-    socket.emit("join", userId);
+  //  socket.emit("join", userId);
 
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
       if (!nuevaCola) return;
@@ -42,33 +42,33 @@ export const QueueProvider = ({ children, userId }) => {
   }, [socket, userId, colaCargada]);
 
   // Agregar al final (existing)
-  const addToQueue = (cancion) => {
+/*   const addToQueue = (cancion) => {
     setCola((prev) => [...prev, cancion]);
-  };
+  }; */
+
+  const addToQueue = (cancion) => {
+  if (!socket || !userId) return;
+
+  socket.emit("agregarCancion", {
+    userId,
+    cancion,
+  });
+};
+
+
 
   // Reproducir ahora (CORREGIDA)
+
   const playNowQueue = (cancion) => {
-    setCola((prevCola) => {
-      // Quitar duplicados primero
-      const sinDuplicado = prevCola.filter((c) => c._id !== cancion._id);
+  if (!socket || !userId) return;
 
-      // Insertar justo en la posición actual
-      const nuevaCola = [
-        ...sinDuplicado.slice(0, currentIndex),
-        cancion,
-        ...sinDuplicado.slice(currentIndex),
-      ];
+  socket.emit("playNow", {
+    userId,
+    cancion,
+    indexActual: currentIndex,
+  });
+};
 
-      // Emitir la cola actualizada al backend o a otros clientes
-      setTimeout(() => {
-        emitirCola(nuevaCola, currentIndex);
-      }, 0);
-
-      return nuevaCola;
-    });
-
-    setCurrentIndex(currentIndex);
-  };
 
   const actualizarColaServidor = (nuevaCola, index = 0) => {
     if (socket && userId) {
@@ -81,8 +81,8 @@ export const QueueProvider = ({ children, userId }) => {
   };
 
   const setNuevaCola = (nuevaCola, index = 0) => {
-    setCola(nuevaCola);
-    setCurrentIndex(index);
+    /* setCola(nuevaCola);
+    setCurrentIndex(index); */
     actualizarColaServidor(nuevaCola, index);
   };
 

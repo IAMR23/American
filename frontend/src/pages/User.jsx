@@ -4,7 +4,7 @@ import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 
-export default function UserSubscription() {
+export default function UserSubscription({ onGoPasswordReset }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -112,6 +112,20 @@ export default function UserSubscription() {
               <div className="form-control bg-light text-dark">
                 {formatDate(user.subscriptionEnd)}
               </div>
+            </div>
+
+            <div className="col-md-6 mb-4">
+              <label className="form-label fw-semibold">
+                Cambiar Contraseña
+              </label>
+
+              <button
+                type="button"
+                className="btn btn-danger w-100 pb-3"
+                onClick={onGoPasswordReset}
+              >
+                Da Click Aqui!!!
+              </button>
             </div>
           </div>
 

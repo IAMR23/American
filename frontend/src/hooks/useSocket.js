@@ -16,6 +16,23 @@ export default function useSocket(userId, onCancionCambiada) {
     return () => disconnectSocket();
   }, [userId]);
 
+  useEffect(() => {
+  if (!socket || !userId) return;
+
+  if (socket.connected) {
+    socket.emit("join", userId);
+  }
+
+  socket.on("connect", () => {
+    socket.emit("join", userId);
+  });
+
+  return () => {
+    socket.off("connect");
+  };
+}, [socket, userId]);
+
+
   // Escuchar eventos del servidor
   useEffect(() => {
     if (!socket) return;

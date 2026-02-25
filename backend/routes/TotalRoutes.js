@@ -81,61 +81,68 @@ router.post("/cola/without/aut/add", async (req, res) => {
   }
 });
 
+
 router.post("/cola/add", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { songId, position } = req.body; // posición = currentIndex en frontend
+    const { songId, position } = req.body;
 
     let colaUsuario = await Cola.findOne({ user: userId });
 
+    // 🟢 Si no existe → crear
     if (!colaUsuario) {
-      // Si no existe la cola, la creamos
       colaUsuario = await Cola.create({
         user: userId,
         canciones: [songId],
         currentIndex: 0,
       });
     } else {
-      // Evitar duplicados
-      colaUsuario.canciones = colaUsuario.canciones.filter(
-        (c) => c.toString() !== songId
-      );
+      // 🔥 calcular nueva cola SIN guardar aún
+      let canciones = colaUsuario.canciones
+        .map((c) => c.toString())
+        .filter((c) => c !== songId);
 
-      // 🔥 Insertar en la posición actual (desplazando las demás)
       const insertPos =
         typeof position === "number" && position >= 0
-          ? Math.min(position, colaUsuario.canciones.length)
-          : colaUsuario.canciones.length;
+          ? Math.min(position, canciones.length)
+          : canciones.length;
 
-      colaUsuario.canciones.splice(insertPos, 0, songId);
+      canciones.splice(insertPos, 0, songId);
 
-      // Mantener el índice actual sin moverse
-      await colaUsuario.save();
+      // ✅ UPDATE ATÓMICO (NO save)
+      await Cola.updateOne(
+        { user: userId },
+        {
+          $set: {
+            canciones: canciones,
+          },
+        }
+      );
     }
 
-    // Obtener cola actualizada y con populate
-    const colaActualizada = await Cola.findOne({ user: userId }).populate(
-      "canciones"
-    );
+    // 🔄 Obtener actualizado
+    const colaActualizada = await Cola.findOne({ user: userId }).populate("canciones");
 
-    // 🔁 Emitir evento de sincronización vía Socket.IO
+    // 🔁 Emitir socket
     const io = req.app.get("io");
     io.to(userId).emit("colaActualizada", {
       nuevaCola: colaActualizada.canciones,
-      indexActual: colaUsuario.currentIndex || 0,
+      indexActual: colaActualizada.currentIndex || 0,
     });
 
     res.status(201).json({
       message: "Canción agregada en la posición actual",
       cola: colaActualizada.canciones,
       totalCanciones: colaActualizada.canciones.length,
-      currentIndex: colaUsuario.currentIndex || 0,
+      currentIndex: colaActualizada.currentIndex || 0,
     });
+
   } catch (err) {
     console.error("Error al agregar canción a la cola:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Limpiar toda la cola
 router.delete("/cola/remove", authenticate, async (req, res) => {
