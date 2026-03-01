@@ -43,17 +43,22 @@ export default function Home() {
   const [auth, setAuth] = useState(false);
   // ------------------ Hooks personalizados ------------------
 
-  const { cola, currentIndex, setCola, setCurrentIndex, emitirCambiarCancion } =
-    useQueueContext();
+
+  const { cola, currentIndex, setCola, setCurrentIndex , changeSong } =
+  useQueueContext();
+
 
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-    const start =
-      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
-    const visibles = cola.slice(start);
-    return visibles.filter((c) => c && c._id);
-  };
+  const start =
+    currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+
+  return cola
+    .map((c, i) => ({ cancion: c, index: i }))
+    .slice(start)
+    .filter((item) => item.cancion && item.cancion._id);
+};
 
   const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
     usePlaylists(userId);
@@ -189,11 +194,11 @@ export default function Home() {
     // window.location.reload();
   };
 
-  // Función mejorada para cambiar canción con sincronización
+
   const handleCambiarCancion = (index) => {
-    setCurrentIndex(index);
-    emitirCambiarCancion(index);
-  };
+    changeSong(index)
+};
+
 
   const limpiarCola = async () => {
     try {
@@ -206,7 +211,6 @@ export default function Home() {
           },
         });
         setCola([]);
-        setCurrentIndex(0);
       } else {
         setCola([]);
       }
@@ -528,14 +532,13 @@ export default function Home() {
                 getColaVisible().length > 8 ? "scrollable" : ""
               }`}
             >
-              {getColaVisible().map((cancion, idx) => {
-                const indexReal =
-                  currentIndex - 2 > 0 ? idx + (currentIndex - 2) : idx;
+              {getColaVisible().map(({cancion, index}) => {
+          
                 return (
                   <div
-                    key={indexReal}
+                    key={index}
                     onClick={() => {
-                      handleCambiarCancion(indexReal);
+                      handleCambiarCancion(index);
                       setSeccionActiva("video");
                     }}
                     className="song-icon position-relative"
@@ -544,7 +547,7 @@ export default function Home() {
                     <FaCompactDisc
                       size={40}
                       className={`mb-1 ${
-                        indexReal === currentIndex
+                        index === currentIndex
                           ? "song-playing"
                           : "text-primary"
                       }`}

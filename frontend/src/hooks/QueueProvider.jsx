@@ -6,100 +6,63 @@ const QueueContext = createContext();
 export const QueueProvider = ({ children, userId }) => {
   const [cola, setCola] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [colaCargada, setColaCargada] = useState(false);
 
-  const { socket, emitirCola, emitirCambiarCancion } = useSocket(
-    userId,
-    (index) => setCurrentIndex(index)
-  );
+  const {
+    socket,
+    emitirCola,
+    emitirCambiarCancion,
+    agregarCancion,
+    playNow,
+    onEvent,
+    
+  } = useSocket(userId);
 
-  const changeSong = (index) => {
-    if (index >= 0 && index < cola.length) {
-      setCurrentIndex(index);
-    }
-  };
-
+  // 🔥 Fuente única de verdad
   useEffect(() => {
     if (!socket || !userId) return;
 
-  //  socket.emit("join", userId);
-
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
       if (!nuevaCola) return;
-      setCola(nuevaCola.filter((c) => c && c._id));
 
-      setCurrentIndex((prevIndex) => {
-        if (!colaCargada) {
-          setColaCargada(true);
-          return indexActual ?? 0;
-        }
-        return prevIndex;
-      });
+      setCola(nuevaCola.filter((c) => c && c._id));
+      setCurrentIndex(indexActual ?? 0);
     };
 
-    socket.on("colaActualizada", handleColaActualizada);
-    return () => socket.off("colaActualizada", handleColaActualizada);
-  }, [socket, userId, colaCargada]);
+    const off = onEvent("colaActualizada", handleColaActualizada);
 
-  // Agregar al final (existing)
-/*   const addToQueue = (cancion) => {
-    setCola((prev) => [...prev, cancion]);
-  }; */
+    return off;
+  }, [socket, userId]);
 
-  const addToQueue = (cancion) => {
-  if (!socket || !userId) return;
+  // 🎯 Acciones de negocio
 
-  socket.emit("agregarCancion", {
-    userId,
-    cancion,
-  });
-};
-
-
-
-  // Reproducir ahora (CORREGIDA)
-
-  const playNowQueue = (cancion) => {
-  if (!socket || !userId) return;
-
-  socket.emit("playNow", {
-    userId,
-    cancion,
-    indexActual: currentIndex,
-  });
-};
-
-
-  const actualizarColaServidor = (nuevaCola, index = 0) => {
-    if (socket && userId) {
-      socket.emit("actualizarCola", {
-        userId,
-        nuevaCola,
-        indexActual: index,
-      });
+  const changeSong = (index) => {
+    if (index >= 0 && index < cola.length) {
+      emitirCambiarCancion(index);
     }
   };
 
-  const setNuevaCola = (nuevaCola, index = 0) => {
-    /* setCola(nuevaCola);
-    setCurrentIndex(index); */
-    actualizarColaServidor(nuevaCola, index);
+  const addToQueue = (cancion) => {
+    agregarCancion(cancion);
   };
 
+  const playNowQueue = (cancion) => {
+    playNow(cancion, currentIndex);
+  };
+
+  const setNuevaCola = (nuevaCola, index = 0) => {
+    emitirCola(nuevaCola, index);
+  };
+
+  
   return (
     <QueueContext.Provider
       value={{
         cola,
         currentIndex,
-        setCola,
-        setCurrentIndex,
         playNowQueue,
         addToQueue,
-        emitirCola,
-        emitirCambiarCancion,
         changeSong,
-        actualizarColaServidor,
-        setNuevaCola, 
+        setCola,
       }}
     >
       {children}

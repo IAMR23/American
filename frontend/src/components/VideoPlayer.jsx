@@ -364,25 +364,28 @@ export default function VideoPlayer({
       )} */}
 
       <div className="player-wrapper" /* style={{ position: "relative" }} */>
-        <ReactPlayer
-          className="react-player"
-          ref={playerRef}
-          url={
-            videoCalificacion
-              ? videoCalificacion.videoUrl
-              : currentVideo.videoUrl
-          }
-          playing={isPlaying}
-          controls={false}
-          width="100%"
-          height="100%"
-          onProgress={handleProgress}
-          onDuration={setDuration}
-          onEnded={handleEnded}
-        
-        />
+      
+      <ReactPlayer
+  key={
+    videoCalificacion
+      ? videoCalificacion.videoUrl
+      : currentVideo.videoUrl
+  }
+  ref={playerRef}
+  url={
+    videoCalificacion
+      ? videoCalificacion.videoUrl
+      : currentVideo.videoUrl
+  }
+  playing={isPlaying}
+  controls={false}
+  width="100%"
+  height="100%"
+  onProgress={handleProgress}
+  onDuration={setDuration}
+  onEnded={handleEnded}
+/>
 
-        {/* NAV LEFT */}
         <img
           src="izq.png"
           alt="Anterior"
@@ -427,7 +430,7 @@ export default function VideoPlayer({
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               style={{
-                background: "rgba(0,0,0,0.6)",
+                background: "rgba(0,0,0,0)",
                 color: "white",
                 border: "none",
                 padding: "10px",

@@ -180,9 +180,9 @@ export default function BuscadorTabla({ onSelectAll }) {
                 <td>{fila.titulo}</td>
                 <td>{fila.generos?.nombre || "Sin género"}</td>
                 <td>
-                  <div class="d-flex justify-content-center align-items-center gap-2">
+                  <div className="d-flex justify-content-center align-items-center gap-2">
                     <button
-                      class="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
+                      className="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async () => {
                         await masReproducida(fila._id);
                         handlePlay(fila);
@@ -193,7 +193,7 @@ export default function BuscadorTabla({ onSelectAll }) {
                     </button>
 
                     <button
-                      class="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
+                      className="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async() => {agregarACola(fila) ; 
                         await masReproducida(fila._id)
                       }}
@@ -202,7 +202,7 @@ export default function BuscadorTabla({ onSelectAll }) {
                     </button>
 
                     <button
-                      class="btn btn-danger btn-sm p-1 d-flex justify-content-center align-items-center"
+                      className="btn btn-danger btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={() => handleOpenModal(fila._id)}
                     >
                       <img src="./heart.png" alt="fav" width="40" />

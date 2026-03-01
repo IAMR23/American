@@ -59,11 +59,22 @@ export default function useSocket(userId, onCancionCambiada) {
     emitEvent("cambiarCancion", { userId, index });
   };
 
+  const agregarCancion = (cancion) => {
+  emitEvent("agregarCancion", { userId, cancion });
+};
+
+const playNow = (cancion, indexActual) => {
+  emitEvent("playNow", { userId, cancion, indexActual });
+};
+
+
   return {
     socket,
     isConnected,
     emitirCola,
     emitirCambiarCancion,
-    onEvent, // ✅ <-- agrégalo aquí
+    onEvent, 
+    agregarCancion, 
+    playNow, 
   };
 }

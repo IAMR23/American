@@ -19,7 +19,7 @@ const paypalRoutes = require("./routes/paypalRoutes");
 const suscripcionRoutes = require("./routes/suscripcionRoutes");
 const playlistPropiaRoutes = require("./routes/PlaylistPropiaRoutes");
 const puntajeRoutes = require("./routes/PuntajeRoutes");
-const Cola = require("./models/Cola");
+const { initSockets } = require("./sockets/socket");
 
 const app = express();
 const server = http.createServer(app);
@@ -86,36 +86,8 @@ conectarDB()
     app.use("/uploads", express.static("uploads"));
     app.use("/sesion", require("./routes/sesionRoutes"));
 
-    // io.on("connection", (socket) => {
-    //   console.log("🟢 Cliente conectado:", socket.id);
-
-    //   socket.on("join", async (userId) => {
-    //     socket.join(userId);
-    //     console.log(`Usuario ${userId} unido a su sala`);
-
-    //     const colaUsuario = await Cola.findOne({ user: userId }).populate(
-    //       "canciones"
-    //     );
-    //     if (colaUsuario) {
-    //       socket.emit("colaActualizada", {
-    //         nuevaCola: colaUsuario.canciones,
-    //         indexActual: colaUsuario.currentIndex || 0,
-    //       });
-    //     }
-    //   });
-
-    //   socket.on("cambiarCancion", ({ userId, index }) => {
-    //     if (!userId || index == null) return;
-
-    //     io.in(userId).emit("cambiarCancion", { index, userId });
-    //   });
-
-    //   socket.on("disconnect", () => {
-    //     console.log("🔴 Cliente desconectado:", socket.id);
-    //   });
-    // });
-
-    io.on("connection", (socket) => {
+    /*  CODIGO PARA SOLO UNA PERSONA*/
+  /*   io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
       socket.on("join", async (userId) => {
@@ -151,68 +123,36 @@ conectarDB()
         },
       );
 
-      socket.on("cambiarCancion", ({ userId, index }) => {
+      socket.on("cambiarCancion", async ({ userId, index }) => {
         if (!userId || index == null) return;
-        io.in(userId).emit("cambiarCancion", { index, userId });
+
+        const colaUsuario = await Cola.findOne({ user: userId }).populate(
+          "canciones",
+        );
+
+        if (!colaUsuario) return;
+
+        // 🔥 actualizar índice en DB
+        colaUsuario.currentIndex = index;
+        await colaUsuario.save();
+
+        // 🔥 emitir estado completo (fuente única)
+        io.in(userId).emit("colaActualizada", {
+          nuevaCola: colaUsuario.canciones,
+          indexActual: index,
+        });
       });
 
       socket.on("disconnect", () => {
         console.log("🔴 Cliente desconectado:", socket.id);
       });
-    }); 
-/* 
-    io.on("connection", (socket) => {
-  console.log("🟢 Cliente conectado:", socket.id);
-
-  // 🔹 UNIR A SESIÓN (QR)
-  socket.on("joinSession", async (sessionCode) => {
-    if (!sessionCode) return;
-
-    socket.join(sessionCode);
-    console.log(`Cliente unido a sesión ${sessionCode}`);
-
-    // 🔹 Cargar cola de la sesión
-    const colaSesion = await Cola.findOne({ sessionCode }).populate("canciones");
-
-    if (colaSesion) {
-      socket.emit("colaActualizada", {
-        nuevaCola: colaSesion.canciones,
-        indexActual: colaSesion.currentIndex || 0,
-      });
-    }
-  });
-
-  // 🔹 ACTUALIZAR COLA POR SESIÓN
-  socket.on("actualizarColaSesion", async ({ sessionCode, nuevaCola, indexActual }) => {
-    if (!sessionCode || !nuevaCola) return;
-
-    await Cola.findOneAndUpdate(
-      { sessionCode },
-      {
-        canciones: nuevaCola.map((c) => c._id),
-        currentIndex: indexActual || 0,
-      },
-      { upsert: true, new: true }
-    );
-
-    io.in(sessionCode).emit("colaActualizada", {
-      nuevaCola,
-      indexActual,
     });
-  });
+ */
+    
+    /* CODIGO PARA SALA */
+    
 
-  // 🔹 CAMBIAR CANCIÓN (TODOS SINCRONIZADOS)
-  socket.on("cambiarCancion", ({ sessionCode, index }) => {
-    if (!sessionCode || index == null) return;
-
-    io.in(sessionCode).emit("cambiarCancion", { index });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("🔴 Cliente desconectado:", socket.id);
-  });
-}); */
-
+    initSockets(io);
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
     });
