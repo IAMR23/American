@@ -25,43 +25,38 @@ export default function Canciones() {
   const { addToQueue, playNowQueue, changeSong, cola, setCola, currentIndex } =
     useQueueContext();
 
-  const playNow = async (video) => {
-    if (!isAuthenticated) {
-      setToastMsg("⚠️ Inicia sesión para reproducir");
-      return;
-    }
-
-    try {
-      const token = getToken();
-
-      // 🔴 Detener la canción anterior
-      const existingMedia = document.querySelector("audio, video");
-      if (existingMedia) {
-        existingMedia.pause();
-        existingMedia.currentTime = 0;
+    const playNow = async (video) => {
+      if (!isAuthenticated) {
+        setToastMsg("⚠️ Inicia sesión para reproducir");
+        return;
       }
-
-      await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId: video._id, position: currentIndex },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      playNowQueue({
-        _id: video._id,
-        titulo: video.titulo,
-        artista: video.artista,
-        numero: video.numero,
-        videoUrl: video.videoUrl,
-      });
-
-      navigate("/"); // Ahora no habrá dos sonidos
-      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
-    } catch (err) {
-      console.error(err);
-      setToastMsg("❌ No se pudo reproducir la canción");
-    }
-  };
+  
+      const roomId = localStorage.getItem("roomId");
+  
+      try {
+        const token = getToken();
+  
+        // Detener la canción anterior
+        const existingMedia = document.querySelector("audio, video");
+        if (existingMedia) {
+          existingMedia.pause();
+          existingMedia.currentTime = 0;
+        }
+  
+        // Insertar en cola backend en la posición exacta
+        await axios.post(
+          `${API_URL}/t/cola/play-now`,
+          { roomId, songId: video._id },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+  
+        setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+        navigate("/");
+      } catch (err) {
+        console.error(err);
+        setToastMsg("❌ No se pudo reproducir la canción");
+      }
+    };
 
   let userId = null;
   let isAuthenticated = false;
@@ -132,10 +127,13 @@ export default function Canciones() {
       return;
     }
 
+          const roomId = localStorage.getItem("roomId");
+
+
     try {
       const res = await axios.post(
         `${API_URL}/t/cola/add`,
-        { userId, songId },
+        { userId, songId, roomId },
         { headers: { Authorization: `Bearer ${getToken()}` } }
       );
 
@@ -205,7 +203,7 @@ export default function Canciones() {
                 className="video-btn play-btn"
                 onClick={async () => {
                   await masReproducida(video._id);
-                  playNow(video);
+                  await playNow(video);
                 }}
               >
                 <img src="./play.png" alt="" width="60px" />

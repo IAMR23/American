@@ -1,70 +1,39 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import useSocket from "../hooks/useSocket";
+import { useSocketContext } from "./SocketContext";
 
 const QueueContext = createContext();
 
-export const QueueProvider = ({ children, userId }) => {
+export const QueueProvider = ({ children }) => {
   const [cola, setCola] = useState([]);
+  const [nuevaCola, setNuevaCola] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { socket, emitEvent, onEvent, currentRoomId } = useSocketContext();
 
-  const {
-    socket,
-    emitirCola,
-    emitirCambiarCancion,
-    agregarCancion,
-    playNow,
-    onEvent,
-    
-  } = useSocket(userId);
-
-  // 🔥 Fuente única de verdad
   useEffect(() => {
-    if (!socket || !userId) return;
+    if (!socket || !currentRoomId) return;
 
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
       if (!nuevaCola) return;
-
       setCola(nuevaCola.filter((c) => c && c._id));
       setCurrentIndex(indexActual ?? 0);
     };
 
     const off = onEvent("colaActualizada", handleColaActualizada);
-
     return off;
-  }, [socket, userId]);
+  }, [socket, currentRoomId]);
 
-  // 🎯 Acciones de negocio
-
-  const changeSong = (index) => {
-    if (index >= 0 && index < cola.length) {
-      emitirCambiarCancion(index);
-    }
-  };
-
-  const addToQueue = (cancion) => {
-    agregarCancion(cancion);
-  };
-
+  const addToQueue = (cancion) => cancion?._id && emitEvent("addSong", { song: cancion });
+  const changeSong = (index) => index >= 0 && index < cola.length && emitEvent("cambiarCancion", { index });
   const playNowQueue = (cancion) => {
-    playNow(cancion, currentIndex);
+    if (!cancion?._id) return;
+    emitEvent("addSong", { song: cancion });
+    setTimeout(() => emitEvent("cambiarCancion", { index: cola.length }), 300);
   };
+  const removeFromQueue = (songId) => songId && emitEvent("removeSong", { songId });
+  const clearQueue = () => emitEvent("clearQueue");
 
-  const setNuevaCola = (nuevaCola, index = 0) => {
-    emitirCola(nuevaCola, index);
-  };
-
-  
   return (
-    <QueueContext.Provider
-      value={{
-        cola,
-        currentIndex,
-        playNowQueue,
-        addToQueue,
-        changeSong,
-        setCola,
-      }}
-    >
+    <QueueContext.Provider value={{ cola, currentIndex, addToQueue, changeSong, playNowQueue, removeFromQueue, clearQueue, setCola }}>
       {children}
     </QueueContext.Provider>
   );

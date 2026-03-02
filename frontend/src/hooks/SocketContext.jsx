@@ -1,48 +1,36 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { API_URL } from "../config";
 
 const SocketContext = createContext();
 
-export const useSocketContext = () => {
+export function useSocketContext() {
   const context = useContext(SocketContext);
   if (!context) {
     throw new Error("useSocketContext debe ser usado dentro de SocketProvider");
   }
   return context;
-};
+}
 
-export const SocketProvider = ({ children }) => {
+export function SocketProvider({ children }) {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const eventBuffer = useRef([]); // Eventos pendientes mientras no hay conexión
+  const [currentRoomId, setCurrentRoomId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const eventBuffer = useRef([]);
 
-  const connectSocket = (userId) => {
-    if (!userId) return console.warn("❌ SocketContext: No userId provided");
+  const connectSocket = ({ roomId, user }) => {
+    if (!roomId) return console.warn("❌ No roomId provided");
 
-    // Evitar reconexión innecesaria
-    if (
-      socketRef.current &&
-      currentUserId === userId &&
-      socketRef.current.connected
-    ) {
-      return console.log("✅ Socket ya conectado para userId:", userId);
+    if (socketRef.current && currentRoomId === roomId && socketRef.current.connected) {
+      console.log("✅ Socket ya conectado a sala:", roomId);
+      return;
     }
 
-    // Desconectar socket anterior
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
+    if (socketRef.current) socketRef.current.disconnect();
 
-   const newSocket = io(API_URL, {
-  // const newSocket = io("https://american-karaoke.com", {
+    //const newSocket = io(API_URL, {
+    const newSocket = io("https://american-karaoke.com", {
       path: "/socket.io/",
       transports: ["websocket", "polling"],
       withCredentials: true,
@@ -52,18 +40,16 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketRef.current = newSocket;
-    setCurrentUserId(userId);
+    setCurrentRoomId(roomId);
+    setCurrentUser(user);
 
-    // Eventos de socket
     newSocket.on("connect", () => {
-      console.log("✅ Socket conectado:", newSocket.id);
+      console.log(`✅ Usuario ${user} conectado a sala ${roomId} (socket id: ${newSocket.id})`);
       setIsConnected(true);
-      newSocket.emit("join", userId);
 
-      // Emitir eventos pendientes
-      eventBuffer.current.forEach(({ event, data }) =>
-        newSocket.emit(event, data)
-      );
+      newSocket.emit("joinRoom", { roomId, user });
+
+      eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
       eventBuffer.current = [];
     });
 
@@ -80,12 +66,8 @@ export const SocketProvider = ({ children }) => {
     newSocket.on("reconnect", (attempt) => {
       console.log("🔄 Socket reconectado tras", attempt, "intentos");
       setIsConnected(true);
-      newSocket.emit("join", userId);
-
-      // Emitir eventos pendientes tras reconexión
-      eventBuffer.current.forEach(({ event, data }) =>
-        newSocket.emit(event, data)
-      );
+      newSocket.emit("joinRoom", { roomId, user });
+      eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
       eventBuffer.current = [];
     });
 
@@ -96,42 +78,34 @@ export const SocketProvider = ({ children }) => {
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
-      setIsConnected(false);
-      setCurrentUserId(null);
-      eventBuffer.current = [];
     }
+    setIsConnected(false);
+    setCurrentRoomId(null);
+    setCurrentUser(null);
+    eventBuffer.current = [];
   };
 
-  const emitEvent = (event, data) => {
+  const emitEvent = (event, data = {}) => {
+    const payload = { ...data, roomId: currentRoomId };
     if (socketRef.current && isConnected) {
-      socketRef.current.emit(event, data);
+      socketRef.current.emit(event, payload);
       return true;
     } else {
-      // Guardar evento en buffer para enviar al reconectarse
-      eventBuffer.current.push({ event, data });
+      eventBuffer.current.push({ event, data: payload });
       return false;
     }
   };
 
   const onEvent = (event, callback) => {
     if (!socketRef.current) return () => {};
-
     socketRef.current.on(event, callback);
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off(event, callback);
-      }
-    };
+    return () => socketRef.current?.off(event, callback);
   };
 
-  // Cleanup global al desmontar el provider
   useEffect(() => {
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
@@ -140,7 +114,8 @@ export const SocketProvider = ({ children }) => {
       value={{
         socket: socketRef.current,
         isConnected,
-        currentUserId,
+        currentRoomId,
+        currentUser,
         connectSocket,
         disconnectSocket,
         emitEvent,
@@ -150,4 +125,4 @@ export const SocketProvider = ({ children }) => {
       {children}
     </SocketContext.Provider>
   );
-};
+}

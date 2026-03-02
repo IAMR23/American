@@ -1,17 +1,28 @@
 const Cola = require("../models/Cola");
+const Room = require("../models/Room"); // 🔥 IMPORTANTE
 
 const initSockets = (io) => {
   io.on("connection", (socket) => {
     console.log("🟢 Cliente conectado:", socket.id);
 
-    // 🔹 UNIRSE A UNA SALA
+    /**
+     * 🔹 UNIRSE A UNA SALA (CON VALIDACIÓN)
+     */
     socket.on("joinRoom", async ({ roomId, user }) => {
       if (!roomId) return;
 
-      socket.join(roomId);
-      console.log(`Usuario ${user} unido a sala ${roomId}`);
-
       try {
+        // 🔥 VALIDACIÓN AQUÍ
+        const room = await Room.findOne({ roomId });
+
+        if (!room) {
+          return socket.emit("error", "Sala no existe");
+        }
+
+        // ✅ SOLO SI EXISTE, SE UNE
+        socket.join(roomId);
+        console.log(`Usuario ${user} unido a sala ${roomId}`);
+
         let cola = await Cola.findOne({ roomId }).populate("canciones");
 
         if (!cola) {
@@ -29,11 +40,14 @@ const initSockets = (io) => {
         });
       } catch (error) {
         console.error("Error en joinRoom:", error);
+        socket.emit("error", "Error al unirse a sala");
       }
     });
 
-    // ➕ AGREGAR CANCIÓN
-    socket.on("addSong", async ({ roomId, song, addedBy }) => {
+    /**
+     * ➕ AGREGAR CANCIÓN
+     */
+/*     socket.on("addSong", async ({ roomId, song }) => {
       if (!roomId || !song?._id) return;
 
       try {
@@ -42,7 +56,7 @@ const initSockets = (io) => {
         if (!cola) {
           cola = new Cola({
             roomId,
-            canciones: [],
+            canciones: [], 
             currentIndex: 0,
           });
         }
@@ -62,9 +76,11 @@ const initSockets = (io) => {
       } catch (error) {
         console.error("Error en addSong:", error);
       }
-    });
+    }); */
 
-    // ⏭️ CAMBIAR CANCIÓN
+    /**
+     * ⏭️ CAMBIAR CANCIÓN
+     */
     socket.on("cambiarCancion", async ({ roomId, index }) => {
       if (!roomId || index == null) return;
 
@@ -84,7 +100,9 @@ const initSockets = (io) => {
       }
     });
 
-    // 🗑️ ELIMINAR CANCIÓN
+    /**
+     * 🗑️ ELIMINAR CANCIÓN
+     */
     socket.on("removeSong", async ({ roomId, songId }) => {
       if (!roomId || !songId) return;
 
@@ -109,7 +127,9 @@ const initSockets = (io) => {
       }
     });
 
-    // 🔄 LIMPIAR COLA
+    /**
+     * 🔄 LIMPIAR COLA
+     */
     socket.on("clearQueue", async ({ roomId }) => {
       if (!roomId) return;
 

@@ -10,8 +10,7 @@ import { useQueueContext } from "../hooks/QueueProvider";
 const SONG_URL = `${API_URL}/song/numero`;
 const FILTRO_URL = `${API_URL}/song/filtrar`;
 
-export default function BuscadorTabla({ onSelectAll, roomId }) {
-
+export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
   const [filtroActivo, setFiltroActivo] = useState("numero");
   const [busqueda, setBusqueda] = useState("");
   const [data, setData] = useState([]);
@@ -56,24 +55,55 @@ export default function BuscadorTabla({ onSelectAll, roomId }) {
     return () => clearTimeout(debounce);
   }, [busqueda, filtroActivo]);
 
+  /*     const agregarACola = async (songId) => {
+  try {
+
+    let res;
+
+    if (isAuthenticated) {
+      res = await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId, roomId }, // 🔥 AQUÍ
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+    } else {
+      res = await axios.post(
+        `${API_URL}/t/cola/without/aut/add`,
+        { songId } // 🔥 AQUÍ TAMBIÉN
+      );
+    }
+
+    const cancion =
+      res.data.cancion || videos.find((v) => v._id === songId);
+
+    if (!cancion) {
+      setToastMsg("No se encontró la canción");
+      return;
+    }
+
+    addToQueue({
+      _id: cancion._id,
+      titulo: cancion.titulo,
+      artista: cancion.artista,
+      numero: cancion.numero,
+      videoUrl: cancion.videoUrl,
+    });
+
+    setToastMsg("✅ Canción agregada a la cola");
+  } catch (err) {
+    console.error("Error al agregar a cola:", err.response?.data || err);
+    setToastMsg("❌ No se pudo agregar la canción");
+  }
+};
+ */
+
   const agregarACola = async (songId) => {
     try {
-      let res;
-            const roomId = localStorage.getItem("roomId");
-
-
-      if (isAuthenticated) {
-        res = await axios.post(
-          `${API_URL}/t/cola/add`,
-          { userId, songId, roomId }, // 🔥 AQUÍ
-          { headers: { Authorization: `Bearer ${getToken()}` } },
-        );
-      } else {
-        res = await axios.post(
-          `${API_URL}/t/cola/without/aut/add`,
-          { songId }, // 🔥 AQUÍ TAMBIÉN
-        );
-      }
+      const res = await axios.post(`${API_URL}/t/cola/add2`, {
+        userId,
+        songId,
+        roomId,
+      });
 
       const cancion = data.find((v) => v._id === songId);
 
@@ -92,37 +122,40 @@ export default function BuscadorTabla({ onSelectAll, roomId }) {
 
       setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
-      console.error("Error al agregar a cola:", err.response?.data || err);
       setToastMsg("❌ No se pudo agregar la canción");
     }
   };
 
-    const playNow = async (video) => {
+  const handlePlay = async (song) => {
     if (!isAuthenticated) {
       setToastMsg("⚠️ Inicia sesión para reproducir");
       return;
     }
 
-    const roomId = localStorage.getItem("roomId");
-
     try {
-      const token = getToken();
-
-      // Detener la canción anterior
+      // Detener cualquier reproducción existente
       const existingMedia = document.querySelector("audio, video");
       if (existingMedia) {
         existingMedia.pause();
         existingMedia.currentTime = 0;
       }
 
-      // Insertar en cola backend en la posición exacta
+      // Agregar a la cola si no está
       await axios.post(
-        `${API_URL}/t/cola/play-now`,
-        { roomId, songId: video._id },
-        { headers: { Authorization: `Bearer ${token}` } },
+        `${API_URL}/t/cola/add`,
+        { userId, songId: song._id, position: currentIndex },
+        { headers: { Authorization: `Bearer ${getToken()}` } },
       );
 
-      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+      playNowQueue({
+        _id: song._id,
+        titulo: song.titulo,
+        artista: song.artista,
+        numero: song.numero,
+        videoUrl: song.videoUrl,
+      });
+
+      setToastMsg(`▶️ Reproduciendo "${song.titulo}" ahora`);
     } catch (err) {
       console.error(err);
       setToastMsg("❌ No se pudo reproducir la canción");
@@ -194,28 +227,28 @@ export default function BuscadorTabla({ onSelectAll, roomId }) {
                       className="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async () => {
                         await masReproducida(fila._id);
-                       await playNow(fila);
+                        handlePlay(fila);
                         onSelectAll?.();
                       }}
                     >
-                      <img src="./play.png" alt="play" width="40" />
+                      <img src="/play.png" alt="play" width="40" />
                     </button>
 
                     <button
                       className="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async () => {
-                        agregarACola(fila._id);
+                        await agregarACola(fila._id);
                         await masReproducida(fila._id);
                       }}
                     >
-                      <img src="./mas.png" alt="add" width="40" />
+                      <img src="/mas.png" alt="add" width="40" />
                     </button>
 
                     <button
                       className="btn btn-danger btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={() => handleOpenModal(fila._id)}
                     >
-                      <img src="./heart.png" alt="fav" width="40" />
+                      <img src="/heart.png" alt="fav" width="40" />
                     </button>
                   </div>
                 </td>

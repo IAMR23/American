@@ -1,80 +1,80 @@
 import { useEffect } from "react";
 import { useSocketContext } from "./SocketContext";
 
-export default function useSocket(userId, onCancionCambiada) {
+export default function useSocket(roomId, onCancionCambiada) {
   const {
     socket,
     isConnected,
     connectSocket,
     disconnectSocket,
     emitEvent,
-    onEvent, // ✅ Asegúrate de incluir esto
+    onEvent,
   } = useSocketContext();
 
+  // 🔌 Conectar
   useEffect(() => {
-    if (userId) connectSocket(userId);
+    if (roomId) connectSocket();
     return () => disconnectSocket();
-  }, [userId]);
+  }, [roomId]);
 
+  // 🏠 Join room
   useEffect(() => {
-  if (!socket || !userId) return;
+    if (!socket || !roomId) return;
 
-  if (socket.connected) {
-    socket.emit("join", userId);
-  }
+    if (socket.connected) {
+      socket.emit("joinRoom", roomId);
+    }
 
-  socket.on("connect", () => {
-    socket.emit("join", userId);
-  });
+    socket.on("connect", () => {
+      socket.emit("joinRoom", roomId);
+    });
 
-  return () => {
-    socket.off("connect");
-  };
-}, [socket, userId]);
+    return () => {
+      socket.off("connect");
+    };
+  }, [socket, roomId]);
 
-
-  // Escuchar eventos del servidor
+  // ▶️ Cambio de canción
   useEffect(() => {
     if (!socket) return;
 
-    const handleCancionCambiada = ({ index, userId: remoteUserId }) => {
-      if (remoteUserId === userId && onCancionCambiada) {
+    const handler = ({ index }) => {
+      if (onCancionCambiada) {
         onCancionCambiada(index);
       }
     };
 
-    socket.on("cambiarCancion", handleCancionCambiada);
+    socket.on("cambiarCancion", handler);
 
     return () => {
-      socket.off("cambiarCancion", handleCancionCambiada);
+      socket.off("cambiarCancion", handler);
     };
-  }, [socket, userId, onCancionCambiada]);
+  }, [socket, onCancionCambiada]);
 
-  // Wrappers para emitir eventos
+  // 📡 Emit helpers
   const emitirCola = (nuevaCola, indexActual = 0) => {
-    emitEvent("actualizarCola", { userId, nuevaCola, indexActual });
+    emitEvent("actualizarCola", { roomId, nuevaCola, indexActual });
   };
 
   const emitirCambiarCancion = (index) => {
-    emitEvent("cambiarCancion", { userId, index });
+    emitEvent("cambiarCancion", { roomId, index });
   };
 
   const agregarCancion = (cancion) => {
-  emitEvent("agregarCancion", { userId, cancion });
-};
+    emitEvent("agregarCancion", { roomId, cancion });
+  };
 
-const playNow = (cancion, indexActual) => {
-  emitEvent("playNow", { userId, cancion, indexActual });
-};
-
+  const playNow = (cancion, indexActual) => {
+    emitEvent("playNow", { roomId, cancion, indexActual });
+  };
 
   return {
     socket,
     isConnected,
     emitirCola,
     emitirCambiarCancion,
-    onEvent, 
-    agregarCancion, 
-    playNow, 
+    agregarCancion,
+    playNow,
+    onEvent,
   };
 }

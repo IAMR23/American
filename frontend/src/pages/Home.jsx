@@ -30,6 +30,7 @@ import { useBackground } from "../hooks/BackgroundContext";
 import ForgotPassword from "./ForgotPassword";
 import WhatsAppButton from "../components/WhatsAppButton";
 import User from "./User";
+import { useSocketContext } from "../hooks/SocketContext";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -129,7 +130,6 @@ export default function Home() {
         setUserId(decoded.userId);
         setUserRole(decoded.rol);
         setCola([]);
-        setCurrentIndex(0);
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -184,10 +184,11 @@ export default function Home() {
     }
 
     localStorage.removeItem("token");
+    localStorage.removeItem("rol");
+    localStorage.removeItem("roomId");
     setUserId(null);
     setUserRole(null);
     setCola([]);
-    setCurrentIndex(0);
     setAuth(false);
     setUser(null);
     // Recarga la página
@@ -263,6 +264,32 @@ export default function Home() {
   };
 
   const [token, setToken] = useState(getToken());
+
+
+    const { connectSocket } = useSocketContext();
+    const [roomId, setRoomId] = useState(null);
+
+    useEffect(() => {
+      const crearSala = async () => {
+        let roomId = localStorage.getItem("roomId");
+  
+        if (!roomId) {
+          const res = await fetch("http://localhost:5000/room/create-room", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user: "HOST" }),
+          });
+          const data = await res.json();
+          roomId = data.roomId;
+          localStorage.setItem("roomId", roomId);
+        }
+  
+        setRoomId(roomId);
+        connectSocket({ roomId, user: "HOST" });
+      };
+  
+      crearSala();
+    }, [user]); 
 
   const renderContenido = () => {
     switch (seccionActiva) {

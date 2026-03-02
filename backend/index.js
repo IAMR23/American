@@ -85,6 +85,7 @@ conectarDB()
     app.use("/pdf", require("./routes/pdf.routes"));
     app.use("/uploads", express.static("uploads"));
     app.use("/sesion", require("./routes/sesionRoutes"));
+    app.use("/room", require("./routes/roomRoutes"));
 
     /*  CODIGO PARA SOLO UNA PERSONA*/
   /*   io.on("connection", (socket) => {
@@ -149,7 +150,7 @@ conectarDB()
     });
  */
     
-    /* CODIGO PARA SALA */
+    /* CODIGO PARA SALA */ 
     
 
     initSockets(io);

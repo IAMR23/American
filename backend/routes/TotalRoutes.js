@@ -82,23 +82,28 @@ router.post("/cola/without/aut/add", async (req, res) => {
 });
 
 
-router.post("/cola/add", authenticate, async (req, res) => {
+
+router.post("/cola/add", authenticate, async (req, res) => { 
   try {
     const userId = req.user.id;
-    const { songId, position } = req.body;
+    const { songId, roomId, position } = req.body;
 
-    let colaUsuario = await Cola.findOne({ user: userId });
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
 
-    // 🟢 Si no existe → crear
-    if (!colaUsuario) {
-      colaUsuario = await Cola.create({
-        user: userId,
+    let cola = await Cola.findOne({ roomId });
+
+    // 🟢 Crear cola si no existe
+    if (!cola) {
+      cola = await Cola.create({
+        roomId,
+     //   user: userId, // opcional (host o quien agrega)
         canciones: [songId],
         currentIndex: 0,
       });
     } else {
-      // 🔥 calcular nueva cola SIN guardar aún
-      let canciones = colaUsuario.canciones
+      let canciones = cola.canciones
         .map((c) => c.toString())
         .filter((c) => c !== songId);
 
@@ -109,29 +114,27 @@ router.post("/cola/add", authenticate, async (req, res) => {
 
       canciones.splice(insertPos, 0, songId);
 
-      // ✅ UPDATE ATÓMICO (NO save)
       await Cola.updateOne(
-        { user: userId },
+        { roomId },
         {
           $set: {
-            canciones: canciones,
+            canciones,
           },
         }
       );
     }
 
-    // 🔄 Obtener actualizado
-    const colaActualizada = await Cola.findOne({ user: userId }).populate("canciones");
-
-    // 🔁 Emitir socket
+    const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
+    // 🔥 SOCKET POR SALA (NO por user)
     const io = req.app.get("io");
-    io.to(userId).emit("colaActualizada", {
+    io.to(roomId).emit("colaActualizada", {
       nuevaCola: colaActualizada.canciones,
       indexActual: colaActualizada.currentIndex || 0,
     });
 
+    console.log(`Canción ${songId} agregada a la cola de la sala ${roomId}`);
     res.status(201).json({
-      message: "Canción agregada en la posición actual",
+      message: "Canción agregada",
       cola: colaActualizada.canciones,
       totalCanciones: colaActualizada.canciones.length,
       currentIndex: colaActualizada.currentIndex || 0,
@@ -139,6 +142,132 @@ router.post("/cola/add", authenticate, async (req, res) => {
 
   } catch (err) {
     console.error("Error al agregar canción a la cola:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+ 
+router.post("/cola/add2", async (req, res) => {
+  try {
+    const { songId, roomId, position } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    let cola = await Cola.findOne({ roomId });
+
+    // 🟢 Crear cola si no existe
+    if (!cola) {
+      cola = await Cola.create({
+        roomId,
+     //   user: userId, // opcional (host o quien agrega)
+        canciones: [songId],
+        currentIndex: 0,
+      });
+    } else {
+      let canciones = cola.canciones
+        .map((c) => c.toString())
+        .filter((c) => c !== songId);
+
+      const insertPos =
+        typeof position === "number" && position >= 0
+          ? Math.min(position, canciones.length)
+          : canciones.length;
+
+      canciones.splice(insertPos, 0, songId);
+
+      await Cola.updateOne(
+        { roomId },
+        {
+          $set: {
+            canciones,
+          },
+        }
+      );
+    }
+
+    const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
+    // 🔥 SOCKET POR SALA (NO por user)
+    const io = req.app.get("io");
+    io.to(roomId).emit("colaActualizada", {
+      nuevaCola: colaActualizada.canciones,
+      indexActual: colaActualizada.currentIndex || 0,
+    });
+
+    console.log(`Canción ${songId} agregada a la cola de la sala ${roomId}`);
+    res.status(201).json({
+      message: "Canción agregada",
+      cola: colaActualizada.canciones,
+      totalCanciones: colaActualizada.canciones.length,
+      currentIndex: colaActualizada.currentIndex || 0,
+    });
+
+  } catch (err) {
+    console.error("Error al agregar canción a la cola:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+router.post("/cola/play-now", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { songId, roomId } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    let cola = await Cola.findOne({ roomId });
+
+    // Crear cola si no existe
+    if (!cola) {
+      cola = await Cola.create({
+        roomId,
+        canciones: [songId],
+        currentIndex: 0,
+      });
+    } else {
+      let canciones = cola.canciones
+        .map((c) => c.toString())
+        .filter((c) => c !== songId);
+
+      // 👉 Insertar EXACTAMENTE en el índice actual
+      const insertPos = cola.currentIndex || 0;
+
+      canciones.splice(insertPos, 0, songId);
+
+      await Cola.updateOne(
+        { roomId },
+        {
+          $set: {
+            canciones,
+            currentIndex: insertPos, // 🔥 CLAVE
+          },
+        }
+      );
+    }
+
+    const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
+
+    const io = req.app.get("io");
+
+    io.to(roomId).emit("colaActualizada", {
+      nuevaCola: colaActualizada.canciones,
+      indexActual: colaActualizada.currentIndex,
+    });
+
+    console.log(`PLAY NOW -> ${songId} en sala ${roomId}`);
+
+    res.status(201).json({
+      message: "Reproduciendo ahora",
+      cola: colaActualizada.canciones,
+      currentIndex: colaActualizada.currentIndex,
+    });
+
+  } catch (err) {
+    console.error("Error en play-now:", err);
     res.status(500).json({ error: err.message });
   }
 });

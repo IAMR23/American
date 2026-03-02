@@ -76,28 +76,38 @@ export default function VideoCarousel() {
     fetchVideos();
   }, []);
 
-  const agregarACola = async (songId) => {
+
+    const agregarACola = async (songId) => {
     try {
+      const roomId = localStorage.getItem("roomId");
+
+      if (!roomId) {
+        setToastMsg("❌ No hay sala activa");
+        return;
+      }
+
       let res;
+
       if (isAuthenticated) {
-        // 🔐 Usuario autenticado
         res = await axios.post(
           `${API_URL}/t/cola/add`,
-          { userId, songId },
-          { headers: { Authorization: `Bearer ${getToken()}` } }
+          { userId, songId, roomId }, // 🔥 AQUÍ
+          { headers: { Authorization: `Bearer ${getToken()}` } },
         );
       } else {
-        // 👥 Usuario no autenticado (cola temporal/global)
-        res = await axios.post(`${API_URL}/t/cola/without/aut/add`, { songId });
+        res = await axios.post(
+          `${API_URL}/t/cola/without/aut/add`,
+          { songId }, // 🔥 AQUÍ TAMBIÉN
+        );
       }
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+
       if (!cancion) {
         setToastMsg("No se encontró la canción");
         return;
       }
 
-      // Evitar duplicados
       addToQueue({
         _id: cancion._id,
         titulo: cancion.titulo,
@@ -112,12 +122,14 @@ export default function VideoCarousel() {
       setToastMsg("❌ No se pudo agregar la canción");
     }
   };
-
+  
   const playNow = async (video) => {
     if (!isAuthenticated) {
       setToastMsg("⚠️ Inicia sesión para reproducir");
       return;
     }
+
+    const roomId = localStorage.getItem("roomId");
 
     try {
       const token = getToken();
@@ -131,19 +143,10 @@ export default function VideoCarousel() {
 
       // Insertar en cola backend en la posición exacta
       await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId: video._id, position: currentIndex },
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_URL}/t/cola/play-now`,
+        { roomId, songId: video._id },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-
-      // Insertar en cola frontend exactamente en currentIndex
-      playNowQueue({
-        _id: video._id,
-        titulo: video.titulo,
-        artista: video.artista,
-        numero: video.numero,
-        videoUrl: video.videoUrl,
-      });
 
       setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
     } catch (err) {
@@ -151,6 +154,7 @@ export default function VideoCarousel() {
       setToastMsg("❌ No se pudo reproducir la canción");
     }
   };
+
 
   return (
     <div className="carousel-container">
@@ -201,7 +205,7 @@ export default function VideoCarousel() {
                     className="btn-play"
                     onClick={async () => {
                       await masReproducida(video._id);
-                      playNow(video);
+                      await playNow(video);
                     }}
                     title="Reproducir ahora"
                   >
