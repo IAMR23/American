@@ -274,7 +274,7 @@ export default function Home() {
         let roomId = localStorage.getItem("roomId");
   
         if (!roomId) {
-          const res = await fetch("http://localhost:5000/room/create-room", {
+          const res = await fetch(`${API_URL}/room/create-room` , {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user: "HOST" }),

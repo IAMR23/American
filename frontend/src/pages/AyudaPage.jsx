@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useBackground } from "../hooks/BackgroundContext";
 
+import { API_URL } from "../config";
+
 const fondos = Array.from({ length: 21 }, (_, i) => `/fondos/${i + 1}.webp`);
 
 const AyudaPage = () => {
@@ -14,12 +16,12 @@ const AyudaPage = () => {
     const obtenerUltimoPdf = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:5000/pdf/ultimo-pdf"
+          `${API_URL}/pdf/ultimo-pdf`
         );
 
         if (res.data.file) {
           setPdfUrl(
-            `http://localhost:5000/uploads/${res.data.file}`
+            `${API_URL}/uploads/${res.data.file}`
           );
         }
       } catch (error) {

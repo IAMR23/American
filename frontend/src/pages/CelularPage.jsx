@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useSocketContext } from "../hooks/SocketContext";
+import { API_URL } from "../config";
+
 export default function CelularPage() {
   const [roomId, setRoomId] = useState(null);
   const { connectSocket } = useSocketContext();
@@ -10,7 +12,7 @@ export default function CelularPage() {
       let roomId = localStorage.getItem("roomId");
 
       if (!roomId) {
-        const res = await fetch("http://localhost:5000/room/create-room", {
+        const res = await fetch(`${API_URL}/room/create-room`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user: "HOST" }),
