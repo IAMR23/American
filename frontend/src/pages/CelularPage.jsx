@@ -35,7 +35,7 @@ export default function CelularPage() {
     <div style={{ padding: 20 }}>
       <h1>Sala creada</h1>
       <h2>ID: {roomId}</h2>
-      <QRCodeCanvas value={`${API_URL}/sala/${roomId}`} />
+      <QRCodeCanvas value={`https://american-karaoke.com/sala/${roomId}`} />
     </div>
   );
 }
