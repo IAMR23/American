@@ -210,9 +210,8 @@ router.post("/cola/add2", async (req, res) => {
 });
 
 
-router.post("/cola/play-now", authenticate, async (req, res) => {
+router.post("/cola/play-now", async (req, res) => {
   try {
-    const userId = req.user.id;
     const { songId, roomId } = req.body;
 
     if (!roomId) {

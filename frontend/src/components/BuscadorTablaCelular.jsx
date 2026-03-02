@@ -126,41 +126,31 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
     }
   };
 
-  const handlePlay = async (song) => {
-    if (!isAuthenticated) {
-      setToastMsg("⚠️ Inicia sesión para reproducir");
-      return;
-    }
 
-    try {
-      // Detener cualquier reproducción existente
-      const existingMedia = document.querySelector("audio, video");
-      if (existingMedia) {
-        existingMedia.pause();
-        existingMedia.currentTime = 0;
+      const playNow = async (video) => {
+  
+      try {
+  
+        // Detener la canción anterior
+        const existingMedia = document.querySelector("audio, video");
+        if (existingMedia) {
+          existingMedia.pause();
+          existingMedia.currentTime = 0;
+        }
+  
+        // Insertar en cola backend en la posición exacta
+        await axios.post(
+          `${API_URL}/t/cola/play-now`,
+          { roomId, songId: video._id },
+        );
+  
+        setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+      } catch (err) {
+        console.error(err);
+        setToastMsg("❌ No se pudo reproducir la canción");
       }
+    };
 
-      // Agregar a la cola si no está
-      await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId: song._id, position: currentIndex },
-        { headers: { Authorization: `Bearer ${getToken()}` } },
-      );
-
-      playNowQueue({
-        _id: song._id,
-        titulo: song.titulo,
-        artista: song.artista,
-        numero: song.numero,
-        videoUrl: song.videoUrl,
-      });
-
-      setToastMsg(`▶️ Reproduciendo "${song.titulo}" ahora`);
-    } catch (err) {
-      console.error(err);
-      setToastMsg("❌ No se pudo reproducir la canción");
-    }
-  };
 
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
@@ -227,7 +217,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
                       className="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
                       onClick={async () => {
                         await masReproducida(fila._id);
-                        handlePlay(fila);
+                       await playNow(fila);
                         onSelectAll?.();
                       }}
                     >
