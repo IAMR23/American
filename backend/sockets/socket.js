@@ -147,6 +147,39 @@ const initSockets = (io) => {
         console.error("Error en clearQueue:", error);
       }
     });
+    
+    socket.on("setQueue", async ({ roomId, nuevaCola, indexActual }) => {
+  if (!roomId || !Array.isArray(nuevaCola)) return;
+
+  try {
+    let cola = await Cola.findOne({ roomId });
+
+    if (!cola) {
+      cola = new Cola({
+        roomId,
+        canciones: [],
+        currentIndex: 0,
+      });
+    }
+
+    // guardar solo IDs
+    cola.canciones = nuevaCola.map((c) => c._id);
+    cola.currentIndex = indexActual || 0;
+
+    await cola.save();
+
+    const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
+
+    io.in(roomId).emit("colaActualizada", {
+      nuevaCola: colaActualizada.canciones,
+      indexActual: colaActualizada.currentIndex,
+    });
+
+  } catch (error) {
+    console.error("Error en setQueue:", error);
+  }
+});
+
 
     socket.on("disconnect", () => {
       console.log("🔴 Cliente desconectado:", socket.id);
