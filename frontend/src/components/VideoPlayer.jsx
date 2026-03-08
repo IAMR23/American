@@ -9,6 +9,7 @@ const API_PUNTAJE = `${API_URL}/p/puntaje`;
 
 export default function VideoPlayer({
   cola = [],
+  esColaDefault = false, // 🎵 Nuevo: indica si estamos usando colaDefault
   currentIndex,
   setCurrentIndex,
   fullscreenRequested = false,
@@ -17,6 +18,9 @@ export default function VideoPlayer({
   modoCalificacion = false,
 }) {
   const playlist = cola || [];
+
+  // 🎵 Índice local para colaDefault (no se sincroniza con socket)
+  const [localIndexDefault, setLocalIndexDefault] = useState(0);
 
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
@@ -40,6 +44,7 @@ export default function VideoPlayer({
 
   const playerRef = useRef();
   const containerRef = useRef();
+  const autoplayInitiatedRef = useRef(false);
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
 
   const insertarVideoDespuesActual = (video) => {
@@ -162,32 +167,73 @@ export default function VideoPlayer({
     }
   }, [fullscreenRequested, onFullscreenHandled]);
 
-  // ============================================================
-  //  CAMBIO VIDEO COLA
-  // ============================================================
-  const currentVideo = playlist[currentIndex];
-
+  // 🎵 Resetear localIndexDefault cuando se cambia a colaDefault
   useEffect(() => {
-    if (!currentVideo) return;
+    if (esColaDefault) {
+      setLocalIndexDefault(0);
+    } else {
+      // Si salimos de colaDefault, resetear el flag para la próxima vez
+      autoplayInitiatedRef.current = false;
+    }
+  }, [esColaDefault]);
 
-    setIsPlaying(false);
-    playerRef.current?.seekTo(0);
-    setTimeout(() => setIsPlaying(true), 20);
-  }, [currentIndex]);
+  // ============================================================
+  //  ÍNDICE EFECTIVO (usa el correcto según el tipo de cola)
+  // ============================================================
+  const effectiveIndex = esColaDefault ? localIndexDefault : currentIndex;
+
+  const setEffectiveIndex = (newIndex) => {
+    if (esColaDefault) {
+      setLocalIndexDefault(newIndex);
+    } else {
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  // 🎵 Video actual basado en el índice efectivo
+  const currentVideo = playlist[effectiveIndex];
+
+  // 🎵 AUTOPLAY: Cuando se carga colaDefault por primera vez
+  useEffect(() => {
+    if (esColaDefault && playlist.length > 0 && !autoplayInitiatedRef.current) {
+      autoplayInitiatedRef.current = true;
+      const timer = setTimeout(() => {
+        setIsPlaying(true);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [esColaDefault, playlist.length]);
+
+  // 🎵 Cuando el video cambias, asegurar que siga reproduciendo en colaDefault
+  useEffect(() => {
+    if (esColaDefault && currentVideo) {
+      setIsPlaying(true);
+    }
+  }, [currentVideo, esColaDefault]);
+
+  // 🎵 Agresivo: Si cola tiene contenido y estamos en colaDefault, reproducir
+  useEffect(() => {
+    if (esColaDefault && cola.length > 0) {
+      const timer = setTimeout(() => {
+        setIsPlaying(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [cola.length, esColaDefault]);
 
   // ============================================================
   //  BOTONES NAVEGACIÓN
   // ============================================================
   const nextVideo = () => {
-    if (currentIndex < playlist.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    if (effectiveIndex < playlist.length - 1) {
+      setEffectiveIndex(effectiveIndex + 1);
       setShowNextMessage(false);
     }
   };
 
   const prevVideo = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+    if (effectiveIndex > 0) {
+      setEffectiveIndex(effectiveIndex - 1);
       setShowNextMessage(false);
     }
   };
@@ -208,7 +254,7 @@ export default function VideoPlayer({
     }
 
     if (dur - playedSeconds <= 40) {
-      const next = playlist[currentIndex + 1];
+      const next = playlist[effectiveIndex + 1];
       if (next) {
         setNextSongName(next.titulo || "Siguiente canción");
         setShowNextMessage(true);
@@ -293,6 +339,10 @@ export default function VideoPlayer({
   }
 
   const handleEnded = () => {
+    console.log(
+      `🎵 Canción terminada. Index: ${effectiveIndex}, Playlist length: ${playlist.length}, esColaDefault: ${esColaDefault}`
+    );
+
     // 1️⃣ Si hay un video forzado en la cola → reproducirlo
     if (colaCalificaciones.length > 0) {
       const siguiente = colaCalificaciones[0];
@@ -308,8 +358,8 @@ export default function VideoPlayer({
       setVideoCalificacion(null);
 
       // avanzar la cola de karaoke
-      if (currentIndex < playlist.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+      if (effectiveIndex < playlist.length - 1) {
+        setEffectiveIndex(effectiveIndex + 1);
         return;
       }
 
@@ -326,9 +376,17 @@ export default function VideoPlayer({
     }
 
     // 4️⃣ Flujo normal del karaoke
-    if (currentIndex < playlist.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    if (effectiveIndex < playlist.length - 1) {
+      const nextIndex = effectiveIndex + 1;
+      console.log(
+        `⏭️ Avanzando a siguiente canción: ${nextIndex} (esColaDefault: ${esColaDefault})`
+      );
+      // ✅ Cuando es colaDefault, simplemente incrementar el índice local
+      // ✅ Cuando es cola real, esto emitirá al socket a través de setCurrentIndex
+      setEffectiveIndex(nextIndex);
     } else {
+      // ⚠️ Si llegamos al final
+      console.log(`🏁 Fin de cola, llamando onColaTerminada`);
       onColaTerminada?.();
     }
   };
@@ -389,11 +447,11 @@ export default function VideoPlayer({
         <img
           src="izq.png"
           alt="Anterior"
-          onClick={currentIndex === 0 ? undefined : prevVideo}
+          onClick={effectiveIndex === 0 ? undefined : prevVideo}
           style={{
-            ...navButtonStyle("left", currentIndex === 0),
-            cursor: currentIndex === 0 ? "not-allowed" : "pointer",
-            opacity: currentIndex === 0 ? 0.5 : 1,
+            ...navButtonStyle("left", effectiveIndex === 0),
+            cursor: effectiveIndex === 0 ? "not-allowed" : "pointer",
+            opacity: effectiveIndex === 0 ? 0.5 : 1,
           }}
         />
 
@@ -401,12 +459,12 @@ export default function VideoPlayer({
         <img
           src="der.png"
           alt="Siguiente"
-          onClick={currentIndex === playlist.length - 1 ? undefined : nextVideo}
+          onClick={effectiveIndex === playlist.length - 1 ? undefined : nextVideo}
           style={{
-            ...navButtonStyle("right", currentIndex === playlist.length - 1),
+            ...navButtonStyle("right", effectiveIndex === playlist.length - 1),
             cursor:
-              currentIndex === playlist.length - 1 ? "not-allowed" : "pointer",
-            opacity: currentIndex === playlist.length - 1 ? 0.5 : 1,
+              effectiveIndex === playlist.length - 1 ? "not-allowed" : "pointer",
+            opacity: effectiveIndex === playlist.length - 1 ? 0.5 : 1,
           }}
         />
 

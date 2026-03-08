@@ -44,22 +44,32 @@ export default function Home() {
   const [auth, setAuth] = useState(false);
   // ------------------ Hooks personalizados ------------------
 
-
-  const { cola, currentIndex, setCola, setCurrentIndex , changeSong } =
-  useQueueContext();
-
+  const {
+    cola,
+    currentIndex,
+    setCola,
+    changeSong,
+    setNuevaCola,
+    clearQueue, 
+  } = useQueueContext();
 
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-  const start =
-    currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+    // 🎵 Si estamos en colaDefault, no mostrar nada
+    const esColaDefault = !cola.length || currentIndex >= cola.length;
+    if (esColaDefault) {
+      return [];
+    }
 
-  return cola
-    .map((c, i) => ({ cancion: c, index: i }))
-    .slice(start)
-    .filter((item) => item.cancion && item.cancion._id);
-};
+    const start =
+      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+
+    return cola
+      .map((c, i) => ({ cancion: c, index: i }))
+      .slice(start)
+      .filter((item) => item.cancion && item.cancion._id);
+  };
 
   const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
     usePlaylists(userId);
@@ -107,13 +117,20 @@ export default function Home() {
   }, [userId]);
 
   const [colaDefault, setColaDefault] = useState([]);
-  const [esColaDefault, setEsColaDefault] = useState(false);
 
   useEffect(() => {
     const fetchDefaultVideos = async () => {
-      const res = await axios.get(`${API_URL}/song/default`);
-      setColaDefault(res.data);
+      try {
+        const res = await axios.get(`${API_URL}/song/default`);
+        console.log("✅ Videos por defecto cargados:", res.data.length);
+        setColaDefault(res.data);
+        // 🎵 Forzar que el VideoPlayer inicie reproducción
+        // Cuando colaDefault se carga, el estado cambia y dispara efectos en VideoPlayer
+      } catch (err) {
+        console.error("❌ Error al cargar videos por defecto:", err);
+      }
     };
+    // Cargar videos por defecto para TODOS sin importar autenticación
     fetchDefaultVideos();
   }, []);
 
@@ -195,30 +212,15 @@ export default function Home() {
     // window.location.reload();
   };
 
-
   const handleCambiarCancion = (index) => {
-    changeSong(index)
+    changeSong(index);
+  };
+
+
+  const limpiarCola = () => {
+  clearQueue();
 };
 
-
-  const limpiarCola = async () => {
-    try {
-      const token = getToken();
-      if (token) {
-        await axios.delete(`${API_URL}/t/cola/remove`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setCola([]);
-      } else {
-        setCola([]);
-      }
-    } catch (err) {
-      console.error("Error al eliminar la cola:", err);
-    }
-  };
 
   const getUser = async (userId) => {
     if (!userId) return null; // Evita peticiones innecesarias
@@ -252,11 +254,12 @@ export default function Home() {
       return; // no redirige ni cambia la sección
     }
 
-    const vigente =
-      user.suscrito && new Date(user.subscriptionEnd) > new Date();
-    if (!vigente) {
-      setSeccionActiva("suscribir");
-    }
+    // 🎵 Comentado: Ahora los usuarios pueden ver videos por defecto sin estar suscritos
+    // const vigente =
+    //   user.suscrito && new Date(user.subscriptionEnd) > new Date();
+    // if (!vigente) {
+    //   setSeccionActiva("suscribir");
+    // }
   }, [user]);
 
   const handleRegisterSuccess = () => {
@@ -265,31 +268,30 @@ export default function Home() {
 
   const [token, setToken] = useState(getToken());
 
+  const { connectSocket } = useSocketContext();
+  const [roomId, setRoomId] = useState(null);
 
-    const { connectSocket } = useSocketContext();
-    const [roomId, setRoomId] = useState(null);
+  useEffect(() => {
+    const crearSala = async () => {
+      let roomId = localStorage.getItem("roomId");
 
-    useEffect(() => {
-      const crearSala = async () => {
-        let roomId = localStorage.getItem("roomId");
-  
-        if (!roomId) {
-          const res = await fetch(`${API_URL}/room/create-room` , {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user: "HOST" }),
-          });
-          const data = await res.json();
-          roomId = data.roomId;
-          localStorage.setItem("roomId", roomId);
-        }
-  
-        setRoomId(roomId);
-        connectSocket({ roomId, user: "HOST" });
-      };
-  
-      crearSala();
-    }, [user]); 
+      if (!roomId) {
+        const res = await fetch(`${API_URL}/room/create-room`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: "HOST" }),
+        });
+        const data = await res.json();
+        roomId = data.roomId;
+        localStorage.setItem("roomId", roomId);
+      }
+
+      setRoomId(roomId);
+      connectSocket({ roomId, user: "HOST" });
+    };
+
+    crearSala();
+  }, [user]);
 
   const renderContenido = () => {
     switch (seccionActiva) {
@@ -338,9 +340,14 @@ export default function Home() {
         return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
       case "video":
       default:
+        // 🎵 Detectar si estamos usando colaDefault o cola real
+        const esColaDefault = !cola.length || currentIndex >= cola.length;
+        const colaActual = getColaActual();
+
         return (
           <VideoPlayer
-            cola={getColaActual()}
+            cola={colaActual}
+            esColaDefault={esColaDefault}
             //   calificaciones={puntajes} // ⬅️ nuevo
             modoCalificacion={modoCalificacion} // ⬅️ nuevo
             currentIndex={currentIndex}
@@ -348,10 +355,9 @@ export default function Home() {
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onColaTerminada={() => {
-              // ⚡ Cuando se acaba la cola, usar los videos por defecto
-              setCola(colaDefault);
-              setCurrentIndex(0);
-              setEsColaDefault(true);
+              // ⚡ Cuando se acaba la cola, limpiarla
+              // El frontend automáticamente pasará a colaDefault sin guardarlo en el servidor
+              clearQueue();
             }}
           />
         );
@@ -559,8 +565,7 @@ export default function Home() {
                 getColaVisible().length > 8 ? "scrollable" : ""
               }`}
             >
-              {getColaVisible().map(({cancion, index}) => {
-          
+              {getColaVisible().map(({ cancion, index }) => {
                 return (
                   <div
                     key={index}
@@ -574,9 +579,7 @@ export default function Home() {
                     <FaCompactDisc
                       size={40}
                       className={`mb-1 ${
-                        index === currentIndex
-                          ? "song-playing"
-                          : "text-primary"
+                        index === currentIndex ? "song-playing" : "text-primary"
                       }`}
                     />
                     <div className="custom-tooltip">

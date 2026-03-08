@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { io } from "socket.io-client";
 import { API_URL } from "../config";
 
@@ -22,15 +28,19 @@ export function SocketProvider({ children }) {
   const connectSocket = ({ roomId, user }) => {
     if (!roomId) return console.warn("❌ No roomId provided");
 
-    if (socketRef.current && currentRoomId === roomId && socketRef.current.connected) {
+    if (
+      socketRef.current &&
+      currentRoomId === roomId &&
+      socketRef.current.connected
+    ) {
       console.log("✅ Socket ya conectado a sala:", roomId);
       return;
     }
 
     if (socketRef.current) socketRef.current.disconnect();
 
-   // const newSocket = io(API_URL, {
- //   const newSocket = io("https://american-karaoke.com", {
+    //  const newSocket = io(API_URL, {
+    //   const newSocket = io("https://american-karaoke.com", {
     const newSocket = io("https://www.american-karaoke.com", {
       path: "/socket.io/",
       transports: ["websocket", "polling"],
@@ -45,12 +55,16 @@ export function SocketProvider({ children }) {
     setCurrentUser(user);
 
     newSocket.on("connect", () => {
-      console.log(`✅ Usuario ${user} conectado a sala ${roomId} (socket id: ${newSocket.id})`);
+      console.log(
+        `✅ Usuario ${user} conectado a sala ${roomId} (socket id: ${newSocket.id})`,
+      );
       setIsConnected(true);
 
       newSocket.emit("joinRoom", { roomId, user });
 
-      eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
+      eventBuffer.current.forEach(({ event, data }) =>
+        newSocket.emit(event, data),
+      );
       eventBuffer.current = [];
     });
 
@@ -68,7 +82,9 @@ export function SocketProvider({ children }) {
       console.log("🔄 Socket reconectado tras", attempt, "intentos");
       setIsConnected(true);
       newSocket.emit("joinRoom", { roomId, user });
-      eventBuffer.current.forEach(({ event, data }) => newSocket.emit(event, data));
+      eventBuffer.current.forEach(({ event, data }) =>
+        newSocket.emit(event, data),
+      );
       eventBuffer.current = [];
     });
 

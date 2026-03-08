@@ -88,12 +88,28 @@ const initSockets = (io) => {
         const cola = await Cola.findOne({ roomId }).populate("canciones");
         if (!cola) return;
 
-        cola.currentIndex = index;
+        // ✅ MEJORADO: Validar y ajustar el índice si es necesario
+        let finalIndex = index;
+        const maxIndex = cola.canciones.length - 1;
+
+        if (index < 0) {
+          console.warn(
+            `⚠️ Índice negativo recibido: ${index}, ajustando a 0`
+          );
+          finalIndex = 0;
+        } else if (index > maxIndex) {
+          console.warn(
+            `⚠️ Índice fuera de rango: ${index} (máx: ${maxIndex}), ajustando a ${maxIndex}`
+          );
+          finalIndex = maxIndex;
+        }
+
+        cola.currentIndex = finalIndex;
         await cola.save();
 
         io.in(roomId).emit("colaActualizada", {
           nuevaCola: cola.canciones,
-          indexActual: index,
+          indexActual: finalIndex,
         });
       } catch (error) {
         console.error("Error en cambiarCancion:", error);

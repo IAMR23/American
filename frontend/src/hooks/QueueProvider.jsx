@@ -23,8 +23,14 @@ export const QueueProvider = ({ children }) => {
 
   const addToQueue = (cancion) =>
     cancion?._id && emitEvent("addSong", { song: cancion });
-  const changeSong = (index) =>
-    index >= 0 && index < cola.length && emitEvent("cambiarCancion", { index });
+  const changeSong = (index) => {
+    // ✅ MEJORADO: Permitir que el servidor valide en lugar de fallar silenciosamente
+    if (index < 0) return;
+    console.log(
+      `🎵 Emitiendo cambiarCancion: index=${index}, colaLength=${cola.length}`
+    );
+    emitEvent("cambiarCancion", { index });
+  };
   const playNowQueue = (cancion) => {
     if (!cancion?._id) return;
     emitEvent("addSong", { song: cancion });
@@ -35,10 +41,9 @@ export const QueueProvider = ({ children }) => {
   const clearQueue = () => emitEvent("clearQueue");
 
   const setNuevaCola = (canciones, index = 0) => {
-    if (!Array.isArray(canciones) || canciones.length === 0) return;
-    console.log("Nueva cola")
+    if (!Array.isArray(canciones)) return;
     emitEvent("setQueue", {
-        roomId: currentRoomId,
+      roomId: currentRoomId,
       nuevaCola: canciones,
       indexActual: index,
     });

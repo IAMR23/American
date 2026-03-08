@@ -272,24 +272,28 @@ router.post("/cola/play-now", async (req, res) => {
 });
 
 
-// Limpiar toda la cola
+
 router.delete("/cola/remove", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    await Cola.findOneAndDelete({ user: userId });
+
+    await Cola.deleteMany({ user: userId });
 
     const io = req.app.get("io");
+
     io.to(userId).emit("colaActualizada", {
       nuevaCola: [],
       indexActual: 0,
     });
 
-    res.json({ message: "Cola eliminada" });
+    res.json({ message: "Cola eliminada correctamente" });
+
   } catch (err) {
     console.error("Error al eliminar cola:", err);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // ---------------- PLAYLISTS ----------------
 router.post("/playlist", authenticate, playlistController.createPlaylist);
