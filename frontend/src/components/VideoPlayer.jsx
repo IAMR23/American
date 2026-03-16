@@ -177,6 +177,16 @@ export default function VideoPlayer({
     }
   }, [esColaDefault]);
 
+  // 🎵 Detener reproducción cuando la cola se vacía (por logout / reset)
+  useEffect(() => {
+    if (!cola.length) {
+      setIsPlaying(false);
+      setVideoCalificacion(null);
+      setColaCalificaciones([]);
+      setProgress(0);
+    }
+  }, [cola.length]);
+
   // ============================================================
   //  ÍNDICE EFECTIVO (usa el correcto según el tipo de cola)
   // ============================================================
@@ -424,25 +434,26 @@ export default function VideoPlayer({
       <div className="player-wrapper" /* style={{ position: "relative" }} */>
       
       <ReactPlayer
-  key={
-    videoCalificacion
-      ? videoCalificacion.videoUrl
-      : currentVideo.videoUrl
-  }
-  ref={playerRef}
-  url={
-    videoCalificacion
-      ? videoCalificacion.videoUrl
-      : currentVideo.videoUrl
-  }
-  playing={isPlaying}
-  controls={false}
-  width="100%"
-  height="100%"
-  onProgress={handleProgress}
-  onDuration={setDuration}
-  onEnded={handleEnded}
-/>
+        key={
+          videoCalificacion
+            ? videoCalificacion.videoUrl
+            : currentVideo.videoUrl
+        }
+        ref={playerRef}
+        url={
+          videoCalificacion
+            ? videoCalificacion.videoUrl
+            : currentVideo.videoUrl
+        }
+        playing={isPlaying}
+        controls={false}
+        width="100%"
+        height="100%"
+        stopOnUnmount={true}
+        onProgress={handleProgress}
+        onDuration={setDuration}
+        onEnded={handleEnded}
+      />
 
         <img
           src="izq.png"
