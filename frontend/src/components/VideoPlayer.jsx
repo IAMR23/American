@@ -53,7 +53,7 @@ export default function VideoPlayer({
     setColaCalificaciones((prev) => [...prev, { ...video, esForzado: true }]);
   };
 
-  useEffect(() => {
+/*   useEffect(() => {
     if (!videoCalificacion) return;
 
     // asegurarnos que el player cargue el nuevo url y comience desde 0
@@ -64,7 +64,12 @@ export default function VideoPlayer({
       } catch (e) {}
       setIsPlaying(true);
     }, 20);
-  }, [videoCalificacion]);
+  }, [videoCalificacion]); */
+
+
+  const handleReady = useCallback(() => {
+  setIsPlaying(true);
+}, []);
 
   const obtenerPuntajes = async () => {
     try {
@@ -209,27 +214,20 @@ export default function VideoPlayer({
       autoplayInitiatedRef.current = true;
       const timer = setTimeout(() => {
         setIsPlaying(true);
-      }, 150);
+      }, 150); 
       return () => clearTimeout(timer);
     }
   }, [esColaDefault, playlist.length]);
 
-  // 🎵 Cuando el video cambias, asegurar que siga reproduciendo en colaDefault
-  useEffect(() => {
-    if (esColaDefault && currentVideo) {
-      setIsPlaying(true);
-    }
-  }, [currentVideo, esColaDefault]);
 
-  // 🎵 Agresivo: Si cola tiene contenido y estamos en colaDefault, reproducir
   useEffect(() => {
-    if (esColaDefault && cola.length > 0) {
-      const timer = setTimeout(() => {
-        setIsPlaying(true);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [cola.length, esColaDefault]);
+  if (esColaDefault && playlist.length > 0 && !autoplayInitiatedRef.current) {
+    autoplayInitiatedRef.current = true;
+    setIsPlaying(true);
+    // ❌ quitar el setTimeout — no es necesario con onReady
+  }
+}, [esColaDefault, playlist.length]);
+
 
   // ============================================================
   //  BOTONES NAVEGACIÓN
@@ -359,12 +357,13 @@ export default function VideoPlayer({
       setColaCalificaciones(colaCalificaciones.slice(1));
 
       setVideoCalificacion(siguiente);
-      playerRef.current.seekTo(0);
+      // playerRef.current.seekTo(0);
       return;
     }
 
     // 2️⃣ Si es videoCalificación NORMAL
     if (videoCalificacion) {
+      setIsPlaying(false);
       setVideoCalificacion(null);
 
       // avanzar la cola de karaoke
@@ -380,8 +379,9 @@ export default function VideoPlayer({
     // 3️⃣ Si estoy en modo calificación, insertar uno random después del karaoke
     if (modoCalificacion && !videoCalificacion) {
       const random = getVideoByWeightNoRepeat();
+      setIsPlaying(false); 
       setVideoCalificacion(random);
-      playerRef.current.seekTo(0);
+   //   playerRef.current.seekTo(0);
       return;
     }
 
@@ -432,28 +432,25 @@ export default function VideoPlayer({
       )} */}
 
       <div className="player-wrapper" /* style={{ position: "relative" }} */>
-      
-      <ReactPlayer
-        key={
-          videoCalificacion
-            ? videoCalificacion.videoUrl
-            : currentVideo.videoUrl
-        }
-        ref={playerRef}
-        url={
-          videoCalificacion
-            ? videoCalificacion.videoUrl
-            : currentVideo.videoUrl
-        }
-        playing={isPlaying}
-        controls={false}
-        width="100%"
-        height="100%"
-        stopOnUnmount={true}
-        onProgress={handleProgress}
-        onDuration={setDuration}
-        onEnded={handleEnded}
-      />
+
+<ReactPlayer
+  key={
+    videoCalificacion
+      ? `cal-${videoCalificacion.videoUrl}`   // ← prefijo para forzar remount
+      : `main-${currentVideo.videoUrl}`        // ← distingue los dos tipos
+  }
+  ref={playerRef}
+  url={videoCalificacion ? videoCalificacion.videoUrl : currentVideo.videoUrl}
+  playing={isPlaying}
+  controls={false}
+  width="100%"
+  height="100%"
+  stopOnUnmount={true}
+  onReady={handleReady}          // ← arranca cuando está listo
+  onProgress={handleProgress}
+  onDuration={setDuration}
+  onEnded={handleEnded}
+/>
 
         <img
           src="izq.png"
