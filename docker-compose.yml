@@ -16,15 +16,6 @@ services:
     networks:
       - public
       - private
-    read_only: true
-    tmpfs:
-      - /var/cache/nginx
-      - /var/run
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     cap_add:
       - NET_BIND_SERVICE
     logging:
@@ -88,13 +79,6 @@ services:
     restart: unless-stopped
     networks:
       - private
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     logging:
       driver: json-file
       options:
