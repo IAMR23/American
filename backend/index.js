@@ -88,7 +88,7 @@ conectarDB()
     app.use("/room", require("./routes/roomRoutes"));
 
     /*  CODIGO PARA SOLO UNA PERSONA*/
-  /*   io.on("connection", (socket) => {
+    /*   io.on("connection", (socket) => {
       console.log("🟢 Cliente conectado:", socket.id);
 
       socket.on("join", async (userId) => {
@@ -149,11 +149,14 @@ conectarDB()
       });
     });
  */
-    
-    /* CODIGO PARA SALA */ 
-    
+
+    /* CODIGO PARA SALA */
 
     initSockets(io);
+    app.get("/health", (req, res) => {
+      res.status(200).json({ ok: true, message: "Backend activo" });
+    });
+
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Servidor corriendo en el puerto ${PORT}`);
     });
