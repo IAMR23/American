@@ -9,10 +9,9 @@ services:
         condition: service_started
     ports:
       - "80:80"
-      # - "443:443"   # actívalo cuando montes SSL
+      # - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # - ./nginx/certs:/etc/nginx/certs:ro   # para SSL después
     restart: unless-stopped
     networks:
       - public
@@ -89,13 +88,39 @@ services:
     restart: unless-stopped
     networks:
       - private
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_CLIENT_ID: ${VITE_CLIENT_ID}
+    container_name: karaoke_frontend
+    expose:
+      - "8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - private
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   mongo-data:
