@@ -1,28 +1,4 @@
 services:
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: karaoke_nginx
-    depends_on:
-      frontend:
-        condition: service_started
-      backend:
-        condition: service_started
-    ports:
-      - "80:80"
-      # - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    restart: unless-stopped
-    networks:
-      - public
-      - private
-    cap_add:
-      - NET_BIND_SERVICE
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   mongo:
     image: mongo:6.0
@@ -94,7 +70,7 @@ services:
         VITE_CLIENT_ID: ${VITE_CLIENT_ID}
     container_name: karaoke_frontend
     expose:
-      - "8080"
+      - "80"
     depends_on:
       - backend
     restart: unless-stopped
