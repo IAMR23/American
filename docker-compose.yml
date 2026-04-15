@@ -76,7 +76,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      MONGO_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongo:27017/karaoke?authSource=karaoke
+      # MONGO_URI: mongodb://${MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD}@mongo:27017/karaoke?authSource=karaoke
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/karaoke?authSource=admin
       JWT_SECRET: ${JWT_SECRET}
       PAYPAL_API: ${PAYPAL_API}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
