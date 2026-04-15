@@ -1,4 +1,20 @@
+version: "3.9"
+
 services:
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx_proxy_manager
+    restart: always
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - public
+      - private
 
   mongo:
     image: mongo:6.0
@@ -13,17 +29,9 @@ services:
     volumes:
       - mongo-data:/data/db
       - ./mongo-backups:/data/backup
-    restart: unless-stopped
+    restart: always
     networks:
       - private
-    healthcheck:
-      test: ["CMD-SHELL", "echo 'db.runCommand({ ping: 1 }).ok' | mongosh mongodb://$$MONGO_INITDB_ROOT_USERNAME:$$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin --quiet | grep 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-    security_opt:
-      - no-new-privileges:true
     logging:
       driver: json-file
       options:
@@ -35,8 +43,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: karaoke_backend
-    expose:
-      - "5000"
+    restart: always
     env_file:
       - .env
     environment:
@@ -49,12 +56,16 @@ services:
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
+    volumes:
+      - ./backend/uploads:/app/uploads
     depends_on:
-      mongo:
-        condition: service_healthy
-    restart: unless-stopped
+      - mongo
     networks:
       - private
+      - public-internet
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     logging:
       driver: json-file
       options:
@@ -69,11 +80,9 @@ services:
         VITE_API_URL: ${VITE_API_URL}
         VITE_CLIENT_ID: ${VITE_CLIENT_ID}
     container_name: karaoke_frontend
-    expose:
-      - "80"
+    restart: always
     depends_on:
       - backend
-    restart: unless-stopped
     networks:
       - private
     logging:
@@ -83,9 +92,13 @@ services:
         max-file: "3"
 
 volumes:
+  npm-data:
+  npm-letsencrypt:
   mongo-data:
 
 networks:
   public:
   private:
     internal: true
+  public-internet:
+    driver: bridge
