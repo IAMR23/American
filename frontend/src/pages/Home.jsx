@@ -604,7 +604,7 @@ export default function Home() {
       </div>
 
       <div className="fondo p-2">
-        <AnunciosVisibles />
+      {/*   <AnunciosVisibles /> */}
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
         <h1 className="p-2 text-white">Las más populares</h1>

@@ -41,7 +41,8 @@ export function SocketProvider({ children }) {
 
     //  const newSocket = io(API_URL, {
     //   const newSocket = io("https://american-karaoke.com", {
-    const newSocket = io("https://www.american-karaoke.com", {
+  //  const newSocket = io("https://www.american-karaoke.com", {
+    const newSocket = io("https://api.american-karaoke.com", {
       path: "/socket.io/",
       transports: ["websocket", "polling"],
       withCredentials: true,
