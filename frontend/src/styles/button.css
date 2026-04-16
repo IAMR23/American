@@ -45,7 +45,7 @@
   padding-top: 35px;
   width: 280px;
   height: 111px;
-  background-image: url("b1.png");
+  background-image: url("/b1.png");
   background-size: cover;
   background-color: transparent;
   background-position: center;
@@ -72,7 +72,7 @@
 .boton1 {
   width: 260px;
   height: 100px;
-  background-image: url("boton1.png");
+  background-image: url("/boton1.png");
   background-size: cover;
   background-color: transparent;
   background-position: center;
@@ -99,7 +99,7 @@
 .boton2 {
   width: 260px;
   height: 90px;
-  background-image: url("boton2.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton2.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -126,7 +126,7 @@
 .boton3 {
   width: 290px;
   height: 100px;
-  background-image: url("boton3.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton3.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -154,7 +154,7 @@
 .boton4 {
   width: 310px;
   height: 95px;
-  background-image: url("boton4.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton4.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -182,7 +182,7 @@
 .boton5 {
   width: 280px;
   height: 100px;
-  background-image: url("boton5.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton5.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -210,7 +210,7 @@
 .boton6 {
   width: 260px;
   height: 100px;
-  background-image: url("boton6.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton6.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -238,7 +238,7 @@
 .boton7 {
   width: 280px;
   height: 90px;
-  background-image: url("boton7.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton7.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -266,7 +266,7 @@
 .boton8 {
   width: 260px;
   height: 100px;
-  background-image: url("boton8.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton8.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -294,7 +294,7 @@
 .boton9 {
   width: 260px;
   height: 100px;
-  background-image: url("boton9.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton9.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -322,7 +322,7 @@
 .boton10 {
   width: 260px;
   height: 100px;
-  background-image: url("boton10.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/boton10.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;

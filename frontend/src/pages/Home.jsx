@@ -44,14 +44,8 @@ export default function Home() {
   const [auth, setAuth] = useState(false);
   // ------------------ Hooks personalizados ------------------
 
-  const {
-    cola,
-    currentIndex,
-    setCola,
-    changeSong,
-    setNuevaCola,
-    clearQueue, 
-  } = useQueueContext();
+  const { cola, currentIndex, setCola, changeSong, setNuevaCola, clearQueue } =
+    useQueueContext();
 
   const MIN_ANTERIORES = 2;
 
@@ -216,11 +210,9 @@ export default function Home() {
     changeSong(index);
   };
 
-
   const limpiarCola = () => {
-  clearQueue();
-};
-
+    clearQueue();
+  };
 
   const getUser = async (userId) => {
     if (!userId) return null; // Evita peticiones innecesarias
@@ -421,7 +413,6 @@ export default function Home() {
             </div>
           )}
         </div>
-        {/* Botones laterales y contenido */}
         <div className="container-fluid">
           <div className="row">
             {/* Lateral izquierda */}
@@ -604,11 +595,11 @@ export default function Home() {
       </div>
 
       <div className="fondo p-2">
-         <AnunciosVisibles /> 
+        <AnunciosVisibles />
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
         <h1 className="p-2 text-white">Las más populares</h1>
-      {/*   <VideoCarousel /> */}
+        <VideoCarousel />
       </div>
 
       {!isSubscribed && <WhatsAppButton />}
