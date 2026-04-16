@@ -608,7 +608,7 @@ export default function Home() {
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
         <h1 className="p-2 text-white">Las más populares</h1>
-        <VideoCarousel />
+      {/*   <VideoCarousel /> */}
       </div>
 
       {!isSubscribed && <WhatsAppButton />}

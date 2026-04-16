@@ -20,14 +20,6 @@ export default function VideoCarouselVisibles() {
   const itemsPerPage = 4;
   const moveBy = 3;
 
-  const next = () => {
-    setIndice((prev) => (prev + moveBy) % videos.length);
-  };
-
-  const prev = () => {
-    setIndice((prev) => (prev - moveBy + videos.length) % videos.length);
-  };
-
   const { addToQueue, playNowQueue, cola, setCola, currentIndex } =
     useQueueContext();
 
@@ -64,11 +56,33 @@ export default function VideoCarouselVisibles() {
       const headers = isAuthenticated
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
+
       const res = await axios.get(SONG_URL, { headers });
-      setVideos(res.data.canciones || res.data);
+
+      const payload = res.data;
+      const data = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.canciones)
+          ? payload.canciones
+          : [];
+
+      setVideos(data);
     } catch (err) {
       console.error("Error al cargar videos", err);
+      console.error("Respuesta error:", err?.response?.data);
+      console.error("Status error:", err?.response?.status);
+      setVideos([]);
     }
+  };
+
+  const next = () => {
+    if (!videos.length) return;
+    setIndice((prev) => (prev + moveBy) % videos.length);
+  };
+
+  const prev = () => {
+    if (!videos.length) return;
+    setIndice((prev) => (prev - moveBy + videos.length) % videos.length);
   };
 
   useEffect(() => {
@@ -167,54 +181,55 @@ export default function VideoCarouselVisibles() {
               transform: `translateX(-${indice * (100 / itemsPerPage)}%)`,
             }}
           >
-            {videos.map((video) => (
-              <div className="video-card" key={video._id}>
-                <div className="video-thumbnail">
-                  <img
-                    src={dropboxUrlToRaw(video.imagenUrl) || null}
-                    alt={`Miniatura de ${video.titulo}`}
-                    loading="lazy"
-                  />
+            {Array.isArray(videos) &&
+              videos.map((video) => (
+                <div className="video-card" key={video._id}>
+                  <div className="video-thumbnail">
+                    <img
+                      src={dropboxUrlToRaw(video.imagenUrl) || null}
+                      alt={`Miniatura de ${video.titulo}`}
+                      loading="lazy"
+                    />
 
-                  <button
-                    className="btn-heart"
-                    onClick={() => handleOpenModal(video._id)}
-                    title="Agregar a playlist"
-                  >
-                    <img src="./heart.png" alt="" />
-                  </button>
+                    <button
+                      className="btn-heart"
+                      onClick={() => handleOpenModal(video._id)}
+                      title="Agregar a playlist"
+                    >
+                      <img src="./heart.png" alt="" />
+                    </button>
 
-                  <button
-                    className="btn-list"
-                    onClick={async () => {
-                      await masReproducida(video._id);
-                      agregarACola(video._id);
-                    }}
-                    title="Agregar a cola"
-                    //  disabled={!isAuthenticated}
-                  >
-                    <img src="./mas.png" alt="" width={"40px"} />
-                  </button>
+                    <button
+                      className="btn-list"
+                      onClick={async () => {
+                        await masReproducida(video._id);
+                        agregarACola(video._id);
+                      }}
+                      title="Agregar a cola"
+                      //  disabled={!isAuthenticated}
+                    >
+                      <img src="./mas.png" alt="" width={"40px"} />
+                    </button>
 
-                  <button
-                    className="btn-play"
-                    onClick={async () => {
-                      await masReproducida(video._id);
-                      await playNow(video);
-                    }}
-                    title="Reproducir ahora"
-                  >
-                    <img src="./play.png" alt="" />
-                  </button>
+                    <button
+                      className="btn-play"
+                      onClick={async () => {
+                        await masReproducida(video._id);
+                        await playNow(video);
+                      }}
+                      title="Reproducir ahora"
+                    >
+                      <img src="./play.png" alt="" />
+                    </button>
+                  </div>
+                  <div className="d-flex flex-column justify-content-center align-items-center">
+                    <span className="fw-bold text-light">{video.titulo}</span>
+                    <small className="text-light">
+                      {video.artista} - {video.generos?.nombre || "Sin género"}
+                    </small>
+                  </div>
                 </div>
-                <div className="d-flex flex-column justify-content-center align-items-center">
-                  <span className="fw-bold text-light">{video.titulo}</span>
-                  <small className="text-light">
-                    {video.artista} - {video.generos?.nombre || "Sin género"}
-                  </small>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
 
