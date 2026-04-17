@@ -32,10 +32,41 @@ export default function CelularPage() {
   if (!roomId) return <p>Cargando sala...</p>;
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Sala creada</h1>
-      <h2>ID: {roomId}</h2>
-      <QRCodeCanvas value={`https://american-karaoke.com/sala/${roomId}`} />
+
+    <div className="container-fluid min-vh-100 d-flex justify-content-center align-items-center px-3 py-4">
+  <div
+    className="card border-0 shadow-lg text-center w-100"
+    style={{ maxWidth: "500px", borderRadius: "18px" }}
+  >
+    <div className="card-body p-4 p-md-5">
+      <h1 className="fw-bold mb-3 fs-2 fs-md-1">
+        Sala creada
+      </h1>
+
+      <p className="text-muted mb-1">
+        Código de sala
+      </p>
+
+      <h2 className="fw-bold text-danger mb-4">
+        {roomId}
+      </h2>
+
+      <div className="d-flex justify-content-center align-items-center mb-4">
+        <div className="bg-primary p-3 rounded-4 shadow-sm">
+          <QRCodeCanvas
+            value={`https://www.american-karaoke.com/sala/${roomId}`}
+            size={280}
+            level="H"
+            includeMargin={true}
+          />
+        </div>
+      </div>
+
+      <p className="text-muted small mb-0">
+        Escanea el código QR para entrar a la sala
+      </p>
     </div>
+  </div>
+</div>
   );
 }

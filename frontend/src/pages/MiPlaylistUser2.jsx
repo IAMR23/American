@@ -3,13 +3,15 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
-import useSocket from "../hooks/useSocket"; // Ahora solo accede al contexto
+import useSocket from "../hooks/useSocket";
 import "../styles/listaCanciones.css";
 import Logo from "../components/Logo";
 import PlaylistSelectorModal from "../components/PlaylistSelectorModal";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueueContext } from "../hooks/QueueProvider";
 import ToastModal from "../components/modal/ToastModal";
+
+const FILTRO_URL = `${API_URL}/song/filtrar`;
 
 export default function MiPlaylistUser2() {
   const [videos, setVideos] = useState([]);
@@ -21,53 +23,14 @@ export default function MiPlaylistUser2() {
   const [toastMsg, setToastMsg] = useState("");
 
   const navigate = useNavigate();
+  const { id } = useParams();
 
   const { addToQueue, playNowQueue, changeSong, cola, setCola, currentIndex } =
     useQueueContext();
 
-  const playNow = async (video) => {
-    if (!isAuthenticated) {
-      setToastMsg("⚠️ Inicia sesión para reproducir");
-      return;
-    }
-
-    try {
-      const token = getToken();
-
-      // 🔴 Detener la canción anterior
-      const existingMedia = document.querySelector("audio, video");
-      if (existingMedia) {
-        existingMedia.pause();
-        existingMedia.currentTime = 0;
-      }
-
-      await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId: video._id, position: currentIndex },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      playNowQueue({
-        _id: video._id,
-        titulo: video.titulo,
-        artista: video.artista,
-        numero: video.numero,
-        videoUrl: video.videoUrl,
-      });
-
-      navigate("/"); // Ahora no habrá dos sonidos
-      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
-    } catch (err) {
-      console.error(err);
-      setToastMsg("❌ No se pudo reproducir la canción");
-    }
-  };
-
-  const { id } = useParams();
-
-  // Autenticación segura
   let userId = null;
   let isAuthenticated = false;
+
   try {
     const token = getToken();
     if (token) {
@@ -79,7 +42,8 @@ export default function MiPlaylistUser2() {
     console.warn("Usuario no autenticado");
   }
 
-  // Abrir modal de playlist
+  const roomId = localStorage.getItem("roomId");
+
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
       setToastMsg("Inicia sesión para agregar a una playlist");
@@ -89,7 +53,75 @@ export default function MiPlaylistUser2() {
     setShowPlaylistModal(true);
   };
 
-  // Cargar videos
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFiltros((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const masReproducida = async (songId) => {
+    try {
+      await axios.post(`${API_URL}/song/${songId}/reproducir`);
+    } catch (err) {
+      console.error("Error al registrar reproducción:", err);
+    }
+  };
+
+  const playNow = async (video) => {
+    if (!isAuthenticated) {
+      setToastMsg("⚠️ Inicia sesión para reproducir");
+      return;
+    }
+
+    try {
+      const token = getToken();
+
+      const existingMedia = document.querySelector("audio, video");
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
+      await axios.post(
+        `${API_URL}/t/cola/play-now`,
+        { roomId, songId: video._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setToastMsg("❌ No se pudo reproducir la canción");
+    }
+  };
+
+  const agregarACola = async (songId) => {
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesión para agregar a cola");
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId, roomId },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+
+      const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+
+      if (!cancion) {
+        setToastMsg("No se encontró la canción");
+        return;
+      }
+
+      setToastMsg("✅ Canción agregada a la cola");
+    } catch (err) {
+      console.error("Error al agregar a cola:", err.response?.data || err);
+      setToastMsg("❌ No se pudo agregar la canción");
+    }
+  };
+
   const fetchCancionesDePlaylist = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -102,57 +134,81 @@ export default function MiPlaylistUser2() {
       );
 
       setVideos(response.data.canciones || []);
-      setNombrePlaylist(response.data.nombre || ""); // 👈 aquí guardamos el nombre
+      setNombrePlaylist(response.data.nombre || "");
     } catch (err) {
       console.error("Error al obtener canciones:", err);
     }
   };
 
-  useEffect(() => {
-    fetchCancionesDePlaylist();
-  }, []);
-
-  const agregarACola = async (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a cola");
-      return;
-    }
-
+  const fetchCancionesFiltradas = async () => {
     try {
-      const res = await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
+      const headers = isAuthenticated
+        ? { Authorization: `Bearer ${getToken()}` }
+        : {};
 
-      const cancion = res.data.cancion || videos.find((v) => v._id === songId);
-
-      if (!cancion) {
-        setToastMsg("No se encontró la canción");
-        return;
-      }
-      addToQueue({
-        _id: cancion._id,
-        titulo: cancion.titulo,
-        artista: cancion.artista,
-        numero: cancion.numero,
-        videoUrl: cancion.videoUrl,
+      const res = await axios.get(FILTRO_URL, {
+        headers,
+        params: {
+          busqueda: filtros.busqueda,
+          filtro: "artista",
+          ordenFecha: filtros.ordenFecha,
+        },
       });
 
-      setToastMsg("✅ Canción agregada a la cola");
+      const cancionesFiltradas = res.data.canciones || res.data || [];
+
+      const idsPlaylist = new Set(videos.map((v) => v._id));
+      const filtradasDentroPlaylist = cancionesFiltradas.filter((c) =>
+        idsPlaylist.has(c._id)
+      );
+
+      setVideos(filtradasDentroPlaylist);
     } catch (err) {
-      console.error("Error al agregar a cola:", err.response?.data || err);
-      setToastMsg("❌ No se pudo agregar la canción");
+      console.error("Error al filtrar canciones:", err);
     }
   };
+
+  useEffect(() => {
+    fetchCancionesDePlaylist();
+  }, [id]);
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      if (filtros.busqueda.trim() !== "") {
+        fetchCancionesFiltradas();
+      } else {
+        fetchCancionesDePlaylist();
+      }
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [filtros.busqueda, filtros.ordenFecha]);
 
   return (
     <>
       <Logo />
+
       <div className="p-2">
-        {/* Filtro */}
-        <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-          <h1 className="">Favoritos: {nombrePlaylist || "Cargando..."}</h1>
+        {/* Encabezado + filtro */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mb-3">
+          <h1 className="text-center m-0">
+            Favoritos: {nombrePlaylist || "Cargando..."}
+          </h1>
+
+          <div className="d-flex flex-column flex-sm-row align-items-center gap-2">
+            <label className="m-0 fw-bold" htmlFor="busqueda">
+              Buscar por artista:
+            </label>
+            <input
+              id="busqueda"
+              type="text"
+              name="busqueda"
+              value={filtros.busqueda}
+              onChange={handleChange}
+              className="form-control text-center"
+              placeholder="Escribe un artista"
+            />
+          </div>
         </div>
 
         {/* Listado de videos */}
@@ -166,23 +222,29 @@ export default function MiPlaylistUser2() {
                   title="Agregar a playlist"
                   disabled={!isAuthenticated}
                 >
-                  <img src="/heart.png" alt="" width="40px" />
+                  <img src="/heart.png" alt="playlist" width="40" />
                 </button>
 
                 <button
                   className="video-btn list-btn"
-                  onClick={() => agregarACola(video._id)}
+                  onClick={async () => {
+                    await masReproducida(video._id);
+                    await agregarACola(video._id);
+                  }}
                   title="Agregar a cola"
                   disabled={!isAuthenticated}
                 >
-                  <img src="/mas.png" alt="" width="40px" />
+                  <img src="/mas.png" alt="cola" width="40" />
                 </button>
 
                 <button
                   className="video-btn play-btn"
-                  onClick={() => playNow(video)}
+                  onClick={async () => {
+                    await masReproducida(video._id);
+                    await playNow(video);
+                  }}
                 >
-                  <img src="/play.png" alt="" width="60px" />
+                  <img src="/play.png" alt="play" width="60" />
                 </button>
               </div>
 
@@ -208,7 +270,6 @@ export default function MiPlaylistUser2() {
             songId={selectedSongId}
             onAddToPlaylistSuccess={() => {
               setToastMsg("🎵 Canción agregada a la playlist");
-              // Opcional: actualizar la lista de videos o la cola si quieres
             }}
           />
         )}
