@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import PaypalSuscripcion from "./PaypalSuscripcion";
 import axios from "axios";
-import { API_URL } from "../config"
+import { API_URL } from "../config";
 
 const PlantTest = () => {
-
   const [productos, setProductos] = useState([]);
   const [loadingProductos, setLoadingProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState(null);
@@ -48,13 +47,11 @@ const PlantTest = () => {
         setLoadingPlanes(true);
         setErrorPlanes(null);
 
-        const response = await axios.get(
-          `${API_URL}/paypal/planes/${id}`
-        );
+        const response = await axios.get(`${API_URL}/paypal/planes/${id}`);
         const todosLosPlanes = response.data || [];
 
         const activos = todosLosPlanes.filter(
-          (plan) => plan.status === "ACTIVE"
+          (plan) => plan.status === "ACTIVE",
         );
         setPlanesActivos(activos);
       } catch (err) {
@@ -75,21 +72,20 @@ const PlantTest = () => {
     return <p className="text-light">Cargando productos...</p>;
   if (errorProductos) return <p className="text-danger">{errorProductos}</p>;
 
-
   const mapIntervalUnit = (unit) => {
-  switch (unit) {
-    case "DAY":
-      return "Día";
-    case "WEEK":
-      return "Semana";
-    case "MONTH":
-      return "Mes";
-    case "YEAR":
-      return "Año";
-    default:
-      return unit.toLowerCase();
-  }
-};
+    switch (unit) {
+      case "DAY":
+        return "Día";
+      case "WEEK":
+        return "Semana";
+      case "MONTH":
+        return "Mes";
+      case "YEAR":
+        return "Año";
+      default:
+        return unit.toLowerCase();
+    }
+  };
 
   return (
     <div className="p-2">
@@ -101,21 +97,16 @@ const PlantTest = () => {
           <p className="mt-2">Cargando planes...</p>
         </div>
       ) : planesActivos.length === 0 ? (
-        <div className="text-light">
-          No hay planes
-        </div>
+        <div className="text-light">No hay planes</div>
       ) : (
         <div className="container">
           <div className="row g-4 justify-content-center">
             {planesActivos.map((plan, index) => {
               const ciclo = plan.billing_cycles?.[0];
 
-const frecuencia = ciclo?.frequency
-  ? `x${ciclo.frequency.interval_count} ${mapIntervalUnit(ciclo.frequency.interval_unit)}`
-  : "—";
-
-
-
+              const frecuencia = ciclo?.frequency
+                ? `x${ciclo.frequency.interval_count} ${mapIntervalUnit(ciclo.frequency.interval_unit)}`
+                : "—";
 
               const precioValor =
                 ciclo?.pricing_scheme?.fixed_price?.value || "—";
@@ -141,7 +132,6 @@ const frecuencia = ciclo?.frequency
                           <span className="display-1 fw-semibold">
                             {precioValor}
                           </span>
-                       
                         </div>
 
                         <ul className="list-unstyled text-light">
@@ -180,7 +170,7 @@ const frecuencia = ciclo?.frequency
                           </li>
                         </ul>
 
-                        <button className="btn btn-primary w-100 mt-3">
+                        <button className="btn btn-primary w-100 mt-3 text-light">
                           <PaypalSuscripcion planId={plan.id} />
                         </button>
                       </div>

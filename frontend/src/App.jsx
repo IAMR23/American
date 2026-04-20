@@ -17,7 +17,6 @@ import SolicitudesPage from "./components/SolicitudesPage";
 import PublicacionesCrud from "./pages/PublicacionesCrud";
 import Productos from "./components/Productos";
 import ProductoDetalle from "./components/ProductoDetalle";
-import PlanTest from "./components/PlanTest";
 import PublicacionesPage from "./pages/PublicacionesPage";
 import MasReproducidas from "./pages/MasReproducidas";
 import PlaylistPropiaCRUD from "./pages/PlaylistPropiaCRUD";
@@ -129,7 +128,6 @@ function App() {
                   />
                   <Route path="test" element={<PublicacionesCrud />} />
                   <Route index element={<Home />} />
-                  <Route path="/planes" element={<PlanTest />} />
                   <Route
                     path="/login"
                     element={<LoginForm setToken={setToken} />}

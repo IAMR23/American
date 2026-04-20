@@ -202,6 +202,8 @@ export default function Home() {
     setCola([]);
     setAuth(false);
     setUser(null);
+    setSeccionActiva("video");
+
     // Recarga la página
     // window.location.reload();
   };
@@ -239,19 +241,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (user === null) return; // aún no cargado
+    if (user === null) return;
 
-    // Si el usuario es admin, no aplicar validación
-    if (user.rol === "admin") {
-      return; // no redirige ni cambia la sección
+    if (user.rol === "admin") return;
+
+    const vigente =
+      user.suscrito &&
+      user.subscriptionEnd &&
+      new Date(user.subscriptionEnd) > new Date();
+
+    if (!vigente) {
+      setSeccionActiva("suscribir");
+    } else {
+      setSeccionActiva("video");
     }
-
-    // 🎵 Comentado: Ahora los usuarios pueden ver videos por defecto sin estar suscritos
-    // const vigente =
-    //   user.suscrito && new Date(user.subscriptionEnd) > new Date();
-    // if (!vigente) {
-    //   setSeccionActiva("suscribir");
-    // }
   }, [user]);
 
   const handleRegisterSuccess = () => {
@@ -347,9 +350,9 @@ export default function Home() {
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onColaTerminada={() => {
-              // ⚡ Cuando se acaba la cola, limpiarla
-              // El frontend automáticamente pasará a colaDefault sin guardarlo en el servidor
-              clearQueue();
+              if (!esColaDefault) {
+                clearQueue();
+              }
             }}
           />
         );

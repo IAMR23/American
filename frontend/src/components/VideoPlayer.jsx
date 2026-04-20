@@ -208,25 +208,14 @@ export default function VideoPlayer({
   // 🎵 Video actual basado en el índice efectivo
   const currentVideo = playlist[effectiveIndex];
 
-  // 🎵 AUTOPLAY: Cuando se carga colaDefault por primera vez
-  useEffect(() => {
-    if (esColaDefault && playlist.length > 0 && !autoplayInitiatedRef.current) {
-      autoplayInitiatedRef.current = true;
-      const timer = setTimeout(() => {
-        setIsPlaying(true);
-      }, 150); 
-      return () => clearTimeout(timer);
-    }
-  }, [esColaDefault, playlist.length]);
-
 
   useEffect(() => {
-  if (esColaDefault && playlist.length > 0 && !autoplayInitiatedRef.current) {
+  if (playlist.length > 0 && !autoplayInitiatedRef.current) {
     autoplayInitiatedRef.current = true;
     setIsPlaying(true);
-    // ❌ quitar el setTimeout — no es necesario con onReady
   }
-}, [esColaDefault, playlist.length]);
+}, [playlist.length]);
+
 
 
   // ============================================================
@@ -346,60 +335,61 @@ export default function VideoPlayer({
     return <div style={emptyStyle}>⚠️ Canción sin video disponible.</div>;
   }
 
+
   const handleEnded = () => {
-    console.log(
-      `🎵 Canción terminada. Index: ${effectiveIndex}, Playlist length: ${playlist.length}, esColaDefault: ${esColaDefault}`
-    );
+  console.log(
+    `🎵 Canción terminada. Index: ${effectiveIndex}, Playlist length: ${playlist.length}, esColaDefault: ${esColaDefault}`
+  );
 
-    // 1️⃣ Si hay un video forzado en la cola → reproducirlo
-    if (colaCalificaciones.length > 0) {
-      const siguiente = colaCalificaciones[0];
-      setColaCalificaciones(colaCalificaciones.slice(1));
+  // 1️⃣ Si hay un video forzado en la cola → reproducirlo
+  if (colaCalificaciones.length > 0) {
+    const siguiente = colaCalificaciones[0];
+    setColaCalificaciones((prev) => prev.slice(1));
+    setVideoCalificacion(siguiente);
+    return;
+  }
 
-      setVideoCalificacion(siguiente);
-      // playerRef.current.seekTo(0);
-      return;
-    }
+  // 2️⃣ Si es video de calificación
+  if (videoCalificacion) {
+    setIsPlaying(false);
+    setVideoCalificacion(null);
 
-    // 2️⃣ Si es videoCalificación NORMAL
-    if (videoCalificacion) {
-      setIsPlaying(false);
-      setVideoCalificacion(null);
-
-      // avanzar la cola de karaoke
-      if (effectiveIndex < playlist.length - 1) {
-        setEffectiveIndex(effectiveIndex + 1);
-        return;
-      }
-
-      onColaTerminada?.();
-      return;
-    }
-
-    // 3️⃣ Si estoy en modo calificación, insertar uno random después del karaoke
-    if (modoCalificacion && !videoCalificacion) {
-      const random = getVideoByWeightNoRepeat();
-      setIsPlaying(false); 
-      setVideoCalificacion(random);
-   //   playerRef.current.seekTo(0);
-      return;
-    }
-
-    // 4️⃣ Flujo normal del karaoke
     if (effectiveIndex < playlist.length - 1) {
-      const nextIndex = effectiveIndex + 1;
-      console.log(
-        `⏭️ Avanzando a siguiente canción: ${nextIndex} (esColaDefault: ${esColaDefault})`
-      );
-      // ✅ Cuando es colaDefault, simplemente incrementar el índice local
-      // ✅ Cuando es cola real, esto emitirá al socket a través de setCurrentIndex
-      setEffectiveIndex(nextIndex);
+      setEffectiveIndex(effectiveIndex + 1);
     } else {
-      // ⚠️ Si llegamos al final
-      console.log(`🏁 Fin de cola, llamando onColaTerminada`);
+      if (esColaDefault) {
+        setEffectiveIndex(0);     // 🔥 reinicia la cola por defecto
+      } else {
+        onColaTerminada?.();
+      }
+    }
+    return;
+  }
+
+  // 3️⃣ Si está en modo calificación, insertar uno random
+  if (modoCalificacion && !videoCalificacion) {
+    const random = getVideoByWeightNoRepeat();
+    if (random) {
+      setIsPlaying(false);
+      setVideoCalificacion(random);
+      return;
+    }
+  }
+
+  // 4️⃣ Flujo normal
+  if (effectiveIndex < playlist.length - 1) {
+    setEffectiveIndex(effectiveIndex + 1);
+  } else {
+    if (esColaDefault) {
+      setEffectiveIndex(0);       // 🔥 repetir indefinidamente
+      setShowNextMessage(false);
+      setProgress(0);
+      setIsPlaying(true);
+    } else {
       onColaTerminada?.();
     }
-  };
+  }
+};
 
   return (
     <div

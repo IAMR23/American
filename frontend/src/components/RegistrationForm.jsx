@@ -42,7 +42,6 @@ function RegistrationForm({ onRegisterSuccess }) {
 
       const loginResponse = await loginUser({ email, password });
 
-      // 3️⃣ GUARDA TOKEN PARA PLANES Y ACCESO
       localStorage.setItem("token", loginResponse.token);
 
       if (onRegisterSuccess) {

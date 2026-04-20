@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/userServices";
 import { jwtDecode } from "jwt-decode";
 
-function LoginForm({ setToken, onLoginSuccess, onGoRegister, onGoPasswordReset }) {
+function LoginForm({
+  setToken,
+  onLoginSuccess,
+  onGoRegister,
+  onGoPasswordReset,
+}) {
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -45,17 +50,15 @@ function LoginForm({ setToken, onLoginSuccess, onGoRegister, onGoPasswordReset }
 
       localStorage.setItem("rol", userRole);
 
-      if (userRole === "admin" || userRole === "cantante") {
-        navigate("/");
-        onLoginSuccess?.();
-      }
+      navigate("/");
+      onLoginSuccess?.();
 
       setCredentials({ email: "", password: "" });
     } catch (err) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Error al iniciar sesión."
+          "Error al iniciar sesión.",
       );
     } finally {
       setLoading(false);
@@ -64,7 +67,10 @@ function LoginForm({ setToken, onLoginSuccess, onGoRegister, onGoPasswordReset }
 
   return (
     <div className="d-flex justify-content-center align-items-center h-full">
-      <div className="card shadow mx-2" style={{ maxWidth: "600px", width: "100%" }}>
+      <div
+        className="card shadow mx-2"
+        style={{ maxWidth: "600px", width: "100%" }}
+      >
         <div className="card-body bg-primary text-white">
           <h2 className="card-title text-center mb-4">Iniciar Sesión</h2>
 
@@ -102,12 +108,14 @@ function LoginForm({ setToken, onLoginSuccess, onGoRegister, onGoPasswordReset }
                 checked={showPassword}
                 onChange={() => setShowPassword(!showPassword)}
               />
-              <label className="form-check-label">
-                Mostrar contraseña
-              </label>
+              <label className="form-check-label">Mostrar contraseña</label>
             </div>
 
-            <button type="submit" className="btn btn-dark w-100" disabled={loading}>
+            <button
+              type="submit"
+              className="btn btn-dark w-100"
+              disabled={loading}
+            >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
