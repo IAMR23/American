@@ -88,101 +88,115 @@ const PlantTest = () => {
   };
 
   return (
-    <div className="p-2">
-      {errorPlanes && <div className="alert alert-danger">{errorPlanes}</div>}
 
-      {loadingPlanes ? (
-        <div className="text-center text-light my-4">
-          <div className="spinner-border text-primary" role="status"></div>
-          <p className="mt-2">Cargando planes...</p>
-        </div>
-      ) : planesActivos.length === 0 ? (
-        <div className="text-light">No hay planes</div>
-      ) : (
-        <div className="container">
-          <div className="row g-4 justify-content-center">
-            {planesActivos.map((plan, index) => {
-              const ciclo = plan.billing_cycles?.[0];
 
-              const frecuencia = ciclo?.frequency
-                ? `x${ciclo.frequency.interval_count} ${mapIntervalUnit(ciclo.frequency.interval_unit)}`
-                : "—";
+    <div className="p-2 min-vh-100 d-flex align-items-center justify-content-center">
+  {errorPlanes && <div className="alert alert-danger">{errorPlanes}</div>}
 
-              const precioValor =
-                ciclo?.pricing_scheme?.fixed_price?.value || "—";
-              const precioMoneda =
-                ciclo?.pricing_scheme?.fixed_price?.currency_code || "";
+  {loadingPlanes ? (
+    <div className="text-center text-light my-4">
+      <div className="spinner-border text-primary" role="status"></div>
+      <p className="mt-2">Cargando planes...</p>
+    </div>
+  ) : planesActivos.length === 0 ? (
+    <div className="text-light">No hay planes</div>
+  ) : (
+    <div className="container">
+      <div className="row g-4 justify-content-center align-items-center">
+        {planesActivos.map((plan, index) => {
+          const ciclo = plan.billing_cycles?.[0];
 
-              const borderColor = index % 2 === 0 ? "primary" : "danger";
+          const frecuencia = ciclo?.frequency
+            ? `x${ciclo.frequency.interval_count} ${mapIntervalUnit(
+                ciclo.frequency.interval_unit
+              )}`
+            : "—";
 
-              return (
-                <div className="col-12 col-lg-6" key={plan.id}>
-                  <div className={`card border-${borderColor} bg-dark h-100`}>
-                    <div className="card-body d-flex flex-column">
-                      <div className="text-light">
-                        <h3 className="">{plan.name}</h3>
-                        <p>
-                          {plan.description || "Sin descripción disponible."}
-                        </p>
-                      </div>
+          const precioValor =
+            ciclo?.pricing_scheme?.fixed_price?.value || "—";
+          const precioMoneda =
+            ciclo?.pricing_scheme?.fixed_price?.currency_code || "";
 
-                      <div className="mt-auto text-light">
-                        <div className="d-flex align-items-center mb-2">
-                          <span className="fs-3">{precioMoneda}</span>
-                          <span className="display-1 fw-semibold">
-                            {precioValor}
-                          </span>
-                        </div>
+          const borderColor = index % 2 === 0 ? "primary" : "danger";
 
-                        <ul className="list-unstyled text-light">
-                          <li className="d-flex align-items-center mb-2">
-                            <svg
-                              className="me-2"
-                              width="20"
-                              height="20"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M20 6 9 17l-5-5"></path>
-                            </svg>
-                            Ciclo de facturación: {frecuencia}
-                          </li>
-                          <li className="d-flex align-items-center">
-                            <svg
-                              className="me-2"
-                              width="20"
-                              height="20"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M20 6 9 17l-5-5"></path>
-                            </svg>
-                            Precio: {precioValor} {precioMoneda}
-                            <span className="badge bg-primary ms-2">New!</span>
-                          </li>
-                        </ul>
+          return (
+            <div className="col-12 col-lg-6 d-flex" key={plan.id} style={{width:"700px"}}>
+              <div className={`card border-${borderColor} bg-dark h-100 `} >
+                <div className="card-body d-flex flex-column">
+                  <div className="text-light">
+                    <h3>{plan.name}</h3>
+                    <p>{plan.description || "Sin descripción disponible."}</p>
+                  </div>
 
-                        <button className="btn btn-primary w-100 mt-3 text-light">
-                          <PaypalSuscripcion planId={plan.id} />
-                        </button>
-                      </div>
+                  <div className="mt-auto text-light">
+                    <div className="d-flex align-items-center mb-2">
+                      <span className="fs-3">{precioMoneda}</span>
+                      <span className="display-1 fw-semibold">
+                        {precioValor}
+                      </span>
                     </div>
+
+                    <ul className="list-unstyled text-light">
+                      <li className="d-flex align-items-center mb-2">
+                        <svg
+                          className="me-2"
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M20 6 9 17l-5-5"></path>
+                        </svg>
+                        Ciclo de facturación: {frecuencia}
+                      </li>
+
+                      <li className="d-flex align-items-center">
+                        <svg
+                          className="me-2"
+                          width="20"
+                          height="20"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M20 6 9 17l-5-5"></path>
+                        </svg>
+                        Precio: {precioValor} {precioMoneda}
+                        <span className="badge bg-primary ms-2">New!</span>
+                      </li>
+                    </ul>
+
+                    <button className="btn btn-primary w-100 mt-3 text-light">
+                      <PaypalSuscripcion planId={plan.id} />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="col-12 d-flex justify-content-center" style={{width:"700px"}}>
+          <div className="bg-secondary rounded-4 p-3 d-flex justify-content-center align-items-center">
+            <img
+              src="./transferencia.png"
+              alt="Transferencia"
+              className="img-fluid rounded-4"
+            
+            />
           </div>
         </div>
-      )}
+      </div>
     </div>
+  )}
+</div>
   );
 };
 

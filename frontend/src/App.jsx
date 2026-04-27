@@ -78,8 +78,7 @@ function App() {
 
 
   return (
-    // Descomenta si lo necesitas
-    // <ReproductorProvider>
+
     <BackgroundProvider>
       <SocketProvider>
         <QueueProvider userId={auth.userId} roomId={roomId}>
