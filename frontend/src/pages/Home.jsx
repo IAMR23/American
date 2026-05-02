@@ -34,27 +34,36 @@ import { useSocketContext } from "../hooks/SocketContext";
 
 export default function Home() {
   const navigate = useNavigate();
+
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [seccionActiva, setSeccionActiva] = useState("video");
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
   const [user, setUser] = useState(null);
   const [modoCalificacion, setModoCalificacion] = useState(false);
-
   const [auth, setAuth] = useState(false);
-  // ------------------ Hooks personalizados ------------------
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [colaDefault, setColaDefault] = useState([]);
+  const [token, setToken] = useState(getToken());
+  const [roomId, setRoomId] = useState(null);
 
-  const { cola, currentIndex, setCola, changeSong, setNuevaCola, clearQueue } =
+  // ✅ NUEVO: evita cambiar la canción directo desde Home
+  const [requestedIndex, setRequestedIndex] = useState(null);
+
+  const { background } = useBackground();
+  const { connectSocket } = useSocketContext();
+
+  const { cola, currentIndex, setCola, changeSong, clearQueue } =
     useQueueContext();
+
+  const { playlistsPropia, suscrito } = usePlaylists(userId);
 
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-    // 🎵 Si estamos en colaDefault, no mostrar nada
     const esColaDefault = !cola.length || currentIndex >= cola.length;
-    if (esColaDefault) {
-      return [];
-    }
+
+    if (esColaDefault) return [];
 
     const start =
       currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
@@ -65,96 +74,88 @@ export default function Home() {
       .filter((item) => item.cancion && item.cancion._id);
   };
 
-  const { playlists, playlistsPropia, suscrito, handleAddPlaylist } =
-    usePlaylists(userId);
-
+  // ✅ Validar token una sola vez
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
+    const currentToken = getToken();
 
-        // 🔹 Verificar expiración del token
-        if (decodedToken.exp * 1000 < Date.now()) {
-          localStorage.removeItem("token");
-          setAuth(false);
-        } else {
-          setAuth(true);
-        }
-      } catch (error) {
-        console.error("Error al decodificar el token", error);
+    if (!currentToken) {
+      setAuth(false);
+      return;
+    }
+
+    try {
+      const decodedToken = jwtDecode(currentToken);
+
+      if (decodedToken.exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
         setAuth(false);
+        setUserId(null);
+        setUserRole(null);
+      } else {
+        setAuth(true);
+        setUserId(decodedToken.userId);
+        setUserRole(decodedToken.rol);
       }
+    } catch (error) {
+      console.error("Error al decodificar el token", error);
+      localStorage.removeItem("token");
+      setAuth(false);
+      setUserId(null);
+      setUserRole(null);
     }
   }, []);
 
-  // ------------------ Manejo de token ------------------
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
+  const getUser = async (id) => {
+    if (!id) return null;
 
     try {
-      const decoded = jwtDecode(token);
-      setUserId(decoded.userId);
-      setUserRole(decoded.rol);
-    } catch (err) {
-      console.error("Token inválido", err);
-    }
-  });
+      const currentToken = getToken();
 
-  // 2️⃣ Cuando userId cambie, trae el usuario
+      if (!currentToken) throw new Error("No hay token disponible");
+
+      const res = await axios.get(`${API_URL}/users/${id}`, {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      });
+
+      setUser(res.data.user);
+      return res.data;
+    } catch (err) {
+      console.error(
+        "Error al traer usuario:",
+        err.response?.data || err.message
+      );
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       getUser(userId);
     }
   }, [userId]);
 
-  const [colaDefault, setColaDefault] = useState([]);
-
+  // ✅ Cargar videos por defecto una sola vez
   useEffect(() => {
     const fetchDefaultVideos = async () => {
       try {
         const res = await axios.get(`${API_URL}/song/default`);
         console.log("✅ Videos por defecto cargados:", res.data.length);
-        setColaDefault(res.data);
-        // 🎵 Forzar que el VideoPlayer inicie reproducción
-        // Cuando colaDefault se carga, el estado cambia y dispara efectos en VideoPlayer
+        setColaDefault(res.data || []);
       } catch (err) {
         console.error("❌ Error al cargar videos por defecto:", err);
       }
     };
-    // Cargar videos por defecto para TODOS sin importar autenticación
+
     fetchDefaultVideos();
   }, []);
 
-  const getColaActual = () => {
-    const esColaVacia = !cola.length || currentIndex >= cola.length;
-    return esColaVacia ? colaDefault : cola;
-  };
-
-  const handleLoginSuccess = async () => {
-    const token = getToken();
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUserId(decoded.userId);
-        setUserRole(decoded.rol);
-        setCola([]);
-      } catch (err) {
-        console.error("Token inválido", err);
-      }
-    }
-    setSeccionActiva("video");
-    setAuth(true);
-  };
-
-  const [isSubscribed, setIsSubscribed] = useState(false);
-
+  // ✅ Verificar suscripción solo cuando cambie auth/token
   useEffect(() => {
-    const token = getToken();
+    const currentToken = getToken();
 
-    if (!token) {
+    if (!currentToken) {
       setIsSubscribed(false);
       return;
     }
@@ -162,83 +163,22 @@ export default function Home() {
     const verificarSuscripcion = async () => {
       try {
         const res = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${currentToken}` },
         });
 
         const { suscrito, subscriptionEnd } = res.data;
         const ahora = new Date();
         const fin = new Date(subscriptionEnd);
 
-        setIsSubscribed(suscrito && ahora <= fin);
-      } catch {
+        setIsSubscribed(Boolean(suscrito && ahora <= fin));
+      } catch (error) {
+        console.error("Error al verificar suscripción:", error);
         setIsSubscribed(false);
       }
     };
 
     verificarSuscripcion();
-  });
-
-  const cerrarSesion = async () => {
-    try {
-      const token = getToken();
-      if (token) {
-        await fetch(`${API_URL}/t/cola/remove`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-    } catch (err) {
-      console.error("Error al eliminar la cola:", err);
-    }
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("rol");
-    localStorage.removeItem("roomId");
-    setUserId(null);
-    setUserRole(null);
-    setCola([]);
-    setAuth(false);
-    setUser(null);
-    setSeccionActiva("video");
-
-    // Recarga la página
-    // window.location.reload();
-  };
-
-  const handleCambiarCancion = (index) => {
-    changeSong(index);
-  };
-
-  const limpiarCola = () => {
-    clearQueue();
-  };
-
-  const getUser = async (userId) => {
-    if (!userId) return null; // Evita peticiones innecesarias
-
-    try {
-      const token = getToken();
-      if (!token) throw new Error("No hay token disponible");
-
-      const res = await axios.get(`${API_URL}/users/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setUser(res.data.user);
-      return res.data; // contiene nombre, correo, rol, etc.
-    } catch (err) {
-      console.error(
-        "Error al traer usuario:",
-        err.response?.data || err.message,
-      );
-      return null;
-    }
-  };
+  }, [auth, token]);
 
   useEffect(() => {
     if (user === null) return;
@@ -257,49 +197,120 @@ export default function Home() {
     }
   }, [user]);
 
-  const handleRegisterSuccess = () => {
-    setSeccionActiva("suscribir"); // esto muestra <PlanTest />
-  };
-
-  const [token, setToken] = useState(getToken());
-
-  const { connectSocket } = useSocketContext();
-  const [roomId, setRoomId] = useState(null);
-
+  // ✅ Crear sala una sola vez o cuando cambie conexión relevante
   useEffect(() => {
     const crearSala = async () => {
-      let roomId = localStorage.getItem("roomId");
+      try {
+        let savedRoomId = localStorage.getItem("roomId");
 
-      if (!roomId) {
-        const res = await fetch(`${API_URL}/room/create-room`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user: "HOST" }),
-        });
-        const data = await res.json();
-        roomId = data.roomId;
-        localStorage.setItem("roomId", roomId);
+        if (!savedRoomId) {
+          const res = await fetch(`${API_URL}/room/create-room`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user: "HOST" }),
+          });
+
+          const data = await res.json();
+          savedRoomId = data.roomId;
+          localStorage.setItem("roomId", savedRoomId);
+        }
+
+        setRoomId(savedRoomId);
+        connectSocket({ roomId: savedRoomId, user: "HOST" });
+      } catch (error) {
+        console.error("Error al crear/conectar sala:", error);
       }
-
-      setRoomId(roomId);
-      connectSocket({ roomId, user: "HOST" });
     };
 
     crearSala();
-  }, [user]);
+  }, [connectSocket]);
+
+  const getColaActual = () => {
+    const esColaVacia = !cola.length || currentIndex >= cola.length;
+    return esColaVacia ? colaDefault : cola;
+  };
+
+  const handleLoginSuccess = async () => {
+    const currentToken = getToken();
+
+    if (currentToken) {
+      try {
+        const decoded = jwtDecode(currentToken);
+
+        setToken(currentToken);
+        setUserId(decoded.userId);
+        setUserRole(decoded.rol);
+        setCola([]);
+        setAuth(true);
+      } catch (err) {
+        console.error("Token inválido", err);
+      }
+    }
+
+    setSeccionActiva("video");
+  };
+
+  const cerrarSesion = async () => {
+    try {
+      const currentToken = getToken();
+
+      if (currentToken) {
+        await fetch(`${API_URL}/t/cola/remove`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentToken}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Error al eliminar la cola:", err);
+    }
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("rol");
+    localStorage.removeItem("roomId");
+
+    setToken(null);
+    setUserId(null);
+    setUserRole(null);
+    setCola([]);
+    setAuth(false);
+    setUser(null);
+    setRoomId(null);
+    setRequestedIndex(null);
+    setSeccionActiva("video");
+  };
+
+  // ✅ CAMBIO IMPORTANTE:
+  // Ya no cambia directo con changeSong(index).
+  // Primero manda requestedIndex al VideoPlayer.
+  const handleCambiarCancion = (index) => {
+    setRequestedIndex(index);
+  };
+
+  const limpiarCola = () => {
+    clearQueue();
+    setRequestedIndex(null);
+  };
+
+  const handleRegisterSuccess = () => {
+    setSeccionActiva("suscribir");
+  };
 
   const renderContenido = () => {
     switch (seccionActiva) {
       case "buscador":
         return <BuscadorTabla onSelectAll={() => setSeccionActiva("video")} />;
+
       case "favoritos":
         return (
           <FavoritePlaylist
-            // playlists={playlists}
             userId={userId}
             onSelectAll={() => setSeccionActiva("video")}
           />
         );
+
       case "playlist":
         return (
           <PlaylistSugeridos
@@ -307,8 +318,10 @@ export default function Home() {
             onSelectAll={() => setSeccionActiva("video")}
           />
         );
+
       case "sugerirCanciones":
         return <SolicitudesCancion />;
+
       case "ingresar":
         return (
           <LoginForm
@@ -318,24 +331,30 @@ export default function Home() {
             onGoPasswordReset={() => setSeccionActiva("password")}
           />
         );
+
       case "registrar":
         return <RegistrationForm onRegisterSuccess={handleRegisterSuccess} />;
 
       case "listadoPdf":
         return <ListadoPDFCanciones />;
+
       case "password":
         return <ForgotPassword />;
+
       case "suscribir":
         return <PlantTest />;
+
       case "ayuda":
         return <AyudaPage />;
+
       case "Celular":
         return <CelularPage />;
+
       case "user":
         return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
+
       case "video":
-      default:
-        // 🎵 Detectar si estamos usando colaDefault o cola real
+      default: {
         const esColaDefault = !cola.length || currentIndex >= cola.length;
         const colaActual = getColaActual();
 
@@ -343,10 +362,11 @@ export default function Home() {
           <VideoPlayer
             cola={colaActual}
             esColaDefault={esColaDefault}
-            //   calificaciones={puntajes} // ⬅️ nuevo
-            modoCalificacion={modoCalificacion} // ⬅️ nuevo
+            modoCalificacion={modoCalificacion}
             currentIndex={currentIndex}
-            setCurrentIndex={handleCambiarCancion}
+            setCurrentIndex={changeSong}
+            requestedIndex={requestedIndex}
+            onRequestedIndexHandled={() => setRequestedIndex(null)}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onColaTerminada={() => {
@@ -356,10 +376,9 @@ export default function Home() {
             }}
           />
         );
+      }
     }
   };
-
-  const { background } = useBackground();
 
   return (
     <>
@@ -373,14 +392,13 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        {" "}
-        {/* Header */}
         <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
           <img
             src="./icono.png"
             alt="icono"
             style={{ width: "60px", height: "auto" }}
           />
+
           <img
             onClick={() => setSeccionActiva("video")}
             src="./logo.png"
@@ -393,6 +411,7 @@ export default function Home() {
               minWidth: "250px",
             }}
           />
+
           {user && user.nombre && (
             <div
               className="m-2 pt-4 d-flex justify-content-center align-items-center flex-column"
@@ -416,9 +435,9 @@ export default function Home() {
             </div>
           )}
         </div>
+
         <div className="container-fluid">
           <div className="row">
-            {/* Lateral izquierda */}
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               {getToken() && userRole === "admin" && (
                 <button
@@ -428,6 +447,7 @@ export default function Home() {
                   Dashboard
                 </button>
               )}
+
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("buscador")}
@@ -435,6 +455,7 @@ export default function Home() {
               >
                 Buscador
               </button>
+
               <button
                 className="boton2"
                 onClick={() => setSeccionActiva("playlist")}
@@ -442,6 +463,7 @@ export default function Home() {
               >
                 PlayList
               </button>
+
               <button
                 className="boton3"
                 onClick={() => navigate("/ultimas-subidas")}
@@ -449,6 +471,7 @@ export default function Home() {
               >
                 Lo último
               </button>
+
               <button
                 className="boton4"
                 onClick={() => setSeccionActiva("favoritos")}
@@ -456,6 +479,7 @@ export default function Home() {
               >
                 Favoritos
               </button>
+
               <button
                 onClick={() => navigate("/listaCanciones")}
                 className="boton7"
@@ -463,6 +487,7 @@ export default function Home() {
               >
                 Canciones
               </button>
+
               <button
                 className="boton3"
                 onClick={() => setSeccionActiva("sugerirCanciones")}
@@ -470,6 +495,7 @@ export default function Home() {
               >
                 Sugerir
               </button>
+
               <button
                 className="boton2"
                 onClick={() => setSeccionActiva("Celular")}
@@ -479,12 +505,10 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Contenido central */}
             <div className="col-12 col-md-8 justify-content-center">
               {renderContenido()}
             </div>
 
-            {/* Lateral derecha */}
             <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
               {!getToken() && (
                 <>
@@ -494,6 +518,7 @@ export default function Home() {
                   >
                     Ingresar
                   </button>
+
                   <button
                     className="boton7"
                     onClick={() => setSeccionActiva("registrar")}
@@ -502,6 +527,7 @@ export default function Home() {
                   </button>
                 </>
               )}
+
               <button
                 className="boton9"
                 onClick={() => setSeccionActiva("listadoPdf")}
@@ -509,20 +535,15 @@ export default function Home() {
               >
                 Listado PDF
               </button>
+
               <button
                 disabled={!suscrito}
-                onClick={() => setModoCalificacion(!modoCalificacion)}
+                onClick={() => setModoCalificacion((prev) => !prev)}
                 className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
               >
                 <img src="./cal.png" alt="" width={250} />
               </button>
 
-              {/* <button
-                className="boton9"
-                onClick={() => setSeccionActiva("suscribir")}
-              >
-                Suscribir
-              </button> */}
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("ayuda")}
@@ -530,6 +551,7 @@ export default function Home() {
               >
                 Ayuda
               </button>
+
               <button
                 className="boton2"
                 onClick={() => navigate("/publicaciones")}
@@ -537,60 +559,52 @@ export default function Home() {
               >
                 Galería Otros
               </button>
+
               {getToken() && (
-                <button
-                  className="boton3"
-                  onClick={() => {
-                    cerrarSesion();
-                  }}
-                >
+                <button className="boton3" onClick={cerrarSesion}>
                   Cerrar Sesión
                 </button>
               )}
             </div>
           </div>
         </div>
-        {/* Cola dinámica */}
-        <div className="m-2 ">
+
+        <div className="m-2">
           <div className="d-flex justify-content-center align-items-center gap-3">
             <h2 className="text-white">Canciones a la cola</h2>
+
             <div
               className={`cola-canciones ${
                 getColaVisible().length > 8 ? "scrollable" : ""
               }`}
             >
-              {getColaVisible().map(({ cancion, index }) => {
-                return (
-                  <div
-                    key={index}
-                    onClick={() => {
-                      handleCambiarCancion(index);
-                      setSeccionActiva("video");
-                    }}
-                    className="song-icon position-relative"
-                    style={{ cursor: "pointer" }}
-                  >
-                    <FaCompactDisc
-                      size={40}
-                      className={`mb-1 ${
-                        index === currentIndex ? "song-playing" : "text-primary"
-                      }`}
-                    />
-                    <div className="custom-tooltip">
-                      <strong>{cancion.titulo}</strong>
-                      <br />
-                      <small>{cancion.artista}</small>
-                    </div>
+              {getColaVisible().map(({ cancion, index }) => (
+                <div
+                  key={`${cancion._id}-${index}`}
+                  onClick={() => {
+                    handleCambiarCancion(index);
+                    setSeccionActiva("video");
+                  }}
+                  className="song-icon position-relative"
+                  style={{ cursor: "pointer" }}
+                >
+                  <FaCompactDisc
+                    size={40}
+                    className={`mb-1 ${
+                      index === currentIndex ? "song-playing" : "text-primary"
+                    }`}
+                  />
+
+                  <div className="custom-tooltip">
+                    <strong>{cancion.titulo}</strong>
+                    <br />
+                    <small>{cancion.artista}</small>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
-            <button
-              className="btn "
-              onClick={() => {
-                limpiarCola();
-              }}
-            >
+
+            <button className="btn" onClick={limpiarCola}>
               <img className="m-2" src="/limpiar.png" alt="" width={120} />
             </button>
           </div>
@@ -599,8 +613,10 @@ export default function Home() {
 
       <div className="fondo p-2">
         <AnunciosVisibles />
+
         <h1 className="p-2 text-white">Selección especial</h1>
         <VideoCarouselVisibles />
+
         <h1 className="p-2 text-white">Las más populares</h1>
         <VideoCarousel />
       </div>

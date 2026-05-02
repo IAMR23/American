@@ -30,6 +30,7 @@ export default function VideoPlayer({
   const [calificaciones, setCalificaciones] = useState([]);
   const [videoCalificacion, setVideoCalificacion] = useState(null);
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
+  const [playerInstanceKey, setPlayerInstanceKey] = useState(0);
 
   const playerRef = useRef(null);
   const containerRef = useRef(null);
@@ -46,8 +47,8 @@ export default function VideoPlayer({
   const activeUrl = activeVideo?.videoUrl || "";
 
   const playerKey = videoCalificacion
-    ? `calificacion-${videoCalificacion.id || videoCalificacion.videoUrl}`
-    : `main-${currentVideo?.id || currentVideo?.videoUrl}`;
+    ? `calificacion-${activeVideo?.id || activeUrl}-${playerInstanceKey}`
+    : `main-${currentVideo?.id || activeUrl}-${effectiveIndex}-${playerInstanceKey}`;
 
   const setEffectiveIndex = useCallback(
     (newIndex) => {
@@ -57,10 +58,12 @@ export default function VideoPlayer({
         setCurrentIndex?.(newIndex);
       }
     },
-    [esColaDefault, setCurrentIndex],
+    [esColaDefault, setCurrentIndex]
   );
 
   const safeSwitch = useCallback((callback) => {
+    if (switchingRef.current) return;
+
     switchingRef.current = true;
     endedLockRef.current = true;
 
@@ -69,15 +72,23 @@ export default function VideoPlayer({
     setDuration(0);
     setShowNextMessage(false);
 
+    try {
+      playerRef.current?.seekTo?.(0, "seconds");
+    } catch (error) {
+      console.warn("No se pudo detener el video anterior:", error);
+    }
+
     setTimeout(() => {
       callback?.();
+
+      setPlayerInstanceKey((prev) => prev + 1);
 
       setTimeout(() => {
         endedLockRef.current = false;
         switchingRef.current = false;
         setIsPlaying(true);
-      }, 120);
-    }, 80);
+      }, 450);
+    }, 250);
   }, []);
 
   const obtenerPuntajes = async () => {
@@ -302,7 +313,7 @@ export default function VideoPlayer({
 
     setTimeout(() => {
       endedLockRef.current = false;
-    }, 700);
+    }, 1200);
 
     if (colaCalificaciones.length > 0) {
       const siguiente = colaCalificaciones[0];
@@ -448,9 +459,8 @@ export default function VideoPlayer({
           stopOnUnmount={true}
           playsinline
           onReady={() => {
-            if (!switchingRef.current) {
-              setIsPlaying(true);
-            }
+            // No forzar setIsPlaying(true) aquí.
+            // Eso podía causar solapamiento entre videos.
           }}
           onProgress={handleProgress}
           onDuration={setDuration}
