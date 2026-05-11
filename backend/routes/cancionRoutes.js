@@ -29,7 +29,7 @@ router.put("/:id", cancionController.actualizarCancion);
 router.delete("/:id", cancionController.eliminarCancion);
 
 router.post("/:id/reproducir", async (req, res) => {
-  try {
+  try { 
     const cancion = await Cancion.findByIdAndUpdate(
       req.params.id,
       { $inc: { reproducciones: 1 } },

@@ -1,4 +1,6 @@
 const express = require("express");
+const path = require("path");
+
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
@@ -51,6 +53,8 @@ app.use(
 
 app.options("*", cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const io = new Server(server, {
   cors: {
@@ -83,7 +87,6 @@ conectarDB()
     app.use("/p", puntajeRoutes);
     app.use("/t2", playlistPropiaRoutes);
     app.use("/pdf", require("./routes/pdf.routes"));
-    app.use("/uploads", express.static("uploads"));
     app.use("/sesion", require("./routes/sesionRoutes"));
     app.use("/room", require("./routes/roomRoutes"));
 

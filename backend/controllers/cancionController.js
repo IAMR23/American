@@ -114,18 +114,28 @@ const actualizarCancion = async (req, res) => {
   }
 };
 
+
 const getVideoDefault = async (req, res) => {
   try {
     const canciones = await Cancion.aggregate([
-      { $match: { videoDefault: true } },
-      { $sample: { size: 20 } } 
+      {
+        $match: {
+          videoDefault: true,
+          videoUrl: { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $sample: { size: 61 },
+      },
     ]);
 
-    // Populate manual (aggregate no soporta populate directo)
     await Cancion.populate(canciones, { path: "generos" });
+
+    res.set("Cache-Control", "no-store");
 
     res.json(canciones);
   } catch (error) {
+    console.error("Error en getVideoDefault:", error);
     res.status(500).json({ error: error.message });
   }
 };
