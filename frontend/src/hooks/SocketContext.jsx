@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -20,112 +21,133 @@ export function useSocketContext() {
 
 export function SocketProvider({ children }) {
   const socketRef = useRef(null);
+  const eventBuffer = useRef([]);
+  const currentRoomIdRef = useRef(null);
+  const isConnectedRef = useRef(false);
+
   const [isConnected, setIsConnected] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const eventBuffer = useRef([]);
 
-  const connectSocket = ({ roomId, user }) => {
-    if (!roomId) return console.warn("❌ No roomId provided");
+  const setConnected = useCallback((value) => {
+    isConnectedRef.current = value;
+    setIsConnected(value);
+  }, []);
 
-    if (
-      socketRef.current &&
-      currentRoomId === roomId &&
-      socketRef.current.connected
-    ) {
-      console.log("✅ Socket ya conectado a sala:", roomId);
-      return;
-    }
+  const cleanupSocket = useCallback(() => {
+    if (!socketRef.current) return;
 
-    if (socketRef.current) socketRef.current.disconnect();
+    socketRef.current.removeAllListeners();
+    socketRef.current.disconnect();
+    socketRef.current = null;
+  }, []);
+
+  const connectSocket = useCallback(
+    ({ roomId, user } = {}) => {
+      if (!roomId) return console.warn("No roomId provided");
+
+      if (
+        socketRef.current &&
+        currentRoomIdRef.current === roomId &&
+        socketRef.current.connected
+      ) {
+        return;
+      }
+
+      cleanupSocket();
 
       const newSocket = io(API_URL, {
-    //   const newSocket = io("https://american-karaoke.com", {
-  //  const newSocket = io("https://www.american-karaoke.com", {
-   // const newSocket = io("https://api.american-karaoke.com", {
-      path: "/socket.io",
-      transports: ["websocket", "polling"],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+        path: "/socket.io",
+        transports: ["websocket", "polling"],
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    socketRef.current = newSocket;
-    setCurrentRoomId(roomId);
-    setCurrentUser(user);
+      socketRef.current = newSocket;
+      currentRoomIdRef.current = roomId;
+      setCurrentRoomId(roomId);
+      setCurrentUser(user);
 
-    newSocket.on("connect", () => {
-      console.log(
-        `✅ Usuario ${user} conectado a sala ${roomId} (socket id: ${newSocket.id})`,
-      );
-      setIsConnected(true);
+      const flushBuffer = () => {
+        eventBuffer.current.forEach(({ event, data }) => {
+          newSocket.emit(event, data);
+        });
+        eventBuffer.current = [];
+      };
 
-      newSocket.emit("joinRoom", { roomId, user });
+      const joinRoom = () => {
+        newSocket.emit("joinRoom", { roomId, user });
+        flushBuffer();
+      };
 
-      eventBuffer.current.forEach(({ event, data }) =>
-        newSocket.emit(event, data),
-      );
-      eventBuffer.current = [];
-    });
+      newSocket.on("connect", () => {
+        setConnected(true);
+        joinRoom();
+      });
 
-    newSocket.on("disconnect", (reason) => {
-      console.log("❌ Socket desconectado:", reason);
-      setIsConnected(false);
-    });
+      newSocket.on("disconnect", () => {
+        setConnected(false);
+      });
 
-    newSocket.on("connect_error", (err) => {
-      console.error("❌ Error al conectar socket:", err.message);
-      setIsConnected(false);
-    });
+      newSocket.on("connect_error", (err) => {
+        console.error("Error al conectar socket:", err.message);
+        setConnected(false);
+      });
 
-    newSocket.on("reconnect", (attempt) => {
-      console.log("🔄 Socket reconectado tras", attempt, "intentos");
-      setIsConnected(true);
-      newSocket.emit("joinRoom", { roomId, user });
-      eventBuffer.current.forEach(({ event, data }) =>
-        newSocket.emit(event, data),
-      );
-      eventBuffer.current = [];
-    });
+      newSocket.on("reconnect", () => {
+        setConnected(true);
+        joinRoom();
+      });
 
-    newSocket.on("error", (err) => console.error("❌ Socket error:", err));
-  };
+      newSocket.on("error", (err) => {
+        console.error("Socket error:", err);
+      });
+    },
+    [cleanupSocket, setConnected],
+  );
 
-  const disconnectSocket = () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-    setIsConnected(false);
+  const disconnectSocket = useCallback(() => {
+    cleanupSocket();
+    setConnected(false);
     setCurrentRoomId(null);
     setCurrentUser(null);
+    currentRoomIdRef.current = null;
     eventBuffer.current = [];
-  };
+  }, [cleanupSocket, setConnected]);
 
-  const emitEvent = (event, data = {}) => {
-    const payload = { ...data, roomId: currentRoomId };
-    if (socketRef.current && isConnected) {
+  const emitEvent = useCallback((event, data = {}) => {
+    const payload = { ...data, roomId: currentRoomIdRef.current };
+
+    if (socketRef.current && isConnectedRef.current) {
       socketRef.current.emit(event, payload);
       return true;
-    } else {
-      eventBuffer.current.push({ event, data: payload });
-      return false;
     }
-  };
 
-  const onEvent = (event, callback) => {
+    eventBuffer.current.push({ event, data: payload });
+    return false;
+  }, []);
+
+  const onEvent = useCallback((event, callback) => {
     if (!socketRef.current) return () => {};
+
+    socketRef.current.off(event, callback);
     socketRef.current.on(event, callback);
-    return () => socketRef.current?.off(event, callback);
-  };
+
+    return () => {
+      socketRef.current?.off(event, callback);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      cleanupSocket();
+      currentRoomIdRef.current = null;
+      isConnectedRef.current = false;
+      eventBuffer.current = [];
     };
-  }, []);
+  }, [cleanupSocket]);
 
   return (
     <SocketContext.Provider

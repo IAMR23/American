@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useSocketContext } from "./SocketContext";
 
 const QueueContext = createContext();
@@ -7,6 +7,7 @@ export const QueueProvider = ({ children }) => {
   const [cola, setCola] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { socket, emitEvent, onEvent, currentRoomId } = useSocketContext();
+  const playNowTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!socket || !currentRoomId) return;
@@ -33,8 +34,16 @@ export const QueueProvider = ({ children }) => {
   };
   const playNowQueue = (cancion) => {
     if (!cancion?._id) return;
+
+    if (playNowTimeoutRef.current) {
+      clearTimeout(playNowTimeoutRef.current);
+    }
+
     emitEvent("addSong", { song: cancion });
-    setTimeout(() => emitEvent("cambiarCancion", { index: cola.length }), 300);
+    playNowTimeoutRef.current = setTimeout(() => {
+      emitEvent("cambiarCancion", { index: cola.length });
+      playNowTimeoutRef.current = null;
+    }, 300);
   };
   const removeFromQueue = (songId) =>
     songId && emitEvent("removeSong", { songId });
@@ -48,6 +57,14 @@ export const QueueProvider = ({ children }) => {
       indexActual: index,
     });
   };
+
+  useEffect(() => {
+    return () => {
+      if (playNowTimeoutRef.current) {
+        clearTimeout(playNowTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <QueueContext.Provider

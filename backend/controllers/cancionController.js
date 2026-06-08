@@ -260,34 +260,101 @@ const filtrarCanciones = async (req, res) => {
   }
 };
 
-const getCancionesPaginadas = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-  const busqueda = req.query.busqueda || "";
-  const ordenFecha = req.query.ordenFecha === "asc" ? 1 : -1;
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  const query = {
-    $or: [
-      { titulo: { $regex: busqueda, $options: "i" } },
-      { artista: { $regex: busqueda, $options: "i" } },
-    ],
-  };
+const getCancionesPaginadas = async (req, res) => {
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(
+    Math.max(parseInt(req.query.limit, 10) || 30, 1),
+    100,
+  );
+  const skip = (page - 1) * limit;
+  const busqueda = (req.query.search || req.query.busqueda || "").trim();
+  const filtro = req.query.filtro || "";
+  const videoDefault = req.query.videoDefault;
+  const sort =
+    req.query.ordenFecha === "asc"
+      ? { createdAt: 1 }
+      : req.query.ordenFecha === "desc"
+        ? { createdAt: -1 }
+        : { numero: 1, _id: 1 };
 
   try {
-    const canciones = await Cancion.find(query)
-      .populate("generos")
-      .sort({ createdAt: ordenFecha })
-      .skip(skip)
-      .limit(limit);
+    const pipeline = [];
 
-    const total = await Cancion.countDocuments(query);
+    if (videoDefault === "true") {
+      pipeline.push({ $match: { videoDefault: true } });
+    }
+
+    if (busqueda) {
+      const regex = new RegExp(escapeRegex(busqueda), "i");
+      const campos = {
+        titulo: { titulo: regex },
+        artista: { artista: regex },
+        numero: {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$numero" },
+              regex,
+            },
+          },
+        },
+      };
+
+      if (filtro && filtro !== "generos" && campos[filtro]) {
+        pipeline.push({ $match: campos[filtro] });
+      } else if (!filtro) {
+        pipeline.push({
+          $match: {
+            $or: [campos.titulo, campos.artista, campos.numero],
+          },
+        });
+      }
+    }
+
+    pipeline.push(
+      {
+        $lookup: {
+          from: "generos",
+          localField: "generos",
+          foreignField: "_id",
+          as: "generos",
+        },
+      },
+      {
+        $unwind: {
+          path: "$generos",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    );
+
+    if (busqueda && filtro === "generos") {
+      const regex = new RegExp(escapeRegex(busqueda), "i");
+      pipeline.push({ $match: { "generos.nombre": regex } });
+    }
+
+    const [result] = await Cancion.aggregate([
+      ...pipeline,
+      {
+        $facet: {
+          canciones: [{ $sort: sort }, { $skip: skip }, { $limit: limit }],
+          metadata: [{ $count: "total" }],
+        },
+      },
+    ]);
+
+    const total = result?.metadata?.[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
-      canciones,
+      canciones: result?.canciones || [],
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      limit,
+      totalPages,
+      hasMore: page < totalPages,
     });
   } catch (error) {
     console.error("Error al buscar canciones:", error);

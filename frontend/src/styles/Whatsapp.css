@@ -17,3 +17,20 @@
   transform: scale(1.5);
   cursor: pointer;
 }
+
+@media (max-width: 575.98px) {
+  .whatsapp-button {
+    right: 14px;
+    bottom: 14px;
+    scale: 1;
+  }
+
+  .whatsapp-button img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .whatsapp-button:hover {
+    transform: scale(1.1);
+  }
+}

@@ -346,3 +346,77 @@
 .boton10:active {
   transform: scale(0.95);
 }
+
+.boton0,
+.boton1,
+.boton2,
+.boton3,
+.boton4,
+.boton5,
+.boton6,
+.boton7,
+.boton8,
+.boton9,
+.boton10 {
+  max-width: 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  line-height: 1;
+}
+
+.boto img {
+  width: clamp(150px, 52vw, 250px);
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 575.98px) {
+  .boton0,
+  .boton1,
+  .boton2,
+  .boton3,
+  .boton4,
+  .boton5,
+  .boton6,
+  .boton7,
+  .boton8,
+  .boton9,
+  .boton10 {
+    width: min(78vw, 280px);
+    height: 76px;
+    font-size: clamp(18px, 6vw, 24px);
+    padding: 0 18px;
+  }
+
+  .boton0 {
+    height: 92px;
+    padding-top: 28px;
+  }
+
+  .boto {
+    max-width: 78vw;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .boton0,
+  .boton1,
+  .boton2,
+  .boton3,
+  .boton4,
+  .boton5,
+  .boton6,
+  .boton7,
+  .boton8,
+  .boton9,
+  .boton10 {
+    width: 240px;
+    height: 84px;
+    font-size: 22px;
+  }
+
+  .boton0 {
+    height: 96px;
+    padding-top: 30px;
+  }
+}

@@ -10,7 +10,7 @@ import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
-export default function VideoCarousel() {
+export default function VideoCarousel({ onPlaySolo }) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
   const [selectedSongId, setSelectedSongId] = useState(null);
@@ -204,6 +204,7 @@ export default function VideoCarousel() {
                   <button
                     className="btn-play"
                     onClick={async () => {
+                      onPlaySolo?.();
                       await masReproducida(video._id);
                       await playNow(video);
                     }}

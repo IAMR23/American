@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import ToastModal from "./modal/ToastModal";
@@ -6,57 +6,31 @@ import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 import "../styles/listaCanciones.css";
-import { useQueueContext } from "../hooks/QueueProvider";
 import { useNavigate } from "react-router-dom";
 
-const SONG_URL = `${API_URL}/song/ultsubidas`;
-const FILTRO_URL = `${API_URL}/song/filtrar`;
+const SONG_SEARCH_URL = `${API_URL}/song/search`;
+const PAGE_LIMIT = 30;
+const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 
 export default function UltimasSubidas() {
   const [videos, setVideos] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
-  const [filtros, setFiltros] = useState({ busqueda: "", ordenFecha: "desc" });
-  const [videoActual, setVideoActual] = useState(null);
+  const [filtros, setFiltros] = useState({ busqueda: "" });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
+  const observerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const loadingRef = useRef(false);
+
   const navigate = useNavigate();
-
-  const { addToQueue, playNowQueue, changeSong, cola, setCola, currentIndex } =
-    useQueueContext();
-
-  const playNow = async (video) => {
-      if (!isAuthenticated) {
-        setToastMsg("⚠️ Inicia sesión para reproducir");
-        return;
-      }
-  
-      const roomId = localStorage.getItem("roomId");
-  
-      try {
-        const token = getToken();
-  
-        // Detener la canción anterior
-        const existingMedia = document.querySelector("audio, video");
-        if (existingMedia) {
-          existingMedia.pause();
-          existingMedia.currentTime = 0;
-        }
-  
-        // Insertar en cola backend en la posición exacta
-        await axios.post(
-          `${API_URL}/t/cola/play-now`,
-          { roomId, songId: video._id },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-  
-        setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
-        navigate("/");
-      } catch (err) {
-        console.error(err);
-        setToastMsg("❌ No se pudo reproducir la canción");
-      }
-    };
 
   let userId = null;
   let isAuthenticated = false;
@@ -71,11 +45,124 @@ export default function UltimasSubidas() {
     console.warn("Usuario no autenticado");
   }
 
+  const fetchVideos = useCallback(
+    async (pageToLoad, { reset = false } = {}) => {
+      if (reset && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        loadingRef.current = false;
+      }
+
+      if (loadingRef.current) return;
+
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      loadingRef.current = true;
+
+      if (reset) {
+        setLoadingInitial(true);
+        setError("");
+      } else {
+        setLoadingMore(true);
+      }
+
+      try {
+        const headers = isAuthenticated
+          ? { Authorization: `Bearer ${getToken()}` }
+          : {};
+
+        const res = await axios.get(SONG_SEARCH_URL, {
+          headers,
+          signal: controller.signal,
+          params: {
+            page: pageToLoad,
+            limit: PAGE_LIMIT,
+            search: debouncedSearch,
+            filtro: "artista",
+            ordenFecha: "desc",
+          },
+        });
+
+        if (requestId !== requestIdRef.current) return;
+
+        const nuevasCanciones = res.data.canciones || [];
+
+        setVideos((prev) => {
+          if (reset) return nuevasCanciones;
+
+          const idsActuales = new Set(prev.map((video) => video._id));
+          const cancionesSinRepetir = nuevasCanciones.filter(
+            (video) => !idsActuales.has(video._id),
+          );
+
+          return [...prev, ...cancionesSinRepetir];
+        });
+
+        setPage(res.data.page || pageToLoad);
+        setHasMore(Boolean(res.data.hasMore));
+      } catch (err) {
+        if (axios.isCancel?.(err) || err.name === "CanceledError") return;
+
+        console.error("Error al cargar videos", err);
+        if (requestId === requestIdRef.current) {
+          setError("No se pudieron cargar las canciones");
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoadingInitial(false);
+          setLoadingMore(false);
+          loadingRef.current = false;
+        }
+      }
+    },
+    [debouncedSearch, isAuthenticated],
+  );
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      setDebouncedSearch(filtros.busqueda.trim());
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [filtros.busqueda]);
+
+  useEffect(() => {
+    setVideos([]);
+    setPage(1);
+    setHasMore(true);
+    fetchVideos(1, { reset: true });
+  }, [debouncedSearch, fetchVideos]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      observerRef.current?.disconnect();
+    };
+  }, []);
+
+  const lastVideoRef = useCallback(
+    (node) => {
+      if (loadingInitial || loadingMore) return;
+      observerRef.current?.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          fetchVideos(page + 1);
+        }
+      });
+
+      if (node) observerRef.current.observe(node);
+    },
+    [fetchVideos, hasMore, loadingInitial, loadingMore, page],
+  );
+
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a una playlist");
+      setToastMsg("Inicia sesion para agregar a una playlist");
       return;
     }
+
     setSelectedSongId(songId);
     setShowPlaylistModal(true);
   };
@@ -85,70 +172,75 @@ export default function UltimasSubidas() {
     setFiltros((prev) => ({ ...prev, [name]: value }));
   };
 
-  const fetchVideos = async (usarFiltro = false) => {
-    try {
-      const headers = isAuthenticated
-        ? { Authorization: `Bearer ${getToken()}` }
-        : {};
-
-      const url = usarFiltro ? FILTRO_URL : SONG_URL;
-
-      const params = usarFiltro
-        ? {
-            busqueda: filtros.busqueda,
-            filtro: "artista", // 👈 NECESARIO
-            ordenFecha: filtros.ordenFecha,
-          }
-        : {};
-
-      const res = await axios.get(url, { headers, params });
-
-      setVideos(res.data.canciones || res.data);
-    } catch (err) {
-      console.error("Error al cargar videos", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchVideos();
-  }, []);
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      if (filtros.busqueda.trim() !== "") fetchVideos(true);
-      else fetchVideos();
-    }, 500);
-    return () => clearTimeout(debounce);
-  }, [filtros.busqueda, filtros.ordenFecha]);
-
-
- const agregarACola = async (songId) => {
+  const playNow = async (video) => {
     if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a cola");
+      setToastMsg("Inicia sesion para reproducir");
       return;
     }
 
-          const roomId = localStorage.getItem("roomId");
+    const roomId = localStorage.getItem("roomId");
 
+    try {
+      const token = getToken();
+      const existingMedia = document.querySelector("audio, video");
+
+      if (existingMedia) {
+        existingMedia.pause();
+        existingMedia.currentTime = 0;
+      }
+
+      await axios.post(
+        `${API_URL}/t/cola/play-now`,
+        { roomId, songId: video._id },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setToastMsg(`Reproduciendo "${video.titulo}" ahora`);
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setToastMsg("No se pudo reproducir la cancion");
+    }
+  };
+
+  const requestPlayerFullscreenOnHome = async () => {
+    sessionStorage.setItem(FULLSCREEN_REQUEST_KEY, "1");
+
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen?.();
+      }
+    } catch (err) {
+      console.warn("No se pudo activar pantalla completa:", err);
+    }
+  };
+
+  const agregarACola = async (songId) => {
+    if (!isAuthenticated) {
+      setToastMsg("Inicia sesion para agregar a cola");
+      return;
+    }
+
+    const roomId = localStorage.getItem("roomId");
 
     try {
       const res = await axios.post(
         `${API_URL}/t/cola/add`,
         { userId, songId, roomId },
-        { headers: { Authorization: `Bearer ${getToken()}` } }
+        { headers: { Authorization: `Bearer ${getToken()}` } },
       );
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
 
       if (!cancion) {
-        setToastMsg("No se encontró la canción");
+        setToastMsg("No se encontro la cancion");
         return;
       }
 
-      setToastMsg("✅ Canción agregada a la cola");
+      setToastMsg("Cancion agregada a la cola");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
-      setToastMsg("❌ No se pudo agregar la canción");
+      setToastMsg("No se pudo agregar la cancion");
     }
   };
 
@@ -158,14 +250,14 @@ export default function UltimasSubidas() {
 
   return (
     <div className="p-2">
-      {/* Filtro */}
       <div className="d-flex flex-wrap justify-content-center align-items-center mb-2">
-        <label className="caja-buscar" htmlFor="busqueda">
+        <label className="caja-buscar" htmlFor="busqueda-ultimas">
           Buscar por Artista:
         </label>
         <div className="buscar-2">
           <input
             type="text"
+            id="busqueda-ultimas"
             name="busqueda"
             value={filtros.busqueda}
             onChange={handleChange}
@@ -174,10 +266,25 @@ export default function UltimasSubidas() {
         </div>
       </div>
 
-      {/* Listado de videos */}
+      {loadingInitial && (
+        <div className="lista-loader" role="status">
+          Cargando canciones...
+        </div>
+      )}
+
+      {error && !loadingInitial && <div className="lista-error">{error}</div>}
+
+      {!loadingInitial && !error && videos.length === 0 && (
+        <div className="lista-empty">No se encontraron canciones.</div>
+      )}
+
       <div className="tarjetas">
-        {videos.map((video) => (
-          <div key={video._id} className="bg-modificado">
+        {videos.map((video, index) => (
+          <div
+            key={video._id}
+            className="bg-modificado"
+            ref={index === videos.length - 1 ? lastVideoRef : null}
+          >
             <div>
               <button
                 className="video-btn heart-btn"
@@ -203,6 +310,7 @@ export default function UltimasSubidas() {
               <button
                 className="video-btn play-btn"
                 onClick={async () => {
+                  await requestPlayerFullscreenOnHome();
                   await masReproducida(video._id);
                   await playNow(video);
                 }}
@@ -217,14 +325,23 @@ export default function UltimasSubidas() {
               </span>
               <br />
               <small>
-                {video.titulo} - {video.generos?.nombre || "Sin género"}
+                {video.titulo} - {video.generos?.nombre || "Sin genero"}
               </small>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Modal de playlists */}
+      {loadingMore && (
+        <div className="lista-loader" role="status">
+          Cargando mas canciones...
+        </div>
+      )}
+
+      {!hasMore && videos.length > 0 && (
+        <div className="lista-end">No hay mas canciones por cargar.</div>
+      )}
+
       {isAuthenticated && (
         <PlaylistSelectorModal
           show={showPlaylistModal}
@@ -232,13 +349,11 @@ export default function UltimasSubidas() {
           userId={userId}
           songId={selectedSongId}
           onAddToPlaylistSuccess={() => {
-            setToastMsg("🎵 Canción agregada a la playlist");
-            // Opcional: actualizar la lista de videos o la cola si quieres
+            setToastMsg("Cancion agregada a la playlist");
           }}
         />
       )}
 
-      {/* Toast */}
       <ToastModal
         mensaje={toastMsg}
         onClose={() => setToastMsg("")}

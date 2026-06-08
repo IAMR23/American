@@ -54,6 +54,56 @@ body {
   min-height: 100vh;
 }
 
+.home-shell {
+  overflow-x: hidden;
+}
+
+.home-header {
+  max-width: 1400px;
+}
+
+.home-icon {
+  width: clamp(42px, 10vw, 60px);
+  height: auto;
+}
+
+.home-logo {
+  width: min(100%, 600px);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.home-user-panel {
+  width: 100%;
+  max-width: 300px;
+}
+
+.home-user-title {
+  margin-bottom: -18px;
+  font-size: clamp(1.1rem, 4vw, 1.75rem);
+}
+
+.home-main-row {
+  width: 100%;
+}
+
+.home-sidebar {
+  min-width: 0;
+}
+
+.home-content {
+  min-width: 0;
+}
+
+.queue-panel {
+  max-width: 100%;
+}
+
+.queue-title {
+  margin: 0;
+  text-align: center;
+}
+
 .song-playing {
   color: #28a745 !important; /* Verde brillante */
   animation: spin 2s linear infinite;
@@ -113,6 +163,64 @@ body {
   text-shadow: 2px 2px 0 black, -2px 2px 0 black, 2px -2px 0 black,
     -2px -2px 0 black, 0 3px 0 black, 3px 0 0 black, -3px 0 0 black,
     0 -3px 0 black;
+}
+
+@media (max-width: 991.98px) {
+  .home-sidebar {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    justify-content: center !important;
+  }
+
+  .home-content {
+    order: -1;
+  }
+
+  .cola-canciones {
+    width: min(92vw, 520px);
+  }
+}
+
+@media (min-width: 992px) {
+  .home-user-panel {
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .home-shell {
+    min-height: auto !important;
+    padding-bottom: 5rem !important;
+  }
+
+  .home-header {
+    margin-bottom: 0.5rem;
+  }
+
+  .home-user-title {
+    margin-bottom: -14px;
+  }
+
+  .queue-title {
+    font-size: 1.25rem;
+  }
+
+  .song-icon {
+    width: 58px;
+    padding: 8px;
+  }
+
+  .song-icon .custom-tooltip {
+    left: 50%;
+    top: auto;
+    bottom: 100%;
+    transform: translateX(-50%);
+    margin-left: 0;
+    margin-bottom: 8px;
+    max-width: 82vw;
+    white-space: normal;
+    text-align: center;
+  }
 }
 
 @supports (-webkit-text-stroke: 3px black) {

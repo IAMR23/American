@@ -32,6 +32,8 @@ import WhatsAppButton from "../components/WhatsAppButton";
 import User from "./User";
 import { useSocketContext } from "../hooks/SocketContext";
 
+const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
+
 export default function Home() {
   const navigate = useNavigate();
 
@@ -103,6 +105,14 @@ export default function Home() {
       setUserId(null);
       setUserRole(null);
     }
+  }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(FULLSCREEN_REQUEST_KEY) !== "1") return;
+
+    sessionStorage.removeItem(FULLSCREEN_REQUEST_KEY);
+    setSeccionActiva("video");
+    setShouldFullscreen(true);
   }, []);
 
   const getUser = async (id) => {
@@ -294,6 +304,11 @@ export default function Home() {
     setRequestedIndex(null);
   };
 
+  const activarPantallaCompletaPlayer = () => {
+    setSeccionActiva("video");
+    setShouldFullscreen(true);
+  };
+
   const handleRegisterSuccess = () => {
     setSeccionActiva("suscribir");
   };
@@ -383,7 +398,7 @@ export default function Home() {
   return (
     <>
       <div
-        className="container-fluid overflow-hidden px-2 px-md-4 py-3 d-flex flex-column justify-content-center align-items-center"
+        className="container-fluid px-2 px-md-4 py-3 d-flex flex-column align-items-center home-shell"
         style={{
           backgroundImage: background ? `url(${background})` : "none",
           backgroundSize: "cover",
@@ -392,53 +407,39 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        <div className="d-flex flex-wrap justify-content-center align-items-center w-100 gap-3">
-          <img
-            src="./icono.png"
-            alt="icono"
-            style={{ width: "60px", height: "auto" }}
-          />
+        <div className="row align-items-center justify-content-center g-2 g-md-3 w-100 home-header">
+          <div className="col-3 col-sm-2 col-md-1 d-flex justify-content-center">
+            <img src="./icono.png" alt="icono" className="home-icon" />
+          </div>
 
-          <img
-            onClick={() => setSeccionActiva("video")}
-            src="./logo.png"
-            alt="logo"
-            className="img-fluid"
-            style={{
-              width: "80%",
-              maxWidth: "600px",
-              cursor: "pointer",
-              minWidth: "250px",
-            }}
-          />
+          <div className="col-9 col-sm-8 col-md-7 col-lg-6 d-flex justify-content-center">
+            <img
+              onClick={() => setSeccionActiva("video")}
+              src="./logo.png"
+              alt="logo"
+              className="img-fluid home-logo"
+            />
+          </div>
 
           {user && user.nombre && (
-            <div
-              className="m-2 pt-4 d-flex justify-content-center align-items-center flex-column"
-              style={{
-                position: "absolute",
-                right: "20px",
-                margin: 0,
-                color: "white",
-              }}
-            >
-              <div>
-                <h3 className="outlined-black">Bienvenido:</h3>
-              </div>
+            <div className="col-12 d-flex d-lg-none justify-content-center">
+              <div className="home-user-panel text-center text-white">
+                <h3 className="outlined-black home-user-title">Bienvenido:</h3>
 
-              <button
-                onClick={() => setSeccionActiva("user")}
-                className="boton0"
-              >
-                {user.nombre}
-              </button>
+                <button
+                  onClick={() => setSeccionActiva("user")}
+                  className="boton0"
+                >
+                  {user.nombre}
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="container-fluid">
-          <div className="row">
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
+        <div className="container-fluid px-0">
+          <div className="row g-3 align-items-start justify-content-center home-main-row">
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-start gap-1 home-sidebar">
               {getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
@@ -505,11 +506,28 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="col-12 col-md-8 justify-content-center">
+            <div className="col-12 col-lg-8 justify-content-center home-content">
               {renderContenido()}
             </div>
 
-            <div className="col-12 col-md-2 d-flex flex-column align-items-center justify-content-center gap-1">
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-start gap-1 home-sidebar">
+              {user && user.nombre && (
+                <div className="d-none d-lg-flex justify-content-center w-100">
+                  <div className="home-user-panel text-center text-white">
+                    <h3 className="outlined-black home-user-title">
+                      Bienvenido:
+                    </h3>
+
+                    <button
+                      onClick={() => setSeccionActiva("user")}
+                      className="boton0"
+                    >
+                      {user.nombre}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {!getToken() && (
                 <>
                   <button
@@ -569,9 +587,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="m-2">
-          <div className="d-flex justify-content-center align-items-center gap-3">
-            <h2 className="text-white">Canciones a la cola</h2>
+        <div className="m-2 w-100">
+          <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3 queue-panel">
+            <h2 className="text-white queue-title">Canciones a la cola</h2>
 
             <div
               className={`cola-canciones ${
@@ -615,10 +633,10 @@ export default function Home() {
         <AnunciosVisibles />
 
         <h1 className="p-2 text-white">Selección especial</h1>
-        <VideoCarouselVisibles />
+        <VideoCarouselVisibles onPlaySolo={activarPantallaCompletaPlayer} />
 
         <h1 className="p-2 text-white">Las más populares</h1>
-        <VideoCarousel />
+        <VideoCarousel onPlaySolo={activarPantallaCompletaPlayer} />
       </div>
 
       {!isSubscribed && <WhatsAppButton />}

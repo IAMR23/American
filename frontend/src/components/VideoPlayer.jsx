@@ -7,6 +7,42 @@ import axios from "axios";
 
 const API_PUNTAJE = `${API_URL}/p/puntaje`;
 
+let activePlayerOwner = null;
+let activePlayerStop = null;
+
+const stopMediaElement = (element) => {
+  if (!element) return;
+
+  try {
+    element.pause?.();
+    element.currentTime = 0;
+    element.removeAttribute?.("src");
+    element.load?.();
+  } catch {
+    // Best effort cleanup for browser-managed media elements.
+  }
+};
+
+const stopReactPlayer = (player) => {
+  if (!player) return;
+
+  try {
+    player.seekTo?.(0, "seconds");
+  } catch {
+    // Some providers throw while their iframe is being destroyed.
+  }
+
+  try {
+    const internal = player.getInternalPlayer?.();
+    internal?.pauseVideo?.();
+    internal?.stopVideo?.();
+    internal?.pause?.();
+    internal?.destroy?.();
+  } catch {
+    // Provider cleanup is best effort because YouTube/file players differ.
+  }
+};
+
 export default function VideoPlayer({
   cola = [],
   esColaDefault = false,
@@ -16,6 +52,8 @@ export default function VideoPlayer({
   onFullscreenHandled,
   onColaTerminada,
   modoCalificacion = false,
+  requestedIndex = null,
+  onRequestedIndexHandled,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
 
@@ -35,6 +73,13 @@ export default function VideoPlayer({
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
+  const switchTimeoutRef = useRef(null);
+  const switchUnlockTimeoutRef = useRef(null);
+  const endedUnlockTimeoutRef = useRef(null);
+  const mountedRef = useRef(false);
+  const instanceIdRef = useRef(
+    `video-player-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   const autoplayInitiatedRef = useRef(false);
   const poolRef = useRef([]);
   const switchingRef = useRef(false);
@@ -47,8 +92,55 @@ export default function VideoPlayer({
   const activeUrl = activeVideo?.videoUrl || "";
 
   const playerKey = videoCalificacion
-    ? `calificacion-${activeVideo?.id || activeUrl}-${playerInstanceKey}`
-    : `main-${currentVideo?.id || activeUrl}-${effectiveIndex}-${playerInstanceKey}`;
+    ? `calificacion-${activeVideo?._id || activeVideo?.id || activeUrl}-${playerInstanceKey}`
+    : `main-${currentVideo?._id || currentVideo?.id || activeUrl}-${effectiveIndex}-${playerInstanceKey}`;
+
+  const stopCurrentPlayer = useCallback(() => {
+    setIsPlaying(false);
+    stopReactPlayer(playerRef.current);
+
+    const container = containerRef.current;
+    container?.querySelectorAll?.("audio, video").forEach(stopMediaElement);
+  }, []);
+
+  const clearPlayerTimers = useCallback(() => {
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+      hideControlsTimeoutRef.current = null;
+    }
+
+    if (switchTimeoutRef.current) {
+      clearTimeout(switchTimeoutRef.current);
+      switchTimeoutRef.current = null;
+    }
+
+    if (switchUnlockTimeoutRef.current) {
+      clearTimeout(switchUnlockTimeoutRef.current);
+      switchUnlockTimeoutRef.current = null;
+    }
+
+    if (endedUnlockTimeoutRef.current) {
+      clearTimeout(endedUnlockTimeoutRef.current);
+      endedUnlockTimeoutRef.current = null;
+    }
+  }, []);
+
+  const claimActivePlayer = useCallback(() => {
+    const owner = instanceIdRef.current;
+
+    if (activePlayerOwner && activePlayerOwner !== owner) {
+      activePlayerStop?.();
+    }
+
+    document.querySelectorAll("audio, video").forEach((element) => {
+      if (!containerRef.current?.contains(element)) {
+        stopMediaElement(element);
+      }
+    });
+
+    activePlayerOwner = owner;
+    activePlayerStop = stopCurrentPlayer;
+  }, [stopCurrentPlayer]);
 
   const setEffectiveIndex = useCallback(
     (newIndex) => {
@@ -64,32 +156,32 @@ export default function VideoPlayer({
   const safeSwitch = useCallback((callback) => {
     if (switchingRef.current) return;
 
+    claimActivePlayer();
     switchingRef.current = true;
     endedLockRef.current = true;
 
-    setIsPlaying(false);
+    stopCurrentPlayer();
     setProgress(0);
     setDuration(0);
     setShowNextMessage(false);
 
-    try {
-      playerRef.current?.seekTo?.(0, "seconds");
-    } catch (error) {
-      console.warn("No se pudo detener el video anterior:", error);
-    }
+    switchTimeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
 
-    setTimeout(() => {
       callback?.();
 
       setPlayerInstanceKey((prev) => prev + 1);
 
-      setTimeout(() => {
+      switchUnlockTimeoutRef.current = setTimeout(() => {
+        if (!mountedRef.current) return;
+
         endedLockRef.current = false;
         switchingRef.current = false;
+        claimActivePlayer();
         setIsPlaying(true);
       }, 450);
     }, 250);
-  }, []);
+  }, [claimActivePlayer, stopCurrentPlayer]);
 
   const obtenerPuntajes = async () => {
     try {
@@ -99,6 +191,22 @@ export default function VideoPlayer({
       console.error("Error al obtener los puntajes:", error);
     }
   };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    claimActivePlayer();
+
+    return () => {
+      mountedRef.current = false;
+      clearPlayerTimers();
+      stopCurrentPlayer();
+
+      if (activePlayerOwner === instanceIdRef.current) {
+        activePlayerOwner = null;
+        activePlayerStop = null;
+      }
+    };
+  }, [claimActivePlayer, clearPlayerTimers, stopCurrentPlayer]);
 
   useEffect(() => {
     obtenerPuntajes();
@@ -186,8 +294,12 @@ export default function VideoPlayer({
     if (fullscreenRequested) {
       const el = containerRef.current;
 
+      setIsFullscreen(true);
+
       if (el && !document.fullscreenElement) {
-        el.requestFullscreen?.();
+        el.requestFullscreen?.().catch?.((err) => {
+          console.warn("No se pudo activar fullscreen del reproductor:", err);
+        });
       }
 
       onFullscreenHandled?.();
@@ -196,16 +308,17 @@ export default function VideoPlayer({
 
   useEffect(() => {
     if (esColaDefault) {
+      stopCurrentPlayer();
       setLocalIndexDefault(0);
       autoplayInitiatedRef.current = false;
     } else {
       autoplayInitiatedRef.current = false;
     }
-  }, [esColaDefault]);
+  }, [esColaDefault, stopCurrentPlayer]);
 
   useEffect(() => {
     if (!playlist.length) {
-      setIsPlaying(false);
+      stopCurrentPlayer();
       setVideoCalificacion(null);
       setColaCalificaciones([]);
       setProgress(0);
@@ -213,26 +326,56 @@ export default function VideoPlayer({
       setShowNextMessage(false);
       autoplayInitiatedRef.current = false;
     }
-  }, [playlist.length]);
+  }, [playlist.length, stopCurrentPlayer]);
 
   useEffect(() => {
     if (playlist.length > 0 && !autoplayInitiatedRef.current) {
       autoplayInitiatedRef.current = true;
+      claimActivePlayer();
       setIsPlaying(true);
     }
-  }, [playlist.length]);
+  }, [claimActivePlayer, playlist.length]);
 
   useEffect(() => {
+    claimActivePlayer();
     setProgress(0);
     setDuration(0);
     setShowNextMessage(false);
 
-    try {
-      playerRef.current?.seekTo?.(0, "seconds");
-    } catch (error) {
-      console.warn("No se pudo reiniciar el video:", error);
+    if (activeUrl) {
+      setIsPlaying(true);
     }
-  }, [activeUrl]);
+
+    return () => {
+      stopCurrentPlayer();
+    };
+  }, [activeUrl, claimActivePlayer, stopCurrentPlayer]);
+
+  useEffect(() => {
+    if (requestedIndex == null) return;
+    if (requestedIndex === effectiveIndex) {
+      onRequestedIndexHandled?.();
+      return;
+    }
+    if (requestedIndex < 0 || requestedIndex >= playlist.length) {
+      onRequestedIndexHandled?.();
+      return;
+    }
+
+    safeSwitch(() => {
+      setVideoCalificacion(null);
+      setColaCalificaciones([]);
+      setEffectiveIndex(requestedIndex);
+      onRequestedIndexHandled?.();
+    });
+  }, [
+    effectiveIndex,
+    onRequestedIndexHandled,
+    playlist.length,
+    requestedIndex,
+    safeSwitch,
+    setEffectiveIndex,
+  ]);
 
   const nextVideo = () => {
     if (switchingRef.current) return;
@@ -311,7 +454,11 @@ export default function VideoPlayer({
 
     endedLockRef.current = true;
 
-    setTimeout(() => {
+    if (endedUnlockTimeoutRef.current) {
+      clearTimeout(endedUnlockTimeoutRef.current);
+    }
+
+    endedUnlockTimeoutRef.current = setTimeout(() => {
       endedLockRef.current = false;
     }, 1200);
 
@@ -399,11 +546,11 @@ export default function VideoPlayer({
     const handleFullscreenChange = () => {
       const fsElement = document.fullscreenElement;
 
-      setIsFullscreen(!!fsElement);
-
       if (fsElement) {
+        setIsFullscreen(true);
         resetHideControlsTimer();
       } else {
+        setIsFullscreen(false);
         setShowControls(true);
       }
     };
@@ -415,11 +562,24 @@ export default function VideoPlayer({
     };
   }, [resetHideControlsTimer]);
 
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFullscreen]);
+
   const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!el) return;
 
-    if (!document.fullscreenElement) {
+    if (isFullscreen && !document.fullscreenElement) {
+      setIsFullscreen(false);
+    } else if (!document.fullscreenElement) {
       el.requestFullscreen?.();
     } else {
       document.exitFullscreen?.();
@@ -438,16 +598,18 @@ export default function VideoPlayer({
     <div
       ref={containerRef}
       style={{
-        margin: "auto",
-        position: "relative",
+        margin: isFullscreen ? 0 : "auto",
+        position: isFullscreen ? "fixed" : "relative",
+        inset: isFullscreen ? 0 : undefined,
+        zIndex: isFullscreen ? 20000 : undefined,
         background: "#000",
-        width: "100%",
+        width: isFullscreen ? "100vw" : "100%",
         aspectRatio: "16 / 9",
         height: isFullscreen ? "100vh" : undefined,
         overflow: "hidden",
       }}
     >
-      <div className="player-wrapper">
+      <div className={`player-wrapper ${isFullscreen ? "player-wrapper-full" : ""}`}>
         <ReactPlayer
           key={playerKey}
           ref={playerRef}
@@ -462,6 +624,7 @@ export default function VideoPlayer({
             // No forzar setIsPlaying(true) aquí.
             // Eso podía causar solapamiento entre videos.
           }}
+          onPlay={claimActivePlayer}
           onProgress={handleProgress}
           onDuration={setDuration}
           onEnded={handleEnded}

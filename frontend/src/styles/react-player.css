@@ -77,6 +77,11 @@
   overflow: hidden;
 }
 
+.player-wrapper-full {
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
 .react-player {
   position: absolute;
   top: 0;
