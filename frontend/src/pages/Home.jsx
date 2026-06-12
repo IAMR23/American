@@ -63,7 +63,7 @@ export default function Home() {
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-    const esColaDefault = !cola.length || currentIndex >= cola.length;
+    const esColaDefault = !cola.length;
 
     if (esColaDefault) return [];
 
@@ -236,7 +236,7 @@ export default function Home() {
   }, [connectSocket]);
 
   const getColaActual = () => {
-    const esColaVacia = !cola.length || currentIndex >= cola.length;
+    const esColaVacia = !cola.length;
     return esColaVacia ? colaDefault : cola;
   };
 
@@ -370,7 +370,7 @@ export default function Home() {
 
       case "video":
       default: {
-        const esColaDefault = !cola.length || currentIndex >= cola.length;
+        const esColaDefault = !cola.length;
         const colaActual = getColaActual();
 
         return (

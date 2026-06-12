@@ -10,6 +10,25 @@ const API_PUNTAJE = `${API_URL}/p/puntaje`;
 let activePlayerOwner = null;
 let activePlayerStop = null;
 
+const createSequentialOrder = (length) =>
+  Array.from({ length }, (_, index) => index);
+
+const createShuffledOrder = (length, avoidFirstIndex = null) => {
+  const order = createSequentialOrder(length);
+
+  for (let i = order.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [order[i], order[randomIndex]] = [order[randomIndex], order[i]];
+  }
+
+  if (order.length > 1 && order[0] === avoidFirstIndex) {
+    const swapIndex = order.findIndex((index) => index !== avoidFirstIndex);
+    [order[0], order[swapIndex]] = [order[swapIndex], order[0]];
+  }
+
+  return order;
+};
+
 const stopMediaElement = (element) => {
   if (!element) return;
 
@@ -58,6 +77,7 @@ export default function VideoPlayer({
   const playlist = Array.isArray(cola) ? cola : [];
 
   const [localIndexDefault, setLocalIndexDefault] = useState(0);
+  const [defaultOrder, setDefaultOrder] = useState([]);
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -85,8 +105,19 @@ export default function VideoPlayer({
   const switchingRef = useRef(false);
   const endedLockRef = useRef(false);
 
-  const effectiveIndex = esColaDefault ? localIndexDefault : currentIndex;
-  const currentVideo = playlist[effectiveIndex];
+  const requestedCurrentIndex = Number(currentIndex);
+  const normalizedCurrentIndex =
+    playlist.length > 0 && Number.isFinite(requestedCurrentIndex)
+      ? Math.min(Math.max(requestedCurrentIndex, 0), playlist.length - 1)
+      : 0;
+  const effectiveIndex = esColaDefault
+    ? Math.min(localIndexDefault, Math.max(playlist.length - 1, 0))
+    : normalizedCurrentIndex;
+  const defaultPlaylistIndex = defaultOrder[effectiveIndex] ?? effectiveIndex;
+  const currentPlaylistIndex = esColaDefault
+    ? defaultPlaylistIndex
+    : effectiveIndex;
+  const currentVideo = playlist[currentPlaylistIndex];
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -94,6 +125,10 @@ export default function VideoPlayer({
   const playerKey = videoCalificacion
     ? `calificacion-${activeVideo?._id || activeVideo?.id || activeUrl}-${playerInstanceKey}`
     : `main-${currentVideo?._id || currentVideo?.id || activeUrl}-${effectiveIndex}-${playerInstanceKey}`;
+
+  const playlistSignature = playlist
+    .map((video) => video?._id || video?.id || video?.videoUrl || "")
+    .join("|");
 
   const stopCurrentPlayer = useCallback(() => {
     setIsPlaying(false);
@@ -152,6 +187,13 @@ export default function VideoPlayer({
     },
     [esColaDefault, setCurrentIndex]
   );
+
+  const restartDefaultCycle = useCallback(() => {
+    const lastPlaylistIndex = defaultOrder[effectiveIndex] ?? effectiveIndex;
+
+    setDefaultOrder(createShuffledOrder(playlist.length, lastPlaylistIndex));
+    setLocalIndexDefault(0);
+  }, [defaultOrder, effectiveIndex, playlist.length]);
 
   const safeSwitch = useCallback((callback) => {
     if (switchingRef.current) return;
@@ -307,14 +349,24 @@ export default function VideoPlayer({
   }, [fullscreenRequested, onFullscreenHandled]);
 
   useEffect(() => {
+    autoplayInitiatedRef.current = false;
+    endedLockRef.current = false;
+    switchingRef.current = false;
+    setProgress(0);
+    setDuration(0);
+    setShowNextMessage(false);
+
     if (esColaDefault) {
-      stopCurrentPlayer();
       setLocalIndexDefault(0);
-      autoplayInitiatedRef.current = false;
-    } else {
-      autoplayInitiatedRef.current = false;
     }
-  }, [esColaDefault, stopCurrentPlayer]);
+  }, [esColaDefault]);
+
+  useEffect(() => {
+    if (!esColaDefault) return;
+
+    setDefaultOrder(createSequentialOrder(playlist.length));
+    setLocalIndexDefault(0);
+  }, [esColaDefault, playlist.length, playlistSignature]);
 
   useEffect(() => {
     if (!playlist.length) {
@@ -337,19 +389,19 @@ export default function VideoPlayer({
   }, [claimActivePlayer, playlist.length]);
 
   useEffect(() => {
+    const previousPlayer = playerRef.current;
+
     claimActivePlayer();
     setProgress(0);
     setDuration(0);
     setShowNextMessage(false);
 
-    if (activeUrl) {
-      setIsPlaying(true);
-    }
+    setIsPlaying(Boolean(activeUrl));
 
     return () => {
-      stopCurrentPlayer();
+      stopReactPlayer(previousPlayer);
     };
-  }, [activeUrl, claimActivePlayer, stopCurrentPlayer]);
+  }, [activeUrl, claimActivePlayer]);
 
   useEffect(() => {
     if (requestedIndex == null) return;
@@ -386,6 +438,12 @@ export default function VideoPlayer({
         setColaCalificaciones([]);
         setEffectiveIndex(effectiveIndex + 1);
       });
+    } else if (esColaDefault && playlist.length > 0) {
+      safeSwitch(() => {
+        setVideoCalificacion(null);
+        setColaCalificaciones([]);
+        restartDefaultCycle();
+      });
     }
   };
 
@@ -415,7 +473,9 @@ export default function VideoPlayer({
     }
 
     if (dur - playedSeconds <= 40) {
-      const next = playlist[effectiveIndex + 1];
+      const next = esColaDefault
+        ? playlist[defaultOrder[effectiveIndex + 1]]
+        : playlist[effectiveIndex + 1];
 
       if (next) {
         setNextSongName(next.titulo || "Siguiente canción");
@@ -480,7 +540,7 @@ export default function VideoPlayer({
         if (effectiveIndex < playlist.length - 1) {
           setEffectiveIndex(effectiveIndex + 1);
         } else if (esColaDefault) {
-          setEffectiveIndex(0);
+          restartDefaultCycle();
         } else {
           onColaTerminada?.();
         }
@@ -505,7 +565,7 @@ export default function VideoPlayer({
       if (effectiveIndex < playlist.length - 1) {
         setEffectiveIndex(effectiveIndex + 1);
       } else if (esColaDefault) {
-        setEffectiveIndex(0);
+        restartDefaultCycle();
       } else {
         setIsPlaying(false);
         onColaTerminada?.();
@@ -660,15 +720,23 @@ export default function VideoPlayer({
           src="der.png"
           alt="Siguiente"
           onClick={
-            effectiveIndex === playlist.length - 1 ? undefined : nextVideo
+            !esColaDefault && effectiveIndex === playlist.length - 1
+              ? undefined
+              : nextVideo
           }
           style={{
-            ...navButtonStyle("right", effectiveIndex === playlist.length - 1),
+            ...navButtonStyle(
+              "right",
+              !esColaDefault && effectiveIndex === playlist.length - 1,
+            ),
             cursor:
-              effectiveIndex === playlist.length - 1
+              !esColaDefault && effectiveIndex === playlist.length - 1
                 ? "not-allowed"
                 : "pointer",
-            opacity: effectiveIndex === playlist.length - 1 ? 0.5 : 1,
+            opacity:
+              !esColaDefault && effectiveIndex === playlist.length - 1
+                ? 0.5
+                : 1,
           }}
         />
 

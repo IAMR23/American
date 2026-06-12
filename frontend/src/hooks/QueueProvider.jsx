@@ -14,8 +14,16 @@ export const QueueProvider = ({ children }) => {
 
     const handleColaActualizada = ({ nuevaCola, indexActual }) => {
       if (!nuevaCola) return;
-      setCola(nuevaCola.filter((c) => c && c._id));
-      setCurrentIndex(indexActual ?? 0);
+
+      const colaValida = nuevaCola.filter((c) => c && c._id);
+      const requestedIndex = Number(indexActual);
+      const safeIndex =
+        colaValida.length > 0 && Number.isFinite(requestedIndex)
+          ? Math.min(Math.max(requestedIndex, 0), colaValida.length - 1)
+          : 0;
+
+      setCola(colaValida);
+      setCurrentIndex(safeIndex);
     };
 
     const off = onEvent("colaActualizada", handleColaActualizada);
