@@ -1,7 +1,11 @@
 // BarraDeslizante.jsx
 import React from "react";
 
-export default function BarraDeslizante({ texto, isFullscreen = false }) {
+export default function BarraDeslizante({
+  texto,
+  isFullscreen = false,
+  customAnimationDuration,
+}) {
   // Ajuste de tamaño de letra según pantalla
   let fontSize;
   if (isFullscreen) {
@@ -14,6 +18,9 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
   }
 
   const animationDuration = isFullscreen ? "12s" : "22s"; // más lento en fullscreen
+
+  const resolvedAnimationDuration =
+    customAnimationDuration || (isFullscreen ? "12s" : "22s");
 
   return (
     <div
@@ -33,7 +40,7 @@ export default function BarraDeslizante({ texto, isFullscreen = false }) {
           fontSize,
           fontFamily: "'BBH Sans Hegarty', sans-serif", // fuente personalizada
           WebkitTextStroke: "2px black", // borde gris
-          animation: `mover ${animationDuration} linear infinite`,
+          animation: `mover ${resolvedAnimationDuration} linear infinite`,
         }}
       >
         {texto}

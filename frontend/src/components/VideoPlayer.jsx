@@ -70,7 +70,10 @@ export default function VideoPlayer({
   fullscreenRequested = false,
   onFullscreenHandled,
   onColaTerminada,
+  onCancionTerminada,
   modoCalificacion = false,
+  modoMesaActivo = false,
+  modoMesaItems = [],
   requestedIndex = null,
   onRequestedIndexHandled,
 }) {
@@ -80,6 +83,7 @@ export default function VideoPlayer({
   const [defaultOrder, setDefaultOrder] = useState([]);
   const [showNextMessage, setShowNextMessage] = useState(false);
   const [nextSongName, setNextSongName] = useState("");
+  const [mesaIntroText, setMesaIntroText] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -96,6 +100,8 @@ export default function VideoPlayer({
   const switchTimeoutRef = useRef(null);
   const switchUnlockTimeoutRef = useRef(null);
   const endedUnlockTimeoutRef = useRef(null);
+  const mesaIntroTimeoutRef = useRef(null);
+  const mesaIntroKeyRef = useRef(null);
   const mountedRef = useRef(false);
   const instanceIdRef = useRef(
     `video-player-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -118,6 +124,9 @@ export default function VideoPlayer({
     ? defaultPlaylistIndex
     : effectiveIndex;
   const currentVideo = playlist[currentPlaylistIndex];
+  const currentModoMesaItem = !esColaDefault
+    ? modoMesaItems?.[effectiveIndex]
+    : null;
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -129,6 +138,16 @@ export default function VideoPlayer({
   const playlistSignature = playlist
     .map((video) => video?._id || video?.id || video?.videoUrl || "")
     .join("|");
+
+  const formatMesaText = useCallback((item, cancion) => {
+    if (!item) return "";
+
+    const mesa = item.mesaNumero ? `Mesa #${item.mesaNumero}` : item.mesaNombre;
+    const participante = item.participanteNombre || "Participante";
+    const titulo = cancion?.titulo || "Siguiente cancion";
+
+    return `${mesa} - ${participante} - ${titulo}`;
+  }, []);
 
   const stopCurrentPlayer = useCallback(() => {
     setIsPlaying(false);
@@ -157,6 +176,11 @@ export default function VideoPlayer({
     if (endedUnlockTimeoutRef.current) {
       clearTimeout(endedUnlockTimeoutRef.current);
       endedUnlockTimeoutRef.current = null;
+    }
+
+    if (mesaIntroTimeoutRef.current) {
+      clearTimeout(mesaIntroTimeoutRef.current);
+      mesaIntroTimeoutRef.current = null;
     }
   }, []);
 
@@ -381,6 +405,33 @@ export default function VideoPlayer({
   }, [playlist.length, stopCurrentPlayer]);
 
   useEffect(() => {
+    if (!modoMesaActivo || esColaDefault) return;
+    if (!currentModoMesaItem || !currentVideo) return;
+
+    const introKey = `${currentModoMesaItem.mesaNumero}-${currentModoMesaItem.participanteIndex}-${currentModoMesaItem.cancionIndex}-${currentVideo._id}`;
+    if (mesaIntroKeyRef.current === introKey) return;
+
+    mesaIntroKeyRef.current = introKey;
+    setMesaIntroText(formatMesaText(currentModoMesaItem, currentVideo));
+
+    if (mesaIntroTimeoutRef.current) {
+      clearTimeout(mesaIntroTimeoutRef.current);
+    }
+
+    mesaIntroTimeoutRef.current = setTimeout(() => {
+      setMesaIntroText("");
+      mesaIntroTimeoutRef.current = null;
+    }, 25000);
+  }, [
+    currentModoMesaItem,
+    currentVideo,
+    effectiveIndex,
+    esColaDefault,
+    formatMesaText,
+    modoMesaActivo,
+  ]);
+
+  useEffect(() => {
     if (playlist.length > 0 && !autoplayInitiatedRef.current) {
       autoplayInitiatedRef.current = true;
       claimActivePlayer();
@@ -472,14 +523,26 @@ export default function VideoPlayer({
       return;
     }
 
-    if (dur - playedSeconds <= 40) {
+    const nextThreshold = modoMesaActivo ? 25 : 40;
+
+    if (dur - playedSeconds <= nextThreshold) {
+      const nextIndex = effectiveIndex + 1;
       const next = esColaDefault
-        ? playlist[defaultOrder[effectiveIndex + 1]]
-        : playlist[effectiveIndex + 1];
+        ? playlist[defaultOrder[nextIndex]]
+        : playlist[nextIndex];
 
       if (next) {
-        setNextSongName(next.titulo || "Siguiente canción");
+        const nextMesaItem =
+          modoMesaActivo && !esColaDefault ? modoMesaItems?.[nextIndex] : null;
+
+        setNextSongName(
+          nextMesaItem
+            ? formatMesaText(nextMesaItem, next)
+            : next.titulo || "Siguiente cancion",
+        );
         setShowNextMessage(true);
+      } else {
+        setShowNextMessage(false);
       }
     } else {
       setShowNextMessage(false);
@@ -521,6 +584,10 @@ export default function VideoPlayer({
     endedUnlockTimeoutRef.current = setTimeout(() => {
       endedLockRef.current = false;
     }, 1200);
+
+    if (!videoCalificacion && currentVideo?._id) {
+      onCancionTerminada?.(currentVideo, effectiveIndex);
+    }
 
     if (colaCalificaciones.length > 0) {
       const siguiente = colaCalificaciones[0];
@@ -812,7 +879,37 @@ export default function VideoPlayer({
           </div>
         )}
 
-        {showNextMessage && !videoCalificacion && (
+        {mesaIntroText && !videoCalificacion && (
+          <BarraDeslizante
+            texto={
+              <div className="d-flex justify-content-center align-items-center">
+                <img
+                  className="m-2"
+                  src="/ci.png"
+                  alt=""
+                  width={isFullscreen ? 45 : 30}
+                />
+
+                <span className="outlined">Turno: </span>
+
+                <span style={{ fontSize: "120%" }} className="outlined-white">
+                  {mesaIntroText}
+                </span>
+
+                <img
+                  className="m-2"
+                  src="/cd.png"
+                  alt=""
+                  width={isFullscreen ? 40 : 25}
+                />
+              </div>
+            }
+            isFullscreen={isFullscreen}
+            customAnimationDuration="12s"
+          />
+        )}
+
+        {showNextMessage && !videoCalificacion && !mesaIntroText && (
           <BarraDeslizante
             texto={
               <>
@@ -840,6 +937,7 @@ export default function VideoPlayer({
               </>
             }
             isFullscreen={isFullscreen}
+            customAnimationDuration={modoMesaActivo ? "12s" : undefined}
           />
         )}
       </div>

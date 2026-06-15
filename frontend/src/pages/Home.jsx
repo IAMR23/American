@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
@@ -23,6 +23,7 @@ import { getToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
+import MesasPage from "./MesasPage";
 import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
@@ -33,6 +34,7 @@ import User from "./User";
 import { useSocketContext } from "../hooks/SocketContext";
 
 const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
+const MESAS_STORAGE_KEY = "karaokeMesas";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -43,6 +45,8 @@ export default function Home() {
   const [shouldFullscreen, setShouldFullscreen] = useState(false);
   const [user, setUser] = useState(null);
   const [modoCalificacion, setModoCalificacion] = useState(false);
+  const [modoMesa, setModoMesa] = useState(false);
+  const [modoMesaLoading, setModoMesaLoading] = useState(false);
   const [auth, setAuth] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [colaDefault, setColaDefault] = useState([]);
@@ -55,10 +59,18 @@ export default function Home() {
   const { background } = useBackground();
   const { connectSocket } = useSocketContext();
 
-  const { cola, currentIndex, setCola, changeSong, clearQueue } =
-    useQueueContext();
+  const {
+    cola,
+    currentIndex,
+    modoMesaActivo,
+    modoMesaItems,
+    setCola,
+    changeSong,
+    clearQueue,
+  } = useQueueContext();
 
   const { playlistsPropia, suscrito } = usePlaylists(userId);
+  const modoMesaEncendido = modoMesa || modoMesaActivo;
 
   const MIN_ANTERIORES = 2;
 
@@ -207,33 +219,39 @@ export default function Home() {
     }
   }, [user]);
 
-  // ✅ Crear sala una sola vez o cuando cambie conexión relevante
-  useEffect(() => {
-    const crearSala = async () => {
-      try {
-        let savedRoomId = localStorage.getItem("roomId");
+  const ensureActiveRoom = useCallback(async () => {
+    try {
+      let savedRoomId = localStorage.getItem("roomId");
 
-        if (!savedRoomId) {
-          const res = await fetch(`${API_URL}/room/create-room`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user: "HOST" }),
-          });
+      if (!savedRoomId) {
+        const res = await fetch(`${API_URL}/room/create-room`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: "HOST" }),
+        });
 
-          const data = await res.json();
-          savedRoomId = data.roomId;
-          localStorage.setItem("roomId", savedRoomId);
+        if (!res.ok) {
+          throw new Error("No se pudo crear la sala");
         }
 
-        setRoomId(savedRoomId);
-        connectSocket({ roomId: savedRoomId, user: "HOST" });
-      } catch (error) {
-        console.error("Error al crear/conectar sala:", error);
+        const data = await res.json();
+        savedRoomId = data.roomId;
+        localStorage.setItem("roomId", savedRoomId);
       }
-    };
 
-    crearSala();
+      setRoomId(savedRoomId);
+      connectSocket({ roomId: savedRoomId, user: "HOST" });
+      return savedRoomId;
+    } catch (error) {
+      console.error("Error al crear/conectar sala:", error);
+      return null;
+    }
   }, [connectSocket]);
+
+  // ✅ Crear sala una sola vez o cuando cambie conexión relevante
+  useEffect(() => {
+    ensureActiveRoom();
+  }, [ensureActiveRoom]);
 
   const getColaActual = () => {
     const esColaVacia = !cola.length;
@@ -252,6 +270,7 @@ export default function Home() {
         setUserRole(decoded.rol);
         setCola([]);
         setAuth(true);
+        await ensureActiveRoom();
       } catch (err) {
         console.error("Token inválido", err);
       }
@@ -288,6 +307,7 @@ export default function Home() {
     setAuth(false);
     setUser(null);
     setRoomId(null);
+    setModoMesa(false);
     setRequestedIndex(null);
     setSeccionActiva("video");
   };
@@ -302,6 +322,127 @@ export default function Home() {
   const limpiarCola = () => {
     clearQueue();
     setRequestedIndex(null);
+  };
+
+  const getMesasGuardadas = () => {
+    try {
+      const mesas = JSON.parse(localStorage.getItem(MESAS_STORAGE_KEY) || "[]");
+      return Array.isArray(mesas) ? mesas : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const hayCancionesEnMesas = (mesas) =>
+    mesas.some((mesa) =>
+      (mesa.personas || mesa.participantes || []).some(
+        (persona) => (persona.canciones || []).length > 0,
+      ),
+    );
+
+  const toggleModoMesa = async () => {
+    if (modoMesaLoading) return;
+
+    const activeRoomId = roomId || (await ensureActiveRoom());
+
+    if (!activeRoomId) {
+      alert("No se pudo crear o conectar una sala activa.");
+      return;
+    }
+
+    setModoMesaLoading(true);
+
+    try {
+      if (modoMesaEncendido) {
+        await axios.post(`${API_URL}/t/cola/modo-mesa/desactivar`, {
+          roomId: activeRoomId,
+        });
+        setModoMesa(false);
+        return;
+      }
+
+      const mesas = getMesasGuardadas();
+
+      if (!hayCancionesEnMesas(mesas)) {
+        setSeccionActiva("mesas");
+        alert("Agrega mesas, personas y canciones antes de activar Modo Mesa.");
+        return;
+      }
+
+      await axios.post(`${API_URL}/t/cola/modo-mesa/activar`, {
+        roomId: activeRoomId,
+        mesas,
+      });
+
+      setModoMesa(true);
+      setRequestedIndex(null);
+      setSeccionActiva("video");
+    } catch (error) {
+      console.error("Error al cambiar Modo Mesa:", error);
+      alert(error.response?.data?.error || "No se pudo cambiar Modo Mesa.");
+    } finally {
+      setModoMesaLoading(false);
+    }
+  };
+
+  const borrarCancionTerminadaDeMesa = (cancionTerminada, indexTerminado) => {
+    if (!modoMesaEncendido || !cancionTerminada?._id) return;
+
+    const itemMesa = modoMesaItems?.[indexTerminado];
+    if (!itemMesa) return;
+
+    const mesas = getMesasGuardadas();
+    let huboCambios = false;
+
+    const mesasActualizadas = mesas.map((mesa, mesaIndex) => {
+      const mesaNumero = Number(mesa.numero) || mesaIndex + 1;
+      const mismaMesa =
+        mesaNumero === Number(itemMesa.mesaNumero) ||
+        mesa.nombre === itemMesa.mesaNombre;
+
+      if (!mismaMesa) return mesa;
+
+      const personas = mesa.personas || mesa.participantes || [];
+      const personasActualizadas = personas.map((persona, personaIndex) => {
+        const mismaPersona =
+          personaIndex === Number(itemMesa.participanteIndex) ||
+          persona.nombre === itemMesa.participanteNombre;
+
+        if (!mismaPersona) return persona;
+
+        const canciones = persona.canciones || [];
+        const cancionIndex = Number(itemMesa.cancionIndex);
+        const cancionesActualizadas = [...canciones];
+
+        if (cancionesActualizadas[cancionIndex]?._id === cancionTerminada._id) {
+          cancionesActualizadas.splice(cancionIndex, 1);
+          huboCambios = true;
+        } else {
+          const indexPorId = cancionesActualizadas.findIndex(
+            (cancion) => cancion._id === cancionTerminada._id,
+          );
+
+          if (indexPorId >= 0) {
+            cancionesActualizadas.splice(indexPorId, 1);
+            huboCambios = true;
+          }
+        }
+
+        return {
+          ...persona,
+          canciones: cancionesActualizadas,
+        };
+      });
+
+      return {
+        ...mesa,
+        personas: personasActualizadas,
+      };
+    });
+
+    if (huboCambios) {
+      localStorage.setItem(MESAS_STORAGE_KEY, JSON.stringify(mesasActualizadas));
+    }
   };
 
   const activarPantallaCompletaPlayer = () => {
@@ -365,6 +506,15 @@ export default function Home() {
       case "Celular":
         return <CelularPage />;
 
+      case "mesas":
+        return (
+          <MesasPage
+            roomId={roomId}
+            modoMesaActivo={modoMesaEncendido}
+            onModoMesaChange={setModoMesa}
+          />
+        );
+
       case "user":
         return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
 
@@ -378,12 +528,15 @@ export default function Home() {
             cola={colaActual}
             esColaDefault={esColaDefault}
             modoCalificacion={modoCalificacion}
+            modoMesaActivo={modoMesaEncendido}
+            modoMesaItems={modoMesaItems}
             currentIndex={currentIndex}
             setCurrentIndex={changeSong}
             requestedIndex={requestedIndex}
             onRequestedIndexHandled={() => setRequestedIndex(null)}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
+            onCancionTerminada={borrarCancionTerminadaDeMesa}
             onColaTerminada={() => {
               if (!esColaDefault) {
                 clearQueue();
@@ -504,6 +657,14 @@ export default function Home() {
               >
                 Celular
               </button>
+
+              <button
+                className="boton5"
+                onClick={() => setSeccionActiva("mesas")}
+                disabled={!suscrito}
+              >
+                Mesas
+              </button>
             </div>
 
             <div className="col-12 col-lg-8 justify-content-center home-content">
@@ -560,6 +721,37 @@ export default function Home() {
                 className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
               >
                 <img src="./cal.png" alt="" width={250} />
+              </button>
+
+              <button
+                disabled={!suscrito || modoMesaLoading}
+                onClick={toggleModoMesa}
+                className={`boto ${modoMesaEncendido ? "boto-activo" : ""}`}
+                style={{
+                  width: 250,
+                  minHeight: 72,
+                  color: "white",
+                  fontWeight: 900,
+                  textShadow: "2px 2px 0 #000",
+                  background: modoMesaEncendido
+                    ? "rgba(25, 135, 84, 0.9)"
+                    : "rgba(13, 110, 253, 0.85)",
+                  border: "2px solid rgba(255,255,255,0.65)",
+                }}
+                title={
+                  modoMesaEncendido ? "Desactivar Modo Mesa" : "Activar Modo Mesa"
+                }
+              >
+                <span style={{ display: "block", fontSize: "1.25rem" }}>
+                  Modo Mesa
+                </span>
+                <span style={{ display: "block", fontSize: "0.9rem" }}>
+                  {modoMesaLoading
+                    ? "Procesando..."
+                    : modoMesaEncendido
+                      ? "Encendido"
+                      : "Apagado"}
+                </span>
               </button>
 
               <button

@@ -7,10 +7,25 @@ const Cola = require("../models/Cola");
 const createListController = require("../controllers/listController");
 const { authenticate } = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
+const { generarColaModoMesa } = require("../services/modoMesaService");
 
 const favoritoController = createListController(Favorito);
 const playlistController = createListController(Playlist);
 const colaController = createListController(Cola);
+
+const emitirColaActualizada = async (req, roomId) => {
+  const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
+  const io = req.app.get("io");
+
+  io.to(roomId).emit("colaActualizada", {
+    nuevaCola: colaActualizada?.canciones || [],
+    indexActual: colaActualizada?.currentIndex || 0,
+    modoMesaActivo: Boolean(colaActualizada?.modoMesaActivo),
+    modoMesaItems: colaActualizada?.modoMesaItems || [],
+  });
+
+  return colaActualizada;
+};
 
 // ---------------- FAVORITOS ----------------
 router.post("/favoritos/add", authenticate, favoritoController.addSong);
@@ -81,6 +96,114 @@ router.post("/cola/without/aut/add", async (req, res) => {
   }
 });
 
+
+router.post("/cola/modo-mesa/activar", async (req, res) => {
+  try {
+    const { roomId, mesas } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    if (!Array.isArray(mesas)) {
+      return res.status(400).json({ error: "mesas debe ser un arreglo" });
+    }
+
+    const colaModoMesa = generarColaModoMesa(mesas);
+    const canciones = colaModoMesa.map((item) => item.cancionId);
+
+    if (!canciones.length) {
+      return res.status(400).json({
+        error: "No hay canciones asignadas a participantes de mesas",
+      });
+    }
+
+    const colaExistente = await Cola.findOne({ roomId });
+    const backupCanciones = colaExistente?.modoMesaActivo
+      ? colaExistente.colaNormalBackup || []
+      : colaExistente?.canciones || [];
+    const backupCurrentIndex = colaExistente?.modoMesaActivo
+      ? colaExistente.currentIndexNormalBackup || 0
+      : colaExistente?.currentIndex || 0;
+
+    await Cola.findOneAndUpdate(
+      { roomId },
+      {
+        $set: {
+          canciones,
+          currentIndex: 0,
+          modoMesaActivo: true,
+          modoMesaItems: colaModoMesa.map((item) => ({
+            mesaNumero: item.mesaNumero,
+            mesaNombre: item.mesaNombre,
+            participanteNombre: item.participanteNombre,
+            participanteIndex: item.participanteIndex,
+            cancionIndex: item.cancionIndex,
+            cancion: item.cancionId,
+          })),
+          colaNormalBackup: backupCanciones,
+          currentIndexNormalBackup: backupCurrentIndex,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    const colaActualizada = await emitirColaActualizada(req, roomId);
+
+    res.json({
+      message: "Modo mesa activado",
+      cola: colaActualizada.canciones,
+      currentIndex: colaActualizada.currentIndex,
+      modoMesaActivo: true,
+      totalCanciones: colaActualizada.canciones.length,
+    });
+  } catch (err) {
+    console.error("Error al activar modo mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/cola/modo-mesa/desactivar", async (req, res) => {
+  try {
+    const { roomId } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    const colaExistente = await Cola.findOne({ roomId });
+    const tieneBackup = Array.isArray(colaExistente?.colaNormalBackup);
+
+    await Cola.findOneAndUpdate(
+      { roomId },
+      {
+        $set: {
+          canciones: tieneBackup ? colaExistente.colaNormalBackup : [],
+          currentIndex: tieneBackup
+            ? colaExistente.currentIndexNormalBackup || 0
+            : 0,
+          modoMesaActivo: false,
+          modoMesaItems: [],
+          colaNormalBackup: [],
+          currentIndexNormalBackup: 0,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    const colaActualizada = await emitirColaActualizada(req, roomId);
+
+    res.json({
+      message: "Modo mesa desactivado",
+      cola: colaActualizada.canciones,
+      currentIndex: colaActualizada.currentIndex || 0,
+      modoMesaActivo: false,
+    });
+  } catch (err) {
+    console.error("Error al desactivar modo mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 router.post("/cola/add", authenticate, async (req, res) => { 

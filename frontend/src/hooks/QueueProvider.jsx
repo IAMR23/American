@@ -6,13 +6,20 @@ const QueueContext = createContext();
 export const QueueProvider = ({ children }) => {
   const [cola, setCola] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [modoMesaActivo, setModoMesaActivo] = useState(false);
+  const [modoMesaItems, setModoMesaItems] = useState([]);
   const { socket, emitEvent, onEvent, currentRoomId } = useSocketContext();
   const playNowTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!socket || !currentRoomId) return;
 
-    const handleColaActualizada = ({ nuevaCola, indexActual }) => {
+    const handleColaActualizada = ({
+      nuevaCola,
+      indexActual,
+      modoMesaActivo: nextModoMesaActivo,
+      modoMesaItems: nextModoMesaItems,
+    }) => {
       if (!nuevaCola) return;
 
       const colaValida = nuevaCola.filter((c) => c && c._id);
@@ -24,6 +31,14 @@ export const QueueProvider = ({ children }) => {
 
       setCola(colaValida);
       setCurrentIndex(safeIndex);
+
+      if (typeof nextModoMesaActivo === "boolean") {
+        setModoMesaActivo(nextModoMesaActivo);
+      }
+
+      if (Array.isArray(nextModoMesaItems)) {
+        setModoMesaItems(nextModoMesaItems);
+      }
     };
 
     const off = onEvent("colaActualizada", handleColaActualizada);
@@ -79,6 +94,8 @@ export const QueueProvider = ({ children }) => {
       value={{
         cola,
         currentIndex,
+        modoMesaActivo,
+        modoMesaItems,
         addToQueue,
         changeSong,
         playNowQueue,
