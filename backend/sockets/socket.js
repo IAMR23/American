@@ -37,6 +37,11 @@ const initSockets = (io) => {
         socket.emit("colaActualizada", {
           nuevaCola: cola.canciones,
           indexActual: cola.currentIndex,
+          modoMesaActivo: Boolean(cola.modoMesaActivo),
+          modoMesaItems: cola.modoMesaItems || [],
+          modoConcursoActivo: Boolean(cola.modoConcursoActivo),
+          modoConcursoFinalizado: Boolean(cola.modoConcursoFinalizado),
+          concursoItems: cola.concursoItems || [],
         });
       } catch (error) {
         console.error("Error en joinRoom:", error);
@@ -110,6 +115,11 @@ const initSockets = (io) => {
         io.in(roomId).emit("colaActualizada", {
           nuevaCola: cola.canciones,
           indexActual: finalIndex,
+          modoMesaActivo: Boolean(cola.modoMesaActivo),
+          modoMesaItems: cola.modoMesaItems || [],
+          modoConcursoActivo: Boolean(cola.modoConcursoActivo),
+          modoConcursoFinalizado: Boolean(cola.modoConcursoFinalizado),
+          concursoItems: cola.concursoItems || [],
         });
       } catch (error) {
         console.error("Error en cambiarCancion:", error);

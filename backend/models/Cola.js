@@ -16,6 +16,23 @@ const ColaSchema = new mongoose.Schema({
       cancion: { type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' },
     },
   ],
+  modoConcursoActivo: { type: Boolean, default: false },
+  modoConcursoFinalizado: { type: Boolean, default: false },
+  cancionesPorParticipanteConcurso: { type: Number, default: 1 },
+  concursoItems: [
+    {
+      participanteId: String,
+      participanteNombre: String,
+      participanteIndex: Number,
+      cancionIndex: Number,
+      estado: {
+        type: String,
+        enum: ["pendiente", "reproduciendo", "reproducida", "eliminada"],
+        default: "pendiente",
+      },
+      cancion: { type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' },
+    },
+  ],
   colaNormalBackup: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' }],
   currentIndexNormalBackup: Number,
 

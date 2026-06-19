@@ -13,6 +13,10 @@ const authenticate = async (req, res, next) => {
     // Verificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (decoded.type && decoded.type !== "access") {
+      return res.status(401).json({ message: "Token de acceso invalido" });
+    }
+
     // Buscar usuario
     const user = await User.findById(decoded.userId);
 

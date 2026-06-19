@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 require("dotenv").config();
 const conectarDB = require("./config/db");
+const cookieParserMiddleware = require("./middleware/cookieParserMiddleware");
 
 // Routes
 const userRoutes = require("./routes/UserRoutes");
@@ -38,22 +39,23 @@ const allowedOrigins = [
   "http://192.168.105.2:5173",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("CORS no permitido: " + origin), false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("CORS no permitido: " + origin), false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-app.options("*", cors());
+app.set("trust proxy", 1);
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParserMiddleware);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const io = new Server(server, {
