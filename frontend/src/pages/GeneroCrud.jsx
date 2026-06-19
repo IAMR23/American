@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { API_URL } from "../config"
+import { getToken } from "../utils/auth";
 
 const API_GENERO = `${API_URL}/genero`;
 
@@ -11,7 +12,7 @@ export default function GeneroCRUD() {
   const [editId, setEditId] = useState(null);
 
   const headers = {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
+    Authorization: `Bearer ${getToken()}`,
     "Content-Type": "application/json",
   };
 

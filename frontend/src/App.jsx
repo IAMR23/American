@@ -29,7 +29,8 @@ import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 import UsuariosCrud from "./pages/UsuariosCRUD";
 
 import { AuthProvider } from "./utils/AuthContext";
-import { getToken } from "./utils/auth";
+import { getToken, removeToken, saveToken } from "./utils/auth";
+import api from "./services/axiosConfig";
 import { SocketProvider } from "./hooks/SocketContext";
 import { QueueProvider } from "./hooks/QueueProvider";
 import { ReproductorProvider } from "./hooks/ReproductorContext";
@@ -58,7 +59,7 @@ function App() {
       const decoded = jwtDecode(token);
 
       if (decoded.exp * 1000 < Date.now()) {
-        localStorage.removeItem("token");
+        removeToken();
         setToken(null);
         setAuth({ isAuthenticated: false, rol: null, userId: null });
       } else {
@@ -69,10 +70,42 @@ function App() {
         });
       }
     } catch {
+      removeToken();
       setToken(null);
       setAuth({ isAuthenticated: false, rol: null, userId: null });
     }
   }, [token]);
+
+  useEffect(() => {
+    const syncToken = (event) => {
+      setToken(event.detail || getToken());
+    };
+
+    window.addEventListener("auth-token-changed", syncToken);
+
+    return () => {
+      window.removeEventListener("auth-token-changed", syncToken);
+    };
+  }, []);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const response = await api.post("/api/auth/refresh");
+        const refreshedToken = response.data?.accessToken || response.data?.token;
+
+        if (refreshedToken) {
+          saveToken(refreshedToken);
+          setToken(refreshedToken);
+        }
+      } catch {
+        removeToken();
+        setToken(null);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
       const roomId = localStorage.getItem("roomId");
 

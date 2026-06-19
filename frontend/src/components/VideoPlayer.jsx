@@ -74,6 +74,8 @@ export default function VideoPlayer({
   modoCalificacion = false,
   modoMesaActivo = false,
   modoMesaItems = [],
+  modoConcursoActivo = false,
+  concursoItems = [],
   requestedIndex = null,
   onRequestedIndexHandled,
 }) {
@@ -127,6 +129,9 @@ export default function VideoPlayer({
   const currentModoMesaItem = !esColaDefault
     ? modoMesaItems?.[effectiveIndex]
     : null;
+  const currentConcursoItem = !esColaDefault
+    ? concursoItems?.[effectiveIndex]
+    : null;
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -147,6 +152,15 @@ export default function VideoPlayer({
     const titulo = cancion?.titulo || "Siguiente cancion";
 
     return `${mesa} - ${participante} - ${titulo}`;
+  }, []);
+
+  const formatConcursoText = useCallback((item, cancion) => {
+    if (!item) return "";
+
+    const participante = item.participanteNombre || "Participante";
+    const titulo = cancion?.titulo || "Siguiente cancion";
+
+    return `${participante} - ${titulo}`;
   }, []);
 
   const stopCurrentPlayer = useCallback(() => {
@@ -405,14 +419,24 @@ export default function VideoPlayer({
   }, [playlist.length, stopCurrentPlayer]);
 
   useEffect(() => {
-    if (!modoMesaActivo || esColaDefault) return;
-    if (!currentModoMesaItem || !currentVideo) return;
+    if (esColaDefault) return;
+    if (!currentVideo) return;
+    if (!modoMesaActivo && !modoConcursoActivo) return;
 
-    const introKey = `${currentModoMesaItem.mesaNumero}-${currentModoMesaItem.participanteIndex}-${currentModoMesaItem.cancionIndex}-${currentVideo._id}`;
+    const item = modoConcursoActivo ? currentConcursoItem : currentModoMesaItem;
+    if (!item) return;
+
+    const introKey = modoConcursoActivo
+      ? `concurso-${item.participanteId}-${item.cancionIndex}-${currentVideo._id}`
+      : `mesa-${item.mesaNumero}-${item.participanteIndex}-${item.cancionIndex}-${currentVideo._id}`;
     if (mesaIntroKeyRef.current === introKey) return;
 
     mesaIntroKeyRef.current = introKey;
-    setMesaIntroText(formatMesaText(currentModoMesaItem, currentVideo));
+    setMesaIntroText(
+      modoConcursoActivo
+        ? formatConcursoText(item, currentVideo)
+        : formatMesaText(item, currentVideo),
+    );
 
     if (mesaIntroTimeoutRef.current) {
       clearTimeout(mesaIntroTimeoutRef.current);
@@ -423,11 +447,14 @@ export default function VideoPlayer({
       mesaIntroTimeoutRef.current = null;
     }, 25000);
   }, [
+    currentConcursoItem,
     currentModoMesaItem,
     currentVideo,
     effectiveIndex,
     esColaDefault,
+    formatConcursoText,
     formatMesaText,
+    modoConcursoActivo,
     modoMesaActivo,
   ]);
 
@@ -523,7 +550,7 @@ export default function VideoPlayer({
       return;
     }
 
-    const nextThreshold = modoMesaActivo ? 25 : 40;
+    const nextThreshold = modoMesaActivo || modoConcursoActivo ? 25 : 40;
 
     if (dur - playedSeconds <= nextThreshold) {
       const nextIndex = effectiveIndex + 1;
@@ -534,9 +561,15 @@ export default function VideoPlayer({
       if (next) {
         const nextMesaItem =
           modoMesaActivo && !esColaDefault ? modoMesaItems?.[nextIndex] : null;
+        const nextConcursoItem =
+          modoConcursoActivo && !esColaDefault
+            ? concursoItems?.[nextIndex]
+            : null;
 
         setNextSongName(
-          nextMesaItem
+          nextConcursoItem
+            ? formatConcursoText(nextConcursoItem, next)
+            : nextMesaItem
             ? formatMesaText(nextMesaItem, next)
             : next.titulo || "Siguiente cancion",
         );
@@ -937,7 +970,9 @@ export default function VideoPlayer({
               </>
             }
             isFullscreen={isFullscreen}
-            customAnimationDuration={modoMesaActivo ? "12s" : undefined}
+            customAnimationDuration={
+              modoMesaActivo || modoConcursoActivo ? "12s" : undefined
+            }
           />
         )}
       </div>

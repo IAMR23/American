@@ -8,6 +8,9 @@ export const QueueProvider = ({ children }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [modoMesaActivo, setModoMesaActivo] = useState(false);
   const [modoMesaItems, setModoMesaItems] = useState([]);
+  const [modoConcursoActivo, setModoConcursoActivo] = useState(false);
+  const [modoConcursoFinalizado, setModoConcursoFinalizado] = useState(false);
+  const [concursoItems, setConcursoItems] = useState([]);
   const { socket, emitEvent, onEvent, currentRoomId } = useSocketContext();
   const playNowTimeoutRef = useRef(null);
 
@@ -19,6 +22,9 @@ export const QueueProvider = ({ children }) => {
       indexActual,
       modoMesaActivo: nextModoMesaActivo,
       modoMesaItems: nextModoMesaItems,
+      modoConcursoActivo: nextModoConcursoActivo,
+      modoConcursoFinalizado: nextModoConcursoFinalizado,
+      concursoItems: nextConcursoItems,
     }) => {
       if (!nuevaCola) return;
 
@@ -38,6 +44,18 @@ export const QueueProvider = ({ children }) => {
 
       if (Array.isArray(nextModoMesaItems)) {
         setModoMesaItems(nextModoMesaItems);
+      }
+
+      if (typeof nextModoConcursoActivo === "boolean") {
+        setModoConcursoActivo(nextModoConcursoActivo);
+      }
+
+      if (typeof nextModoConcursoFinalizado === "boolean") {
+        setModoConcursoFinalizado(nextModoConcursoFinalizado);
+      }
+
+      if (Array.isArray(nextConcursoItems)) {
+        setConcursoItems(nextConcursoItems);
       }
     };
 
@@ -96,6 +114,9 @@ export const QueueProvider = ({ children }) => {
         currentIndex,
         modoMesaActivo,
         modoMesaItems,
+        modoConcursoActivo,
+        modoConcursoFinalizado,
+        concursoItems,
         addToQueue,
         changeSong,
         playNowQueue,

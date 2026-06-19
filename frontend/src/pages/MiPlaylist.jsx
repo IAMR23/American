@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
+import { getToken } from "../utils/auth";
 
 const MiPlaylist = () => {
   const { id } = useParams();
@@ -20,7 +21,7 @@ const MiPlaylist = () => {
   const fetchCancionesDePlaylist = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const response = await axios.get(
         `${API_URL}/t2/playlistpropia/canciones/${id}`,
@@ -41,7 +42,7 @@ const MiPlaylist = () => {
 
   const abrirModal = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await axios.get(`${API_URL}/song`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -55,7 +56,7 @@ const MiPlaylist = () => {
 
   const agregarCancionAPlaylist = async (cancionId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       await axios.post(
         `${API_URL}/t2/playlistpropia/${id}/addsong`,
         { songId: cancionId },
@@ -71,7 +72,7 @@ const MiPlaylist = () => {
 
   const eliminarCancionDePlaylist = async (cancionId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       await axios.delete(
         `${API_URL}/t2/playlistpropia/${id}/remove/${cancionId}`,
         {

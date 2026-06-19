@@ -5,6 +5,7 @@ import { API_URL } from "../config";
 import "../styles/inicial.css";
 import { FaCompactDisc } from "react-icons/fa";
 import Logo from "../components/Logo";
+import { getToken } from "../utils/auth";
 
 const MiPlaylistUser = () => {
   const { id } = useParams();
@@ -23,7 +24,7 @@ const MiPlaylistUser = () => {
   const fetchCancionesDePlaylist = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const response = await axios.get(
         `${API_URL}/t2/playlistPropia/canciones/${id}`,

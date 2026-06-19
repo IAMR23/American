@@ -199,9 +199,11 @@ export default function BuscadorTabla({ onSelectAll, roomId }) {
       });
 
       setToastMsg("Cancion agregada a la cola");
+      return cancion;
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
       setToastMsg("No se pudo agregar la cancion");
+      return null;
     }
   };
 
@@ -292,8 +294,15 @@ export default function BuscadorTabla({ onSelectAll, roomId }) {
         return;
       }
 
-      await agregarACola(cancion._id, cancion);
-      setToastMsg(`Cancion ${cancion.numero} agregada a la cola`);
+      const cancionAgregada = await agregarACola(cancion._id, cancion);
+
+      if (!cancionAgregada) return;
+
+      setToastMsg(
+        `Agregada a la cola: ${cancionAgregada.numero} - ${cancionAgregada.artista} - ${cancionAgregada.titulo}`,
+      );
+      setBusqueda("");
+      setDebouncedSearch("");
     } catch (err) {
       console.error("Error al agregar por numero:", err);
       setToastMsg("No se pudo agregar la cancion por numero");

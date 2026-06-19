@@ -10,6 +10,17 @@ import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/visibles`;
 
+const mezclarVideos = (items) => {
+  const mezclados = [...items];
+
+  for (let i = mezclados.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [mezclados[i], mezclados[j]] = [mezclados[j], mezclados[i]];
+  }
+
+  return mezclados;
+};
+
 export default function VideoCarouselVisibles({ onPlaySolo }) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
@@ -66,7 +77,8 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
           ? payload.canciones
           : [];
 
-      setVideos(data);
+      setVideos(mezclarVideos(data));
+      setIndice(0);
     } catch (err) {
       console.error("Error al cargar videos", err);
       console.error("Respuesta error:", err?.response?.data);

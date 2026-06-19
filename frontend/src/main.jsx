@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
 import "./styles/bootstrap.css";
+import "./services/axiosConfig";
 import "@justinribeiro/lite-youtube";
 import React from "react";
 

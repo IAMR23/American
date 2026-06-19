@@ -93,6 +93,15 @@ body {
 
 .home-content {
   min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(420px, 62vh, 720px);
+}
+
+.home-content > * {
+  width: 100%;
+  max-width: 100%;
 }
 
 .queue-panel {
@@ -174,6 +183,7 @@ body {
 
   .home-content {
     order: -1;
+    min-height: auto;
   }
 
   .cola-canciones {

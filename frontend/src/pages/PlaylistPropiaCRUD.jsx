@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
-import { getUserId } from "../utils/auth";
+import { getToken, getUserId } from "../utils/auth";
 import { Link } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import ToastModal from "../components/modal/ToastModal";
@@ -14,7 +14,7 @@ export default function PlaylistPropiaCRUD() {
   const [songIdToAdd, setSongIdToAdd] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  const token = localStorage.getItem("token");
+  const token = getToken();
 
   const axiosConfig = {
     headers: { Authorization: `Bearer ${token}` },

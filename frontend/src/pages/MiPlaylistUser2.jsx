@@ -124,7 +124,7 @@ export default function MiPlaylistUser2() {
 
   const fetchCancionesDePlaylist = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       const response = await axios.get(
         `${API_URL}/t/playlist/canciones/${id}`,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import ToastModal from "../components/modal/ToastModal";
+import { getToken } from "../utils/auth";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
@@ -29,7 +30,7 @@ export default function CancionCRUD() {
   const [filtroActivo, setFiltroActivo] = useState("titulo");
 
   const headers = {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
+    Authorization: `Bearer ${getToken()}`,
     "Content-Type": "application/json",
   };
 

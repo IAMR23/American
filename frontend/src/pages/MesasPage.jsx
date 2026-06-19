@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import ToastModal from "../components/modal/ToastModal";
 
 const STORAGE_KEY = "karaokeMesas";
-const PAGE_LIMIT = 30;
 const SONG_SEARCH_URL = `${API_URL}/song/search`;
 
 const createId = (prefix) =>
@@ -33,22 +32,10 @@ export default function MesasPage({
   const [personaActivaId, setPersonaActivaId] = useState(null);
   const [nombreMesa, setNombreMesa] = useState("");
   const [nombrePersona, setNombrePersona] = useState("");
-  const [filtroActivo, setFiltroActivo] = useState("numero");
   const [busqueda, setBusqueda] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [canciones, setCanciones] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingInitial, setLoadingInitial] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState("");
+  const [buscandoCancion, setBuscandoCancion] = useState(false);
+  const [modoMesaLoading, setModoMesaLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
-
-  const scrollContainerRef = useRef(null);
-  const observerRef = useRef(null);
-  const abortControllerRef = useRef(null);
-  const requestIdRef = useRef(0);
-  const loadingRef = useRef(false);
 
   const tieneCancionesEnMesas = (mesasToCheck) =>
     mesasToCheck.some((mesa) =>
@@ -83,6 +70,44 @@ export default function MesasPage({
 
     if (syncModoMesa) {
       sincronizarModoMesa(nextMesas);
+    }
+  };
+
+  const toggleComenzarMesas = async () => {
+    if (modoMesaLoading) return;
+
+    if (!roomId) {
+      setToastMsg("No hay sala activa para comenzar mesas");
+      return;
+    }
+
+    setModoMesaLoading(true);
+
+    try {
+      if (modoMesaActivo) {
+        await axios.post(`${API_URL}/t/cola/modo-mesa/desactivar`, { roomId });
+        onModoMesaChange?.(false);
+        setToastMsg("Mesas detenidas");
+        return;
+      }
+
+      if (!tieneCancionesEnMesas(mesas)) {
+        setToastMsg("Agrega canciones antes de comenzar mesas");
+        return;
+      }
+
+      await axios.post(`${API_URL}/t/cola/modo-mesa/activar`, {
+        roomId,
+        mesas,
+      });
+
+      onModoMesaChange?.(true);
+      setToastMsg("Mesas comenzadas");
+    } catch (error) {
+      console.error("Error cambiando Modo Mesa:", error);
+      setToastMsg(error.response?.data?.error || "No se pudo comenzar mesas");
+    } finally {
+      setModoMesaLoading(false);
     }
   };
 
@@ -238,131 +263,110 @@ export default function MesasPage({
     setToastMsg(`Cancion agregada a ${personaActiva?.nombre || "la persona"}`);
   };
 
-  const fetchCanciones = useCallback(
-    async (pageToLoad, { reset = false } = {}) => {
-      if (reset && abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        loadingRef.current = false;
+  const buscarCancionExactaPorNumero = async (numero) => {
+    const res = await axios.get(SONG_SEARCH_URL, {
+      params: {
+        page: 1,
+        limit: 100,
+        search: String(numero),
+        filtro: "numero",
+      },
+    });
+
+    return (res.data.canciones || res.data || []).find(
+      (cancion) => Number(cancion.numero) === Number(numero),
+    );
+  };
+
+  const handleAgregarCancionPorNumero = async (e) => {
+    e.preventDefault();
+
+    if (!personaActiva) {
+      setToastMsg("Selecciona una persona");
+      return;
+    }
+
+    const numero = busqueda.trim();
+    if (!numero) return;
+
+    setBuscandoCancion(true);
+
+    try {
+      const cancion = await buscarCancionExactaPorNumero(numero);
+
+      if (!cancion?._id) {
+        setToastMsg(`No se encontro la cancion numero ${numero}`);
+        return;
       }
 
-      if (loadingRef.current) return;
-
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      loadingRef.current = true;
-
-      if (reset) {
-        setLoadingInitial(true);
-        setError("");
-      } else {
-        setLoadingMore(true);
-      }
-
-      try {
-        const res = await axios.get(SONG_SEARCH_URL, {
-          signal: controller.signal,
-          params: {
-            page: pageToLoad,
-            limit: PAGE_LIMIT,
-            search: debouncedSearch,
-            filtro: filtroActivo,
-          },
-        });
-
-        if (requestId !== requestIdRef.current) return;
-
-        const nuevasCanciones = res.data.canciones || [];
-
-        setCanciones((prev) => {
-          if (reset) return nuevasCanciones;
-
-          const idsActuales = new Set(prev.map((cancion) => cancion._id));
-          const cancionesSinRepetir = nuevasCanciones.filter(
-            (cancion) => !idsActuales.has(cancion._id),
-          );
-
-          return [...prev, ...cancionesSinRepetir];
-        });
-
-        setPage(res.data.page || pageToLoad);
-        setHasMore(Boolean(res.data.hasMore));
-      } catch (err) {
-        if (axios.isCancel?.(err) || err.name === "CanceledError") return;
-
-        console.error("Error al obtener canciones", err);
-        if (requestId === requestIdRef.current) {
-          setError("No se pudieron cargar las canciones");
-        }
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoadingInitial(false);
-          setLoadingMore(false);
-          loadingRef.current = false;
-        }
-      }
-    },
-    [debouncedSearch, filtroActivo],
-  );
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      setDebouncedSearch(busqueda.trim());
-    }, 500);
-
-    return () => clearTimeout(debounce);
-  }, [busqueda]);
-
-  useEffect(() => {
-    setCanciones([]);
-    setPage(1);
-    setHasMore(true);
-    scrollContainerRef.current?.scrollTo({ top: 0 });
-    fetchCanciones(1, { reset: true });
-  }, [debouncedSearch, filtroActivo, fetchCanciones]);
-
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-      observerRef.current?.disconnect();
-    };
-  }, []);
-
-  const lastRowRef = useCallback(
-    (node) => {
-      if (loadingInitial || loadingMore) return;
-      observerRef.current?.disconnect();
-
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
-            fetchCanciones(page + 1);
-          }
-        },
-        { root: scrollContainerRef.current, rootMargin: "120px" },
+      const yaExiste = personaActiva.canciones.some(
+        (item) => item._id === cancion._id,
       );
 
-      if (node) observerRef.current.observe(node);
-    },
-    [fetchCanciones, hasMore, loadingInitial, loadingMore, page],
-  );
+      if (yaExiste) {
+        setToastMsg(
+          `${cancion.numero} - ${cancion.titulo} ya esta en esta persona`,
+        );
+        setBusqueda("");
+        return;
+      }
+
+      agregarCancionAPersona(cancion);
+      setBusqueda("");
+      setToastMsg(
+        `Agregada: ${cancion.numero} - ${cancion.artista} - ${cancion.titulo}`,
+      );
+    } catch (error) {
+      console.error("Error al agregar cancion por numero:", error);
+      setToastMsg("No se pudo agregar la cancion");
+    } finally {
+      setBuscandoCancion(false);
+    }
+  };
 
   return (
     <div className="container-fluid px-2 px-md-3 py-2 text-dark">
-      <div className="row g-3">
-        <div className="col-12 col-lg-4">
-          <div className="bg-white rounded shadow-sm p-3 mb-3">
-            <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+      <div
+        className="row g-3 align-items-stretch"
+        style={{ height: "calc(100vh - 220px)", minHeight: 560, maxHeight: 760 }}
+      >
+        <div className="col-12 col-lg-4 h-100">
+          <div className="d-flex flex-column gap-3 h-100" style={{ minHeight: 0 }}>
+            <div
+              className="bg-white rounded shadow-sm p-3 d-flex flex-column border"
+              style={{ minHeight: 0, flex: "1 1 0", overflow: "hidden" }}
+            >
+            <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
               <h2 className="h4 mb-0">Mesas</h2>
-              <button
-                className="btn btn-outline-danger btn-sm"
-                type="button"
-                onClick={borrarTodo}
-                disabled={!mesas.length}
-              >
-                Borrar todo
-              </button>
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  className={`btn btn-success btn-sm ${
+                    modoMesaActivo ? "boto-activo" : ""
+                  }`}
+                  type="button"
+                  onClick={toggleComenzarMesas}
+                  disabled={modoMesaLoading}
+                  title={
+                    modoMesaActivo
+                      ? "Detener mesas"
+                      : "Comenzar modo de mesas"
+                  }
+                >
+                  {modoMesaLoading
+                    ? "Procesando..."
+                    : modoMesaActivo
+                      ? "Mesas activas"
+                      : "Comenzar mesas"}
+                </button>
+                <button
+                  className="btn btn-outline-danger btn-sm"
+                  type="button"
+                  onClick={borrarTodo}
+                  disabled={!mesas.length}
+                >
+                  Borrar todo
+                </button>
+              </div>
             </div>
 
             <form className="d-flex gap-2 mb-3" onSubmit={handleCrearMesa}>
@@ -377,7 +381,10 @@ export default function MesasPage({
               </button>
             </form>
 
-            <div className="d-flex flex-column gap-2">
+            <div
+              className="d-flex flex-column gap-2 pe-1"
+              style={{ minHeight: 0, overflowY: "auto", flex: "1 1 auto" }}
+            >
               {mesas.map((mesa) => (
                 <div
                   key={mesa.id}
@@ -418,9 +425,12 @@ export default function MesasPage({
                 </div>
               )}
             </div>
-          </div>
+            </div>
 
-          <div className="bg-white rounded shadow-sm p-3">
+          <div
+            className="bg-white rounded shadow-sm p-3 d-flex flex-column border"
+            style={{ minHeight: 0, flex: "1 1 0", overflow: "hidden" }}
+          >
             <h3 className="h5 mb-3">
               Personas {mesaActiva ? `- ${mesaActiva.nombre}` : ""}
             </h3>
@@ -442,7 +452,10 @@ export default function MesasPage({
               </button>
             </form>
 
-            <div className="d-flex flex-column gap-2">
+            <div
+              className="d-flex flex-column gap-2 pe-1"
+              style={{ minHeight: 0, overflowY: "auto", flex: "1 1 auto" }}
+            >
               {mesaActiva?.personas.map((persona) => (
                 <div
                   key={persona.id}
@@ -481,24 +494,69 @@ export default function MesasPage({
             </div>
           </div>
         </div>
+        </div>
 
-        <div className="col-12 col-lg-8">
-          <div className="bg-white rounded shadow-sm p-3 mb-3">
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div className="col-12 col-lg-8 h-100">
+          <div className="d-flex flex-column gap-3 h-100" style={{ minHeight: 0 }}>
+            <div className="bg-white rounded shadow-sm p-3 border">
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
               <div>
-                <h2 className="h4 mb-1">
-                  Canciones de {personaActiva?.nombre || "la persona"}
-                </h2>
-                <div className="text-muted">
+                  <h2 className="h5 mb-1">Agregar canciones</h2>
+                  <div className="text-muted small">
                   {mesaActiva?.nombre || "Selecciona una mesa"}
+                    {personaActiva ? ` / ${personaActiva.nombre}` : ""}
                 </div>
               </div>
-            </div>
+
+            <form
+                  className="d-flex align-items-center flex-wrap gap-2 mb-0"
+              onSubmit={handleAgregarCancionPorNumero}
+            >
+              <input
+                type="text"
+                className="form-control"
+                style={{ width: "min(100%, 260px)" }}
+                placeholder="Numero de la cancion"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                disabled={!personaActiva || buscandoCancion}
+              />
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={!personaActiva || buscandoCancion}
+              >
+                {buscandoCancion ? "Agregando..." : "Agregar"}
+              </button>
+            </form>
+              </div>
+          </div>
+
+            <div
+              className="bg-white rounded shadow-sm p-3 d-flex flex-column border"
+              style={{ minHeight: 0, flex: "1 1 auto", overflow: "hidden" }}
+            >
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div>
+                  <h2 className="h4 mb-1">
+                    Canciones de {personaActiva?.nombre || "la persona"}
+                  </h2>
+                  <div className="text-muted">
+                    {mesaActiva?.nombre || "Selecciona una mesa"}
+                  </div>
+                </div>
+                <span className="badge bg-secondary">
+                  {personaActiva?.canciones.length || 0} canciones
+                </span>
+              </div>
 
             {personaActiva ? (
-              <div className="table-responsive">
+                <div
+                  className="table-responsive pe-1"
+                  style={{ minHeight: 0, overflowY: "auto", flex: "1 1 auto" }}
+                >
                 <table className="table table-sm align-middle mb-0">
-                  <thead>
+                    <thead className="table-light sticky-top">
                     <tr>
                       <th>Numero</th>
                       <th>Cantante</th>
@@ -538,106 +596,6 @@ export default function MesasPage({
               </div>
             )}
           </div>
-
-          <div className="bg-white rounded shadow-sm p-3">
-            <h3 className="h5 mb-3">Agregar canciones</h3>
-
-            <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
-              {["numero", "artista", "titulo", "generos"].map((tipo) => (
-                <button
-                  key={tipo}
-                  onClick={() => setFiltroActivo(tipo)}
-                  className={`btn ${
-                    filtroActivo === tipo ? "btn-danger" : "btn-primary"
-                  }`}
-                  type="button"
-                >
-                  {tipo === "generos"
-                    ? "Genero"
-                    : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                </button>
-              ))}
-              <input
-                type="text"
-                className="form-control"
-                style={{ width: "min(100%, 260px)" }}
-                placeholder="Buscar..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
-            </div>
-
-            {loadingInitial && (
-              <div className="alert alert-info py-2 text-center">
-                Cargando canciones...
-              </div>
-            )}
-
-            {error && !loadingInitial && (
-              <div className="alert alert-danger py-2 text-center">
-                {error}
-              </div>
-            )}
-
-            <div
-              ref={scrollContainerRef}
-              className="table-responsive"
-              style={{ maxHeight: "420px", overflowY: "auto" }}
-            >
-              <table className="table table-striped align-middle mb-0">
-                <thead className="table-dark sticky-top">
-                  <tr>
-                    <th>Numero</th>
-                    <th>Cantante</th>
-                    <th>Cancion</th>
-                    <th>Genero</th>
-                    <th className="text-center">Accion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {canciones.map((fila, index) => (
-                    <tr
-                      key={fila._id}
-                      ref={index === canciones.length - 1 ? lastRowRef : null}
-                    >
-                      <td>{fila.numero}</td>
-                      <td>{fila.artista}</td>
-                      <td>{fila.titulo}</td>
-                      <td>{fila.generos?.nombre || "Sin genero"}</td>
-                      <td className="text-center">
-                        <button
-                          className="btn btn-info btn-sm p-1"
-                          type="button"
-                          disabled={!personaActiva}
-                          onClick={() => agregarCancionAPersona(fila)}
-                          title="Agregar a persona"
-                        >
-                          <img src="/mas.png" alt="add" width="34" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {!loadingInitial && !error && canciones.length === 0 && (
-                <div className="alert alert-light py-2 text-center mb-0">
-                  No se encontraron canciones.
-                </div>
-              )}
-
-              {loadingMore && (
-                <div className="alert alert-info py-2 text-center mb-0">
-                  Cargando mas canciones...
-                </div>
-              )}
-
-              {!hasMore && canciones.length > 0 && (
-                <div className="alert alert-light py-2 text-center mb-0">
-                  No hay mas canciones por cargar.
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>

@@ -19,11 +19,12 @@ import AyudaPage from "./AyudaPage";
 import PlantTest from "../components/PlanTest";
 import BuscadorTabla from "../components/BuscadorTabla";
 
-import { getToken } from "../utils/auth";
+import { getToken, removeToken } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
 import MesasPage from "./MesasPage";
+import ConcursoPage from "./ConcursoPage";
 import { useQueueContext } from "../hooks/QueueProvider";
 import VideoCarousel from "../components/VideoCarousel";
 import VideoCarouselVisibles from "../components/VideoCarouselVisibles";
@@ -46,12 +47,13 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [modoCalificacion, setModoCalificacion] = useState(false);
   const [modoMesa, setModoMesa] = useState(false);
-  const [modoMesaLoading, setModoMesaLoading] = useState(false);
+  const [modoConcurso, setModoConcurso] = useState(false);
   const [auth, setAuth] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [colaDefault, setColaDefault] = useState([]);
   const [token, setToken] = useState(getToken());
   const [roomId, setRoomId] = useState(null);
+  const [playerResetKey, setPlayerResetKey] = useState(0);
 
   // ✅ NUEVO: evita cambiar la canción directo desde Home
   const [requestedIndex, setRequestedIndex] = useState(null);
@@ -64,6 +66,8 @@ export default function Home() {
     currentIndex,
     modoMesaActivo,
     modoMesaItems,
+    modoConcursoActivo,
+    concursoItems,
     setCola,
     changeSong,
     clearQueue,
@@ -71,6 +75,7 @@ export default function Home() {
 
   const { playlistsPropia, suscrito } = usePlaylists(userId);
   const modoMesaEncendido = modoMesa || modoMesaActivo;
+  const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
 
   const MIN_ANTERIORES = 2;
 
@@ -90,33 +95,45 @@ export default function Home() {
 
   // ✅ Validar token una sola vez
   useEffect(() => {
-    const currentToken = getToken();
+    const validarTokenActual = () => {
+      const currentToken = getToken();
+      setToken(currentToken);
 
-    if (!currentToken) {
-      setAuth(false);
-      return;
-    }
-
-    try {
-      const decodedToken = jwtDecode(currentToken);
-
-      if (decodedToken.exp * 1000 < Date.now()) {
-        localStorage.removeItem("token");
+      if (!currentToken) {
         setAuth(false);
         setUserId(null);
         setUserRole(null);
-      } else {
-        setAuth(true);
-        setUserId(decodedToken.userId);
-        setUserRole(decodedToken.rol);
+        return;
       }
-    } catch (error) {
-      console.error("Error al decodificar el token", error);
-      localStorage.removeItem("token");
-      setAuth(false);
-      setUserId(null);
-      setUserRole(null);
-    }
+
+      try {
+        const decodedToken = jwtDecode(currentToken);
+
+        if (decodedToken.exp * 1000 < Date.now()) {
+          removeToken();
+          setAuth(false);
+          setUserId(null);
+          setUserRole(null);
+        } else {
+          setAuth(true);
+          setUserId(decodedToken.userId);
+          setUserRole(decodedToken.rol);
+        }
+      } catch (error) {
+        console.error("Error al decodificar el token", error);
+        removeToken();
+        setAuth(false);
+        setUserId(null);
+        setUserRole(null);
+      }
+    };
+
+    validarTokenActual();
+    window.addEventListener("auth-token-changed", validarTokenActual);
+
+    return () => {
+      window.removeEventListener("auth-token-changed", validarTokenActual);
+    };
   }, []);
 
   useEffect(() => {
@@ -270,6 +287,7 @@ export default function Home() {
         setUserRole(decoded.rol);
         setCola([]);
         setAuth(true);
+        setPlayerResetKey((prev) => prev + 1);
         await ensureActiveRoom();
       } catch (err) {
         console.error("Token inválido", err);
@@ -296,8 +314,13 @@ export default function Home() {
       console.error("Error al eliminar la cola:", err);
     }
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("rol");
+    try {
+      await axios.post(`${API_URL}/api/auth/logout`);
+    } catch (err) {
+      console.error("Error al cerrar la sesion persistente:", err);
+    }
+
+    removeToken();
     localStorage.removeItem("roomId");
 
     setToken(null);
@@ -308,6 +331,8 @@ export default function Home() {
     setUser(null);
     setRoomId(null);
     setModoMesa(false);
+    setModoConcurso(false);
+    setPlayerResetKey((prev) => prev + 1);
     setRequestedIndex(null);
     setSeccionActiva("video");
   };
@@ -330,58 +355,6 @@ export default function Home() {
       return Array.isArray(mesas) ? mesas : [];
     } catch {
       return [];
-    }
-  };
-
-  const hayCancionesEnMesas = (mesas) =>
-    mesas.some((mesa) =>
-      (mesa.personas || mesa.participantes || []).some(
-        (persona) => (persona.canciones || []).length > 0,
-      ),
-    );
-
-  const toggleModoMesa = async () => {
-    if (modoMesaLoading) return;
-
-    const activeRoomId = roomId || (await ensureActiveRoom());
-
-    if (!activeRoomId) {
-      alert("No se pudo crear o conectar una sala activa.");
-      return;
-    }
-
-    setModoMesaLoading(true);
-
-    try {
-      if (modoMesaEncendido) {
-        await axios.post(`${API_URL}/t/cola/modo-mesa/desactivar`, {
-          roomId: activeRoomId,
-        });
-        setModoMesa(false);
-        return;
-      }
-
-      const mesas = getMesasGuardadas();
-
-      if (!hayCancionesEnMesas(mesas)) {
-        setSeccionActiva("mesas");
-        alert("Agrega mesas, personas y canciones antes de activar Modo Mesa.");
-        return;
-      }
-
-      await axios.post(`${API_URL}/t/cola/modo-mesa/activar`, {
-        roomId: activeRoomId,
-        mesas,
-      });
-
-      setModoMesa(true);
-      setRequestedIndex(null);
-      setSeccionActiva("video");
-    } catch (error) {
-      console.error("Error al cambiar Modo Mesa:", error);
-      alert(error.response?.data?.error || "No se pudo cambiar Modo Mesa.");
-    } finally {
-      setModoMesaLoading(false);
     }
   };
 
@@ -443,6 +416,34 @@ export default function Home() {
     if (huboCambios) {
       localStorage.setItem(MESAS_STORAGE_KEY, JSON.stringify(mesasActualizadas));
     }
+  };
+
+  const marcarCancionTerminadaDeConcurso = async (
+    _cancionTerminada,
+    indexTerminado,
+  ) => {
+    if (!modoConcursoEncendido || !roomId) return;
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/t/cola/modo-concurso/cancion-terminada`,
+        {
+          roomId,
+          indexActual: indexTerminado,
+        },
+      );
+
+      if (res.data?.modoConcursoActivo === false) {
+        setModoConcurso(false);
+      }
+    } catch (error) {
+      console.error("Error al avanzar concurso:", error);
+    }
+  };
+
+  const handleCancionTerminada = (cancionTerminada, indexTerminado) => {
+    borrarCancionTerminadaDeMesa(cancionTerminada, indexTerminado);
+    marcarCancionTerminadaDeConcurso(cancionTerminada, indexTerminado);
   };
 
   const activarPantallaCompletaPlayer = () => {
@@ -515,6 +516,19 @@ export default function Home() {
           />
         );
 
+      case "concurso":
+        return (
+          <ConcursoPage
+            roomId={roomId}
+            modoConcursoActivo={modoConcursoEncendido}
+            modoCalificacionActivo={modoCalificacion}
+            onModoConcursoChange={(activo) => {
+              setModoConcurso(activo);
+              if (activo) setModoCalificacion(false);
+            }}
+          />
+        );
+
       case "user":
         return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
 
@@ -525,20 +539,23 @@ export default function Home() {
 
         return (
           <VideoPlayer
+            key={`${esColaDefault ? "default" : "queue"}-${playerResetKey}`}
             cola={colaActual}
             esColaDefault={esColaDefault}
             modoCalificacion={modoCalificacion}
             modoMesaActivo={modoMesaEncendido}
             modoMesaItems={modoMesaItems}
+            modoConcursoActivo={modoConcursoEncendido}
+            concursoItems={concursoItems}
             currentIndex={currentIndex}
             setCurrentIndex={changeSong}
             requestedIndex={requestedIndex}
             onRequestedIndexHandled={() => setRequestedIndex(null)}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
-            onCancionTerminada={borrarCancionTerminadaDeMesa}
+            onCancionTerminada={handleCancionTerminada}
             onColaTerminada={() => {
-              if (!esColaDefault) {
+              if (!esColaDefault && !modoConcursoEncendido) {
                 clearQueue();
               }
             }}
@@ -659,11 +676,21 @@ export default function Home() {
               </button>
 
               <button
-                className="boton5"
+                className={`boton5 ${modoMesaEncendido ? "boto-activo" : ""}`}
                 onClick={() => setSeccionActiva("mesas")}
                 disabled={!suscrito}
               >
                 Mesas
+              </button>
+
+              <button
+                className={`boton3 ${
+                  modoConcursoEncendido ? "boto-activo" : ""
+                }`}
+                onClick={() => setSeccionActiva("concurso")}
+                disabled={!suscrito || modoCalificacion}
+              >
+                Concurso
               </button>
             </div>
 
@@ -716,42 +743,14 @@ export default function Home() {
               </button>
 
               <button
-                disabled={!suscrito}
-                onClick={() => setModoCalificacion((prev) => !prev)}
+                disabled={!suscrito || modoConcursoEncendido}
+                onClick={() => {
+                  if (modoConcursoEncendido) return;
+                  setModoCalificacion((prev) => !prev);
+                }}
                 className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
               >
                 <img src="./cal.png" alt="" width={250} />
-              </button>
-
-              <button
-                disabled={!suscrito || modoMesaLoading}
-                onClick={toggleModoMesa}
-                className={`boto ${modoMesaEncendido ? "boto-activo" : ""}`}
-                style={{
-                  width: 250,
-                  minHeight: 72,
-                  color: "white",
-                  fontWeight: 900,
-                  textShadow: "2px 2px 0 #000",
-                  background: modoMesaEncendido
-                    ? "rgba(25, 135, 84, 0.9)"
-                    : "rgba(13, 110, 253, 0.85)",
-                  border: "2px solid rgba(255,255,255,0.65)",
-                }}
-                title={
-                  modoMesaEncendido ? "Desactivar Modo Mesa" : "Activar Modo Mesa"
-                }
-              >
-                <span style={{ display: "block", fontSize: "1.25rem" }}>
-                  Modo Mesa
-                </span>
-                <span style={{ display: "block", fontSize: "0.9rem" }}>
-                  {modoMesaLoading
-                    ? "Procesando..."
-                    : modoMesaEncendido
-                      ? "Encendido"
-                      : "Apagado"}
-                </span>
               </button>
 
               <button

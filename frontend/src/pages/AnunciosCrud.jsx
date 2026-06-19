@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { FiEdit, FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { API_URL } from "../config"
+import { getToken } from "../utils/auth";
 
 
 const API_ANUNCIOS = `${API_URL}/anuncio`;
@@ -32,7 +33,7 @@ export default function AnunciosCRUD() {
     e.preventDefault();
     try {
       const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        Authorization: `Bearer ${getToken()}`,
         "Content-Type": "application/json", // o application/json si no usas archivos
       };
 
@@ -53,7 +54,7 @@ export default function AnunciosCRUD() {
   const handleDelete = async (id) => {
     try {
       const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        Authorization: `Bearer ${getToken()}`,
       };
       await axios.delete(`${API_ANUNCIOS}/${id}`, { headers });
       fetchAnuncios();
@@ -65,7 +66,7 @@ export default function AnunciosCRUD() {
   const toggleVisible = async (anuncio) => {
     try {
       const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        Authorization: `Bearer ${getToken()}`,
       };
       await axios.put(
         `${API_ANUNCIOS}/${anuncio._id}`,

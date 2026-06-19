@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/userServices";
-import { jwtDecode } from "jwt-decode";
+import { saveToken } from "../utils/auth";
 
 function LoginForm({
   setToken,
@@ -36,20 +36,17 @@ function LoginForm({
       // ✅ loginUser devuelve directamente data
       const data = await loginUser(credentials);
 
-      if (!data?.token) {
+      const accessToken = data?.accessToken || data?.token;
+
+      if (!accessToken) {
         throw new Error("El servidor no devolvió el token");
       }
 
       // ✅ Guardar token correctamente
-      localStorage.setItem("token", data.token);
-      setToken(data.token);
+      saveToken(accessToken);
+      setToken(accessToken);
 
       // ✅ Decodificar token correcto
-      const decoded = jwtDecode(data.token);
-      const userRole = decoded.rol;
-
-      localStorage.setItem("rol", userRole);
-
       navigate("/");
       onLoginSuccess?.();
 

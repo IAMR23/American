@@ -7,6 +7,7 @@ import { API_URL } from "../config";
 import axios from "axios";
 import { useEffect } from "react";
 import ToastModal from "./modal/ToastModal";
+import { getToken } from "../utils/auth";
 
 const FavoritePlaylist = ({ userId, onSelectAll }) => {
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -17,7 +18,7 @@ const FavoritePlaylist = ({ userId, onSelectAll }) => {
 
   const isValidArray = Array.isArray(playlists);
 
-  const token = localStorage.getItem("token");
+  const token = getToken();
 
   const axiosConfig = {
     headers: { Authorization: `Bearer ${token}` },

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { loginUser, registerUser } from "../services/userServices";
+import { saveToken } from "../utils/auth";
 
 function RegistrationForm({ onRegisterSuccess }) {
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ function RegistrationForm({ onRegisterSuccess }) {
 
       const loginResponse = await loginUser({ email, password });
 
-      localStorage.setItem("token", loginResponse.token);
+      saveToken(loginResponse.accessToken || loginResponse.token);
 
       if (onRegisterSuccess) {
         onRegisterSuccess();

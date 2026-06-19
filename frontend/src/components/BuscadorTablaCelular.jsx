@@ -1,101 +1,145 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
-import { jwtDecode } from "jwt-decode";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 import ToastModal from "./modal/ToastModal";
 import { useQueueContext } from "../hooks/QueueProvider";
+import "../styles/listaCanciones.css";
 
-const SONG_URL = `${API_URL}/song/numero`;
-const FILTRO_URL = `${API_URL}/song/filtrar`;
+const SONG_SEARCH_URL = `${API_URL}/song/search`;
+const PAGE_LIMIT = 20;
 
 export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
   const [filtroActivo, setFiltroActivo] = useState("numero");
   const [busqueda, setBusqueda] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [data, setData] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
-
   const [userId, setUserId] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const { addToQueue, playNowQueue, currentIndex } = useQueueContext();
+  const abortControllerRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const { addToQueue } = useQueueContext();
 
   useEffect(() => {
     const token = getToken();
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUserId(decoded.userId);
-        setIsAuthenticated(true);
-      } catch {
-        setIsAuthenticated(false);
-      }
+
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      setUserId(decoded.userId);
+      setIsAuthenticated(true);
+    } catch {
+      setIsAuthenticated(false);
     }
   }, []);
 
-  const fetchCanciones = async () => {
-    try {
-      const headers = isAuthenticated
-        ? { Authorization: `Bearer ${getToken()}` }
-        : {};
-      const url = busqueda.trim() ? FILTRO_URL : SONG_URL;
-      const params = busqueda.trim() ? { busqueda, filtro: filtroActivo } : {};
-      const res = await axios.get(url, { headers, params });
-      setData(res.data.canciones || res.data);
-    } catch (err) {
-      console.error("Error al obtener canciones", err);
-    }
-  };
+  const fetchCanciones = useCallback(
+    async (pageToLoad, { reset = false } = {}) => {
+      if (reset && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      if (reset) {
+        setLoadingInitial(true);
+        setLoadingMore(false);
+        setError("");
+      } else {
+        setLoadingInitial(false);
+        setLoadingMore(true);
+      }
+
+      try {
+        const headers = isAuthenticated
+          ? { Authorization: `Bearer ${getToken()}` }
+          : {};
+
+        const res = await axios.get(SONG_SEARCH_URL, {
+          headers,
+          signal: controller.signal,
+          params: {
+            page: pageToLoad,
+            limit: PAGE_LIMIT,
+            search: debouncedSearch,
+            filtro: filtroActivo,
+          },
+        });
+
+        if (requestId !== requestIdRef.current) return;
+
+        const nuevasCanciones = res.data.canciones || [];
+
+        setData((prev) => {
+          if (reset) return nuevasCanciones;
+
+          const idsActuales = new Set(prev.map((cancion) => cancion._id));
+          const sinRepetir = nuevasCanciones.filter(
+            (cancion) => !idsActuales.has(cancion._id),
+          );
+
+          return [...prev, ...sinRepetir];
+        });
+
+        setPage(res.data.page || pageToLoad);
+        setHasMore(Boolean(res.data.hasMore));
+      } catch (err) {
+        if (axios.isCancel?.(err) || err.name === "CanceledError") return;
+
+        console.error("Error al obtener canciones", err);
+        if (requestId === requestIdRef.current) {
+          setError("No se pudieron cargar las canciones");
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoadingInitial(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [debouncedSearch, filtroActivo, isAuthenticated],
+  );
 
   useEffect(() => {
-    const debounce = setTimeout(fetchCanciones, 500);
+    const debounce = setTimeout(() => {
+      setDebouncedSearch(busqueda.trim());
+    }, 500);
+
     return () => clearTimeout(debounce);
-  }, [busqueda, filtroActivo]);
+  }, [busqueda]);
 
-  /*     const agregarACola = async (songId) => {
-  try {
+  useEffect(() => {
+    setData([]);
+    setPage(1);
+    setHasMore(true);
+    fetchCanciones(1, { reset: true });
+  }, [debouncedSearch, filtroActivo, fetchCanciones]);
 
-    let res;
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
-    if (isAuthenticated) {
-      res = await axios.post(
-        `${API_URL}/t/cola/add`,
-        { userId, songId, roomId }, // 🔥 AQUÍ
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-    } else {
-      res = await axios.post(
-        `${API_URL}/t/cola/without/aut/add`,
-        { songId } // 🔥 AQUÍ TAMBIÉN
-      );
-    }
-
-    const cancion =
-      res.data.cancion || videos.find((v) => v._id === songId);
-
-    if (!cancion) {
-      setToastMsg("No se encontró la canción");
-      return;
-    }
-
-    addToQueue({
-      _id: cancion._id,
-      titulo: cancion.titulo,
-      artista: cancion.artista,
-      numero: cancion.numero,
-      videoUrl: cancion.videoUrl,
-    });
-
-    setToastMsg("✅ Canción agregada a la cola");
-  } catch (err) {
-    console.error("Error al agregar a cola:", err.response?.data || err);
-    setToastMsg("❌ No se pudo agregar la canción");
-  }
-};
- */
+  const cargarMasCanciones = () => {
+    if (loadingInitial || loadingMore || !hasMore) return;
+    fetchCanciones(page + 1);
+  };
 
   const agregarACola = async (songId) => {
     try {
@@ -105,10 +149,10 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
         roomId,
       });
 
-      const cancion = data.find((v) => v._id === songId);
+      const cancion = res.data.cancion || data.find((v) => v._id === songId);
 
       if (!cancion) {
-        setToastMsg("No se encontró la canción");
+        setToastMsg("No se encontro la cancion");
         return;
       }
 
@@ -120,39 +164,40 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
         videoUrl: cancion.videoUrl,
       });
 
-      setToastMsg("✅ Canción agregada a la cola");
+      setToastMsg("Cancion agregada a la cola");
     } catch (err) {
-      setToastMsg("❌ No se pudo agregar la canción");
+      console.error("Error al agregar a cola:", err.response?.data || err);
+      setToastMsg("No se pudo agregar la cancion");
     }
   };
 
   const playNow = async (video) => {
     try {
-      // Detener la canción anterior
       const existingMedia = document.querySelector("audio, video");
+
       if (existingMedia) {
         existingMedia.pause();
         existingMedia.currentTime = 0;
       }
 
-      // Insertar en cola backend en la posición exacta
       await axios.post(`${API_URL}/t/cola/play-now`, {
         roomId,
         songId: video._id,
       });
 
-      setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+      setToastMsg(`Reproduciendo "${video.titulo}" ahora`);
     } catch (err) {
       console.error(err);
-      setToastMsg("❌ No se pudo reproducir la canción");
+      setToastMsg("No se pudo reproducir la cancion");
     }
   };
 
   const handleOpenModal = (songId) => {
     if (!isAuthenticated) {
-      setToastMsg("⚠️ Inicia sesión para agregar a playlist");
+      setToastMsg("Inicia sesion para agregar a playlist");
       return;
     }
+
     setSelectedSongId(songId);
     setShowPlaylistModal(true);
   };
@@ -162,197 +207,123 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
   };
 
   return (
-    <div className="container-fluid px-2 px-md-3 py-2">
-      {/* Filtros */}
-      <div className="card border-0 shadow-sm mb-3">
-        <div className="card-body p-2 p-md-3">
-          <div className="row g-2 align-items-center">
-            <div className="col-12 col-lg">
-              <div className="d-flex flex-wrap gap-2">
-                {["numero", "artista", "titulo", "generos"].map((tipo) => (
-                  <button
-                    key={tipo}
-                    onClick={() => setFiltroActivo(tipo)}
-                    className={`btn btn-sm px-3 py-2 ${
-                      filtroActivo === tipo
-                        ? "btn-danger"
-                        : "btn-outline-primary"
-                    }`}
-                  >
-                    {tipo === "generos"
-                      ? "Género"
-                      : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="col-12 col-lg-4">
-              <input
-                type="text"
-                className="form-control"
-                placeholder={`Buscar por ${
-                  filtroActivo === "generos" ? "género" : filtroActivo
-                }...`}
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabla desktop / tablet */}
-      <div className="card border-0 shadow-sm d-none d-md-block">
-        <div className="card-body p-0">
-          <div
-            className="table-responsive"
-            style={{ maxHeight: "600px", overflowY: "auto" }}
-          >
-            <table className="table table-striped table-hover align-middle mb-0">
-              <thead className="table-dark sticky-top">
-                <tr>
-                  <th>Número</th>
-                  <th>Cantante</th>
-                  <th>Canción</th>
-                  <th>Género</th>
-                  <th className="text-center">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((fila) => (
-                  <tr key={fila._id}>
-                    <td className="fw-bold">{fila.numero}</td>
-                    <td>{fila.artista}</td>
-                    <td>{fila.titulo}</td>
-                    <td>
-                      <span className="badge bg-secondary">
-                        {fila.generos?.nombre || "Sin género"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                        <button
-                          className="btn btn-success btn-sm p-1 d-flex justify-content-center align-items-center"
-                          onClick={async () => {
-                            await masReproducida(fila._id);
-                            await playNow(fila);
-                            onSelectAll?.();
-                          }}
-                        >
-                          <img
-                            src="/play.png"
-                            alt="play"
-                            className="img-fluid"
-                            style={{
-                              width: "34px",
-                              height: "34px",
-                              objectFit: "contain",
-                            }}
-                          />
-                        </button>
-
-                        <button
-                          className="btn btn-info btn-sm p-1 d-flex justify-content-center align-items-center"
-                          onClick={async () => {
-                            await agregarACola(fila._id);
-                            await masReproducida(fila._id);
-                          }}
-                        >
-                          <img
-                            src="/mas.png"
-                            alt="add"
-                            className="img-fluid"
-                            style={{
-                              width: "34px",
-                              height: "34px",
-                              objectFit: "contain",
-                            }}
-                          />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Vista móvil tipo cards */}
-      <div className="d-block d-md-none">
-        <div className="row g-2">
-          {data.map((fila) => (
-            <div className="col-12" key={fila._id}>
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body p-3">
-                  <div className="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                      <div className="small text-muted">Número</div>
-                      <div className="fw-bold fs-5">{fila.numero}</div>
-                    </div>
-                    <span className="badge bg-secondary">
-                      {fila.generos?.nombre || "Sin género"}
-                    </span>
-                  </div>
-
-                  <div className="mb-2">
-                    <div className="small text-muted">Cantante</div>
-                    <div className="fw-semibold">{fila.artista}</div>
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="small text-muted">Canción</div>
-                    <div>{fila.titulo}</div>
-                  </div>
-
-                  <div className="d-flex gap-2">
-                    <button
-                      className="btn btn-success flex-fill d-flex justify-content-center align-items-center gap-2 py-2"
-                      onClick={async () => {
-                        await masReproducida(fila._id);
-                        await playNow(fila);
-                        onSelectAll?.();
-                      }}
-                    >
-                      <img
-                        src="/play.png"
-                        alt="play"
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          objectFit: "contain",
-                        }}
-                      />
-                      <span>Reproducir</span>
-                    </button>
-
-                    <button
-                      className="btn btn-info flex-fill d-flex justify-content-center align-items-center gap-2 py-2"
-                      onClick={async () => {
-                        await agregarACola(fila._id);
-                        await masReproducida(fila._id);
-                      }}
-                    >
-                      <img
-                        src="/mas.png"
-                        alt="add"
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          objectFit: "contain",
-                        }}
-                      />
-                      <span>Cola</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="p-2">
+      <div className="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-2">
+        <div className="d-flex flex-wrap justify-content-center gap-2">
+          {["numero", "artista", "titulo", "generos"].map((tipo) => (
+            <button
+              key={tipo}
+              onClick={() => setFiltroActivo(tipo)}
+              className={`btn btn-sm ${
+                filtroActivo === tipo ? "btn-danger" : "btn-primary"
+              }`}
+              type="button"
+            >
+              {tipo === "generos"
+                ? "Genero"
+                : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+            </button>
           ))}
         </div>
+
+        <label className="caja-buscar mb-0" htmlFor="busqueda-sala">
+          Buscar:
+        </label>
+        <div className="buscar-2">
+          <input
+            type="text"
+            id="busqueda-sala"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="buscar text-center text-dark bg-light"
+            placeholder={filtroActivo === "generos" ? "Genero" : filtroActivo}
+          />
+        </div>
       </div>
+
+      {loadingInitial && (
+        <div className="lista-loader" role="status">
+          Cargando canciones...
+        </div>
+      )}
+
+      {error && !loadingInitial && <div className="lista-error">{error}</div>}
+
+      {!loadingInitial && !error && data.length === 0 && (
+        <div className="lista-empty">No se encontraron canciones.</div>
+      )}
+
+      <div className="tarjetas">
+        {data.map((fila) => (
+          <div key={fila._id} className="bg-modificado">
+            <div>
+              <button
+                className="video-btn heart-btn"
+                onClick={() => handleOpenModal(fila._id)}
+                title="Agregar a playlist"
+                disabled={!isAuthenticated}
+              >
+                <img src="./heart.png" alt="" width="40px" />
+              </button>
+
+              <button
+                className="video-btn list-btn"
+                onClick={async () => {
+                  await agregarACola(fila._id);
+                  await masReproducida(fila._id);
+                }}
+                title="Agregar a cola"
+              >
+                <img src="./mas.png" alt="" width="40px" />
+              </button>
+
+              <button
+                className="video-btn play-btn"
+                onClick={async () => {
+                  await masReproducida(fila._id);
+                  await playNow(fila);
+                  onSelectAll?.();
+                }}
+              >
+                <img src="./play.png" alt="" width="60px" />
+              </button>
+            </div>
+
+            <div className="text-center text-black p-2 texto-superior">
+              <span className="fw-bold">
+                {fila.numero} - {fila.artista}
+              </span>
+              <br />
+              <small>
+                {fila.titulo} - {fila.generos?.nombre || "Sin genero"}
+              </small>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {loadingMore && (
+        <div className="lista-loader" role="status">
+          Cargando mas canciones...
+        </div>
+      )}
+
+      {!loadingInitial && !loadingMore && !error && data.length > 0 && (
+        <div className="d-flex justify-content-center my-3">
+          {hasMore ? (
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={cargarMasCanciones}
+              disabled={loadingMore}
+            >
+              Cargar mas
+            </button>
+          ) : (
+            <div className="lista-end">No hay mas canciones por cargar.</div>
+          )}
+        </div>
+      )}
 
       {isAuthenticated && (
         <PlaylistSelectorModal
