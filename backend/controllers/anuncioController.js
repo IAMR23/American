@@ -1,6 +1,22 @@
 const Anuncio = require("../models/Anuncio");
 const { validationResult } = require("express-validator");
 
+const getPagination = (query, defaultLimit = 20, maxLimit = 100) => {
+  const page = Math.max(parseInt(query.page, 10) || 0, 0);
+  const limit = Math.min(
+    Math.max(parseInt(query.limit, 10) || 0, 0),
+    maxLimit,
+  );
+
+  if (!page || !limit) return null;
+
+  return {
+    page,
+    limit: limit || defaultLimit,
+    skip: (page - 1) * (limit || defaultLimit),
+  };
+};
+
 // Crear un anuncio
 const crearAnuncio = async (req, res) => {
   const { titulo, contenido, visible } = req.body;
@@ -27,6 +43,28 @@ const crearAnuncio = async (req, res) => {
 // Obtener todos los anuncios (opcionalmente solo visibles)
 const obtenerAnuncios = async (req, res) => {
   try {
+    const pagination = getPagination(req.query);
+
+    if (pagination) {
+      const [anuncios, total] = await Promise.all([
+        Anuncio.find()
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(pagination.skip)
+          .limit(pagination.limit),
+        Anuncio.countDocuments(),
+      ]);
+      const totalPages = Math.ceil(total / pagination.limit);
+
+      return res.status(200).json({
+        anuncios,
+        total,
+        page: pagination.page,
+        limit: pagination.limit,
+        totalPages,
+        hasMore: pagination.page < totalPages,
+      });
+    }
+
     const anuncios = await Anuncio.find().sort({ createdAt: -1 });
     res.status(200).json(anuncios);
   } catch (error) {
@@ -49,6 +87,29 @@ const obtenerAnunciosVisibles = async (req, res) => {
 // Obtener todos los anuncios (admin: visibles e invisibles)
 const obtenerTodosAnuncios = async (req, res) => {
   try {
+    const pagination = getPagination(req.query);
+
+    if (pagination) {
+      const [anuncios, total] = await Promise.all([
+        Anuncio.find()
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(pagination.skip)
+          .limit(pagination.limit)
+          .populate("creado_por", "nombre email"),
+        Anuncio.countDocuments(),
+      ]);
+      const totalPages = Math.ceil(total / pagination.limit);
+
+      return res.status(200).json({
+        anuncios,
+        total,
+        page: pagination.page,
+        limit: pagination.limit,
+        totalPages,
+        hasMore: pagination.page < totalPages,
+      });
+    }
+
     const anuncios = await Anuncio.find().sort({ createdAt: -1 }).populate("creado_por", "nombre email");
     res.status(200).json(anuncios);
   } catch (error) {

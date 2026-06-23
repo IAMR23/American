@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
+import PaginationControls from "../components/PaginationControls";
 
 const API_PUNTAJE = `${API_URL}/p/puntaje`;
+const PAGE_LIMIT = 12;
 
 export default function PuntajeCrud() {
   const [puntajes, setPuntajes] = useState([]);
@@ -14,15 +16,22 @@ export default function PuntajeCrud() {
     key: "",
   });
   const [editId, setEditId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     obtenerPuntajes();
-  }, []);
+  }, [page]);
 
   const obtenerPuntajes = async () => {
     try {
-      const res = await axios.get(API_PUNTAJE);
-      setPuntajes(res.data);
+      const res = await axios.get(API_PUNTAJE, {
+        params: { page, limit: PAGE_LIMIT },
+      });
+      setPuntajes(res.data.puntajes || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error al obtener los puntajes:", error);
     }
@@ -251,6 +260,13 @@ export default function PuntajeCrud() {
           ))}
         </div>
       )}
+
+      <PaginationControls
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

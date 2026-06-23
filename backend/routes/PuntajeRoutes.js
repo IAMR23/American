@@ -29,6 +29,33 @@ router.post("/puntaje/", async (req, res) => {
 // ---------------------------
 router.get("/puntaje/", async (req, res) => {
   try {
+    const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 0, 0),
+      100,
+    );
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const [puntajes, total] = await Promise.all([
+        Puntaje.find()
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(skip)
+          .limit(limit),
+        Puntaje.countDocuments(),
+      ]);
+      const totalPages = Math.ceil(total / limit);
+
+      return res.json({
+        puntajes,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasMore: page < totalPages,
+      });
+    }
+
     const puntajes = await Puntaje.find().sort({ createdAt: -1 });
     res.json(puntajes);
   } catch (error) {

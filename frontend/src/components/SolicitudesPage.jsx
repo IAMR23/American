@@ -2,15 +2,26 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { FiThumbsUp } from "react-icons/fi";
+import PaginationControls from "./PaginationControls";
+
+const PAGE_LIMIT = 20;
 
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const obtenerSolicitudes = async () => {
     try {
-      const res = await axios.get(`${API_URL}/solicitud`);
-      setSolicitudes(res.data);
+      setCargando(true);
+      const res = await axios.get(`${API_URL}/solicitud`, {
+        params: { page, limit: PAGE_LIMIT },
+      });
+      setSolicitudes(res.data.solicitudes || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       console.error("Error al obtener solicitudes", err);
     } finally {
@@ -24,6 +35,9 @@ export default function SolicitudesPage() {
     try {
       await axios.delete(`${API_URL}/solicitud/all`);
       setSolicitudes([]); // limpiar el estado
+      setTotal(0);
+      setTotalPages(1);
+      setPage(1);
     } catch (err) {
       console.error("Error al eliminar solicitudes", err);
     }
@@ -31,7 +45,7 @@ export default function SolicitudesPage() {
 
   useEffect(() => {
     obtenerSolicitudes();
-  }, []);
+  }, [page]);
 
   return (
     <div className="">
@@ -71,6 +85,13 @@ export default function SolicitudesPage() {
               ))}
             </tbody>
           </table>
+
+          <PaginationControls
+            page={page}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
       )}
     </div>

@@ -77,6 +77,22 @@ export default function Home() {
   const modoMesaEncendido = modoMesa || modoMesaActivo;
   const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
 
+  const handleModoMesaChange = useCallback((activo) => {
+    setModoMesa(activo);
+    if (activo) {
+      setModoConcurso(false);
+      setModoCalificacion(false);
+    }
+  }, []);
+
+  const handleModoConcursoChange = useCallback((activo) => {
+    setModoConcurso(activo);
+    if (activo) {
+      setModoMesa(false);
+      setModoCalificacion(false);
+    }
+  }, []);
+
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
@@ -512,7 +528,7 @@ export default function Home() {
           <MesasPage
             roomId={roomId}
             modoMesaActivo={modoMesaEncendido}
-            onModoMesaChange={setModoMesa}
+            onModoMesaChange={handleModoMesaChange}
           />
         );
 
@@ -522,10 +538,7 @@ export default function Home() {
             roomId={roomId}
             modoConcursoActivo={modoConcursoEncendido}
             modoCalificacionActivo={modoCalificacion}
-            onModoConcursoChange={(activo) => {
-              setModoConcurso(activo);
-              if (activo) setModoCalificacion(false);
-            }}
+            onModoConcursoChange={handleModoConcursoChange}
           />
         );
 
@@ -666,36 +679,42 @@ export default function Home() {
               >
                 Sugerir
               </button>
-
-              <button
-                className="boton2"
-                onClick={() => setSeccionActiva("Celular")}
-                disabled={!suscrito}
-              >
-                Celular
-              </button>
-
-              <button
-                className={`boton5 ${modoMesaEncendido ? "boto-activo" : ""}`}
-                onClick={() => setSeccionActiva("mesas")}
-                disabled={!suscrito}
-              >
-                Mesas
-              </button>
-
-              <button
-                className={`boton3 ${
-                  modoConcursoEncendido ? "boto-activo" : ""
-                }`}
-                onClick={() => setSeccionActiva("concurso")}
-                disabled={!suscrito || modoCalificacion}
-              >
-                Concurso
-              </button>
             </div>
 
-            <div className="col-12 col-lg-8 justify-content-center home-content">
-              {renderContenido()}
+            <div className="col-12 col-lg-8 home-center-column">
+              <div className="justify-content-center home-content">
+                {renderContenido()}
+              </div>
+
+              <div className="home-bottom-actions">
+                <button
+                  className="boton2"
+                  onClick={() => setSeccionActiva("Celular")}
+                  disabled={!suscrito}
+                >
+                  Celular
+                </button>
+
+                <button
+                  className={`boto home-mode-button ${
+                    modoMesaEncendido ? "boto-activo" : ""
+                  }`}
+                  onClick={() => setSeccionActiva("mesas")}
+                  disabled={!suscrito}
+                >
+                  <img src="./BotonMesas1.png" alt="Mesas" />
+                </button>
+
+                <button
+                  className={`boto home-mode-button ${
+                    modoConcursoEncendido ? "boto-activo" : ""
+                  }`}
+                  onClick={() => setSeccionActiva("concurso")}
+                  disabled={!suscrito || modoCalificacion}
+                >
+                  <img src="./BotonConcurso1.png" alt="Concurso" />
+                </button>
+              </div>
             </div>
 
             <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-start gap-1 home-sidebar">

@@ -263,7 +263,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
                 title="Agregar a playlist"
                 disabled={!isAuthenticated}
               >
-                <img src="./heart.png" alt="" width="40px" />
+                <img src="/heart.png" alt="" width="40px" />
               </button>
 
               <button
@@ -274,7 +274,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
                 }}
                 title="Agregar a cola"
               >
-                <img src="./mas.png" alt="" width="40px" />
+                <img src="/mas.png" alt="" width="40px" />
               </button>
 
               <button
@@ -285,7 +285,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
                   onSelectAll?.();
                 }}
               >
-                <img src="./play.png" alt="" width="60px" />
+                <img src="/play.png" alt="" width="60px" />
               </button>
             </div>
 

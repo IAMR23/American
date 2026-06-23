@@ -30,10 +30,32 @@ async function createGenero(req, res) {
 
 
 async function getGenero(req, res) {
-  const { id } = req.params;
-
   try {
-    const genero = await Genero.find();
+    const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 0, 0),
+      100,
+    );
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const [genero, total] = await Promise.all([
+        Genero.find().sort({ nombre: 1, _id: 1 }).skip(skip).limit(limit),
+        Genero.countDocuments(),
+      ]);
+      const totalPages = Math.ceil(total / limit);
+
+      return res.status(200).json({
+        genero,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasMore: page < totalPages,
+      });
+    }
+
+    const genero = await Genero.find().sort({ nombre: 1, _id: 1 });
     if (!genero) {
       return res.status(404).json({ message: "Género no encontrado" });
     }

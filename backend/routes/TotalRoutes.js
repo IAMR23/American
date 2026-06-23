@@ -158,10 +158,12 @@ router.post("/cola/modo-mesa/activar", async (req, res) => {
     }
 
     const colaExistente = await Cola.findOne({ roomId });
-    const backupCanciones = colaExistente?.modoMesaActivo
+    const backupCanciones =
+      colaExistente?.modoMesaActivo || colaExistente?.modoConcursoActivo
       ? colaExistente.colaNormalBackup || []
       : colaExistente?.canciones || [];
-    const backupCurrentIndex = colaExistente?.modoMesaActivo
+    const backupCurrentIndex =
+      colaExistente?.modoMesaActivo || colaExistente?.modoConcursoActivo
       ? colaExistente.currentIndexNormalBackup || 0
       : colaExistente?.currentIndex || 0;
 
@@ -180,6 +182,9 @@ router.post("/cola/modo-mesa/activar", async (req, res) => {
             cancionIndex: item.cancionIndex,
             cancion: item.cancionId,
           })),
+          modoConcursoActivo: false,
+          modoConcursoFinalizado: false,
+          concursoItems: [],
           colaNormalBackup: backupCanciones,
           currentIndexNormalBackup: backupCurrentIndex,
         },

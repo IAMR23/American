@@ -5,6 +5,9 @@ import { getToken, getUserId } from "../utils/auth";
 import { Link } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import ToastModal from "../components/modal/ToastModal";
+import PaginationControls from "../components/PaginationControls";
+
+const PAGE_LIMIT = 20;
 
 export default function PlaylistPropiaCRUD() {
   const [playlists, setPlaylists] = useState([]);
@@ -13,6 +16,9 @@ export default function PlaylistPropiaCRUD() {
   const [canciones, setCanciones] = useState([]);
   const [songIdToAdd, setSongIdToAdd] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const token = getToken();
 
@@ -22,12 +28,17 @@ export default function PlaylistPropiaCRUD() {
 
   useEffect(() => {
     fetchPlaylists();
-  }, []);
+  }, [page]);
 
   async function fetchPlaylists() {
     try {
-      const res = await axios.get(`${API_URL}/t2/playlistpropia`, axiosConfig);
-      setPlaylists(res.data);
+      const res = await axios.get(`${API_URL}/t2/playlistpropia`, {
+        ...axiosConfig,
+        params: { page, limit: PAGE_LIMIT },
+      });
+      setPlaylists(res.data.playlists || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error al cargar playlists:", error);
     }
@@ -124,7 +135,7 @@ export default function PlaylistPropiaCRUD() {
               onClick={(e) => e.stopPropagation()} // para que no dispare el onClick del li
             >
               <span className="badge bg-secondary rounded-pill ms-2">
-                {pl.nombre} / {pl.canciones.length || 0} canciones
+                {pl.nombre} / {pl.cancionesCount ?? pl.canciones?.length ?? 0} canciones
               </span>
             </Link>
 
@@ -138,6 +149,13 @@ export default function PlaylistPropiaCRUD() {
           </li>
         ))}
       </ul>
+
+      <PaginationControls
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
 
       <ToastModal
         mensaje={toastMsg}

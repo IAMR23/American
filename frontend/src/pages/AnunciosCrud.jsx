@@ -3,9 +3,11 @@ import axios from "axios";
 import { FiEdit, FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import { API_URL } from "../config"
 import { getToken } from "../utils/auth";
+import PaginationControls from "../components/PaginationControls";
 
 
 const API_ANUNCIOS = `${API_URL}/anuncio`;
+const PAGE_LIMIT = 20;
 
 export default function AnunciosCRUD() {
   const [anuncios, setAnuncios] = useState([]);
@@ -15,15 +17,26 @@ export default function AnunciosCRUD() {
     visible: true,
   });
   const [editId, setEditId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchAnuncios();
-  }, []);
+  }, [page]);
 
   const fetchAnuncios = async () => {
     try {
-      const res = await axios.get(`${API_ANUNCIOS}`);
-      setAnuncios(res.data);
+      const headers = {
+        Authorization: `Bearer ${getToken()}`,
+      };
+      const res = await axios.get(`${API_ANUNCIOS}/admin`, {
+        headers,
+        params: { page, limit: PAGE_LIMIT },
+      });
+      setAnuncios(res.data.anuncios || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (err) {
       console.error("Error al obtener anuncios", err);
     }
@@ -260,6 +273,13 @@ export default function AnunciosCRUD() {
             )}
           </tbody>
         </table>
+
+        <PaginationControls
+          page={page}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

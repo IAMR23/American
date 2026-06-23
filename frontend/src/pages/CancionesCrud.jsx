@@ -3,11 +3,13 @@ import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import ToastModal from "../components/modal/ToastModal";
 import { getToken } from "../utils/auth";
+import PaginationControls from "../components/PaginationControls";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
-const FILTRO_URL = `${API_URL2}/song/filtrar`;
+const SEARCH_URL = `${API_URL2}/song/search`;
 const GENEROS_URL = `${API_URL2}/genero`;
+const PAGE_LIMIT = 30;
 
 export default function CancionCRUD() {
   const [canciones, setCanciones] = useState([]);
@@ -24,6 +26,9 @@ export default function CancionCRUD() {
   });
   const [editId, setEditId] = useState(null);
   const [toastMensaje, setToastMensaje] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // --- NUEVO: estados de filtro ---
   const [busqueda, setBusqueda] = useState("");
@@ -36,8 +41,22 @@ export default function CancionCRUD() {
 
   const fetchCanciones = async () => {
     try {
-      const res = await axios.get(`${API_URL}/numero`, { headers });
-      setCanciones(res.data);
+      const params = {
+        page,
+        limit: PAGE_LIMIT,
+        filtro: filtroActivo,
+      };
+
+      if (filtroActivo === "videoDefault") {
+        params.videoDefault = true;
+      } else if (busqueda.trim()) {
+        params.busqueda = busqueda.trim();
+      }
+
+      const res = await axios.get(SEARCH_URL, { headers, params });
+      setCanciones(res.data.canciones || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
     }
@@ -55,30 +74,10 @@ export default function CancionCRUD() {
   // --- NUEVO: función para filtrar ---
 
   const fetchFiltrado = async () => {
-    try {
-      if (filtroActivo === "videoDefault") {
-        const res = await axios.get(`${FILTRO_URL}?videoDefault=true`, {
-          headers,
-        });
-        setCanciones(res.data.canciones || []);
-        return;
-      }
-
-      if (!busqueda.trim()) {
-        fetchCanciones();
-        return;
-      }
-
-      const params = { busqueda, filtro: filtroActivo };
-      const res = await axios.get(FILTRO_URL, { headers, params });
-      setCanciones(res.data.canciones || []);
-    } catch (error) {
-      console.error("Error al filtrar canciones:", error);
-    }
+    fetchCanciones();
   };
 
   useEffect(() => {
-    fetchCanciones();
     fetchGeneros();
   }, []);
 
@@ -86,7 +85,7 @@ export default function CancionCRUD() {
   useEffect(() => {
     const delay = setTimeout(fetchFiltrado, 500);
     return () => clearTimeout(delay);
-  }, [busqueda, filtroActivo]);
+  }, [busqueda, filtroActivo, page]);
 
   const handleOpenModal = (cancion = null) => {
     if (cancion) {
@@ -192,7 +191,10 @@ export default function CancionCRUD() {
           (tipo) => (
             <button
               key={tipo}
-              onClick={() => setFiltroActivo(tipo)}
+              onClick={() => {
+                setPage(1);
+                setFiltroActivo(tipo);
+              }}
               className={`btn me-2 ${
                 filtroActivo === tipo ? "btn-danger" : "btn-primary"
               }`}
@@ -212,7 +214,10 @@ export default function CancionCRUD() {
           style={{ width: "auto" }}
           placeholder="Buscar..."
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => {
+            setPage(1);
+            setBusqueda(e.target.value);
+          }}
         />
       </div>
 
@@ -289,6 +294,13 @@ export default function CancionCRUD() {
           ))}
         </tbody>
       </table>
+
+      <PaginationControls
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
 
       {/* Modal */}
       <div className="modal fade" id="cancionModal" tabIndex="-1">

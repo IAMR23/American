@@ -19,6 +19,56 @@ exports.crearSolicitud = async (req, res) => {
 // Obtener todas las solicitudes, ordenadas por votos
 exports.obtenerSolicitudes = async (req, res) => {
   try {
+    const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 0, 0),
+      100,
+    );
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const [result] = await SolicitudCancion.aggregate([
+        {
+          $addFields: {
+            totalVotos: { $size: { $ifNull: ["$votos", []] } },
+          },
+        },
+        { $sort: { totalVotos: -1, createdAt: -1, _id: -1 } },
+        {
+          $lookup: {
+            from: "usuarios",
+            localField: "usuario",
+            foreignField: "_id",
+            as: "usuario",
+            pipeline: [{ $project: { nombre: 1, email: 1 } }],
+          },
+        },
+        {
+          $unwind: {
+            path: "$usuario",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $facet: {
+            solicitudes: [{ $skip: skip }, { $limit: limit }],
+            metadata: [{ $count: "total" }],
+          },
+        },
+      ]);
+      const total = result?.metadata?.[0]?.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return res.status(200).json({
+        solicitudes: result?.solicitudes || [],
+        total,
+        page,
+        limit,
+        totalPages,
+        hasMore: page < totalPages,
+      });
+    }
+
     const solicitudes = await SolicitudCancion.find()
       .populate('usuario', 'nombre email');
 

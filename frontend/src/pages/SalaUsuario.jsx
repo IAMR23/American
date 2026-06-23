@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useSocketContext } from "../hooks/SocketContext";
 import { QueueProvider } from "../hooks/QueueProvider";
 import BuscadorTablaCelular from "../components/BuscadorTablaCelular";
+import "../styles/listaCanciones.css";
 
 export default function SalaUsuario() {
   const { roomId } = useParams();
@@ -22,9 +23,11 @@ export default function SalaUsuario() {
   if (!isConnected) return <p>Conectando a la sala...</p>;
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Sala {roomId}</h1>
-      <h3>Usuario: {usuario}</h3>
+    <div className="sala-usuario-page">
+      <div className="sala-usuario-header">
+        <h1>Sala {roomId}</h1>
+        <h3>Usuario: {usuario}</h3>
+      </div>
 
       {/* QueueProvider envuelve BuscadorTabla para manejar la cola compartida */}
       <QueueProvider>

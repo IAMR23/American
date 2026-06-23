@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
+import PaginationControls from "../components/PaginationControls";
+
+const PLAYLIST_LIMIT = 25;
+const SONG_SEARCH_LIMIT = 20;
 
 const MiPlaylist = () => {
   const { id } = useParams();
@@ -13,10 +17,16 @@ const MiPlaylist = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [busqueda, setBusqueda] = useState(""); // estado para el filtro
   const [nombrePlaylist, setNombrePlaylist] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [songPage, setSongPage] = useState(1);
+  const [songTotal, setSongTotal] = useState(0);
+  const [songTotalPages, setSongTotalPages] = useState(1);
 
   useEffect(() => {
     fetchCancionesDePlaylist();
-  }, [id]);
+  }, [id, page]);
 
   const fetchCancionesDePlaylist = async () => {
     try {
@@ -27,10 +37,13 @@ const MiPlaylist = () => {
         `${API_URL}/t2/playlistpropia/canciones/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          params: { page, limit: PLAYLIST_LIMIT },
         }
       );
 
       setCanciones(response.data.canciones || []);
+      setTotal(response.data.total || 0);
+      setTotalPages(response.data.totalPages || 1);
       setNombrePlaylist(response.data.nombre || ""); // 👈 aquí guardamos el nombre
     } catch (err) {
       console.error("Error al obtener canciones:", err);
@@ -40,19 +53,40 @@ const MiPlaylist = () => {
     }
   };
 
-  const abrirModal = async () => {
+  const fetchCancionesParaAgregar = async (pagina = songPage) => {
     try {
       const token = getToken();
-      const response = await axios.get(`${API_URL}/song`, {
+      const response = await axios.get(`${API_URL}/song/search`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: {
+          page: pagina,
+          limit: SONG_SEARCH_LIMIT,
+          busqueda: busqueda.trim(),
+        },
       });
-      setTodasLasCanciones(response.data || []);
-      setBusqueda(""); // limpio el filtro cada vez que abro
-      setMostrarModal(true);
+      setTodasLasCanciones(response.data.canciones || []);
+      setSongTotal(response.data.total || 0);
+      setSongTotalPages(response.data.totalPages || 1);
     } catch (err) {
       console.error("Error al cargar todas las canciones:", err);
     }
   };
+
+  const abrirModal = async () => {
+    setBusqueda("");
+    setSongPage(1);
+    setMostrarModal(true);
+  };
+
+  useEffect(() => {
+    if (!mostrarModal) return;
+
+    const delay = setTimeout(() => {
+      fetchCancionesParaAgregar(songPage);
+    }, 400);
+
+    return () => clearTimeout(delay);
+  }, [mostrarModal, busqueda, songPage]);
 
   const agregarCancionAPlaylist = async (cancionId) => {
     try {
@@ -88,14 +122,6 @@ const MiPlaylist = () => {
   };
 
   // Función para filtrar canciones por título o artista según búsqueda
-  const cancionesFiltradas = todasLasCanciones.filter((cancion) => {
-    const texto = busqueda.toLowerCase();
-    return (
-      cancion.titulo.toLowerCase().includes(texto) ||
-      cancion.artista.toLowerCase().includes(texto)
-    );
-  });
-
   return (
     <div>
       <h1>Playlist: {nombrePlaylist || "Cargando..."}</h1>
@@ -131,6 +157,13 @@ const MiPlaylist = () => {
         </ul>
       )}
 
+      <PaginationControls
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
+
       {/* Modal */}
       {mostrarModal && (
         <div
@@ -159,14 +192,17 @@ const MiPlaylist = () => {
                   placeholder="Buscar canción o artista..."
                   className="form-control mb-3"
                   value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
+                  onChange={(e) => {
+                    setSongPage(1);
+                    setBusqueda(e.target.value);
+                  }}
                   autoFocus
                 />
 
-                {cancionesFiltradas.length === 0 ? (
+                {todasLasCanciones.length === 0 ? (
                   <p>No se encontraron canciones.</p>
                 ) : (
-                  cancionesFiltradas.map((cancion) => (
+                  todasLasCanciones.map((cancion) => (
                     <div
                       key={cancion._id}
                       className="d-flex justify-content-between align-items-center border-bottom py-2"
@@ -183,6 +219,13 @@ const MiPlaylist = () => {
                     </div>
                   ))
                 )}
+
+                <PaginationControls
+                  page={songPage}
+                  total={songTotal}
+                  totalPages={songTotalPages}
+                  onPageChange={setSongPage}
+                />
               </div>
               <div className="modal-footer">
                 <button

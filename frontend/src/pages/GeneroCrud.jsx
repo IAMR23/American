@@ -3,11 +3,16 @@ import axios from "axios";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { API_URL } from "../config"
 import { getToken } from "../utils/auth";
+import PaginationControls from "../components/PaginationControls";
 
 const API_GENERO = `${API_URL}/genero`;
+const PAGE_LIMIT = 24;
 
 export default function GeneroCRUD() {
   const [generos, setGeneros] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [form, setForm] = useState({ nombre: "" });
   const [editId, setEditId] = useState(null);
 
@@ -18,8 +23,13 @@ export default function GeneroCRUD() {
 
   const fetchGeneros = async () => {
     try {
-      const res = await axios.get(API_GENERO, { headers });
-      setGeneros(res.data.genero);
+      const res = await axios.get(API_GENERO, {
+        headers,
+        params: { page, limit: PAGE_LIMIT },
+      });
+      setGeneros(res.data.genero || []);
+      setTotal(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (error) {
       console.error("Error al obtener géneros:", error);
     }
@@ -27,7 +37,7 @@ export default function GeneroCRUD() {
 
   useEffect(() => {
     fetchGeneros();
-  }, []);
+  }, [page]);
 
   const handleOpenModal = (genero = null) => {
     if (genero) {
@@ -125,6 +135,13 @@ export default function GeneroCRUD() {
       )}
 
       {/* Modal de creación/edición */}
+      <PaginationControls
+        page={page}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+      />
+
       <div
         className="modal fade"
         id="generoModal"

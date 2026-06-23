@@ -1,4 +1,5 @@
 const PlaylistPropia = require("../models/PlaylistPropia");
+const Cancion = require("../models/Cancion");
 
 // controllers/listController.js
 function createListController(Model) {
@@ -109,6 +110,38 @@ function createListController(Model) {
 
     async getUserPlaylists(req, res) {
       try {
+        const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
+        const limit = Math.min(
+          Math.max(parseInt(req.query.limit, 10) || 0, 0),
+          100,
+        );
+
+        if (page && limit) {
+          const skip = (page - 1) * limit;
+          const [playlists, total] = await Promise.all([
+            PlaylistPropia.find()
+              .sort({ createdAt: -1, _id: -1 })
+              .select("nombre user canciones createdAt")
+              .skip(skip)
+              .limit(limit)
+              .lean(),
+            PlaylistPropia.countDocuments(),
+          ]);
+          const totalPages = Math.ceil(total / limit);
+
+          return res.status(200).json({
+            playlists: playlists.map((playlist) => ({
+              ...playlist,
+              cancionesCount: playlist.canciones?.length || 0,
+            })),
+            total,
+            page,
+            limit,
+            totalPages,
+            hasMore: page < totalPages,
+          });
+        }
+
         const playlists = await PlaylistPropia.find().populate("canciones");
         res.status(200).json(playlists);
       } catch (error) {
@@ -135,6 +168,49 @@ function createListController(Model) {
       const { playlistId } = req.params;
 
       try {
+        const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
+        const limit = Math.min(
+          Math.max(parseInt(req.query.limit, 10) || 0, 0),
+          100,
+        );
+
+        if (page && limit) {
+          const playlistBase = await PlaylistPropia.findById(playlistId).select(
+            "nombre canciones",
+          );
+
+          if (!playlistBase) {
+            return res
+              .status(404)
+              .json({ error: "PlaylistPropia no encontrada" });
+          }
+
+          const total = playlistBase.canciones?.length || 0;
+          const totalPages = Math.ceil(total / limit);
+          const idsPagina = (playlistBase.canciones || []).slice(
+            (page - 1) * limit,
+            page * limit,
+          );
+          const canciones = await Cancion.find({ _id: { $in: idsPagina } })
+            .populate("generos", "nombre")
+            .lean();
+          const cancionesPorId = new Map(
+            canciones.map((cancion) => [String(cancion._id), cancion]),
+          );
+
+          return res.status(200).json({
+            nombre: playlistBase.nombre,
+            canciones: idsPagina
+              .map((id) => cancionesPorId.get(String(id)))
+              .filter(Boolean),
+            total,
+            page,
+            limit,
+            totalPages,
+            hasMore: page < totalPages,
+          });
+        }
+
         const playlist = await PlaylistPropia.findById(playlistId).populate(
           "canciones"
         );

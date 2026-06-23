@@ -422,6 +422,7 @@ export default function VideoPlayer({
     if (esColaDefault) return;
     if (!currentVideo) return;
     if (!modoMesaActivo && !modoConcursoActivo) return;
+    if (modoConcursoActivo && effectiveIndex === 0) return;
 
     const item = modoConcursoActivo ? currentConcursoItem : currentModoMesaItem;
     if (!item) return;
@@ -462,7 +463,6 @@ export default function VideoPlayer({
     if (playlist.length > 0 && !autoplayInitiatedRef.current) {
       autoplayInitiatedRef.current = true;
       claimActivePlayer();
-      setIsPlaying(true);
     }
   }, [claimActivePlayer, playlist.length]);
 
@@ -474,7 +474,7 @@ export default function VideoPlayer({
     setDuration(0);
     setShowNextMessage(false);
 
-    setIsPlaying(Boolean(activeUrl));
+    setIsPlaying((prev) => Boolean(activeUrl) && prev);
 
     return () => {
       stopReactPlayer(previousPlayer);
@@ -791,7 +791,7 @@ export default function VideoPlayer({
           config={{
             youtube: {
               playerVars: {
-                autoplay: 1,
+                autoplay: 0,
                 controls: 0,
                 rel: 0,
                 modestbranding: 1,
