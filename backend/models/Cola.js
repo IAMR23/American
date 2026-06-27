@@ -13,6 +13,7 @@ const ColaSchema = new mongoose.Schema({
       participanteNombre: String,
       participanteIndex: Number,
       cancionIndex: Number,
+      esVideoDefaultMesas: { type: Boolean, default: false },
       cancion: { type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' },
     },
   ],
@@ -25,6 +26,8 @@ const ColaSchema = new mongoose.Schema({
       participanteNombre: String,
       participanteIndex: Number,
       cancionIndex: Number,
+      esVideoDefaultConcurso: { type: Boolean, default: false },
+      esVideoFinalConcurso: { type: Boolean, default: false },
       estado: {
         type: String,
         enum: ["pendiente", "reproduciendo", "reproducida", "eliminada"],

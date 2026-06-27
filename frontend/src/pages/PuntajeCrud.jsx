@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import PaginationControls from "../components/PaginationControls";
+import { confirmAction } from "../utils/swalAlerts";
 
 const API_PUNTAJE = `${API_URL}/p/puntaje`;
 const PAGE_LIMIT = 12;
@@ -100,7 +101,12 @@ export default function PuntajeCrud() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este registro?")) return;
+    const confirmed = await confirmAction({
+      title: "Eliminar calificacion",
+      text: "Seguro que deseas eliminar este registro?",
+      confirmButtonText: "Si, eliminar",
+    });
+    if (!confirmed) return;
     try {
       await axios.delete(`${API_PUNTAJE}/${id}`);
       obtenerPuntajes();
@@ -270,3 +276,4 @@ export default function PuntajeCrud() {
     </div>
   );
 }
+

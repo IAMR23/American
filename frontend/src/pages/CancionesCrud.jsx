@@ -4,6 +4,7 @@ import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import ToastModal from "../components/modal/ToastModal";
 import { getToken } from "../utils/auth";
 import PaginationControls from "../components/PaginationControls";
+import { confirmAction, showInfo } from "../utils/swalAlerts";
 
 const API_URL2 = import.meta.env.VITE_API_URL;
 const API_URL = `${API_URL2}/song`;
@@ -23,6 +24,9 @@ export default function CancionCRUD() {
     imagenUrl: "",
     visiblePrincipal: false,
     videoDefault: false,
+    videoDefaultMesas: false,
+    videoDefaultConcurso: false,
+    videoFinalConcurso: false,
   });
   const [editId, setEditId] = useState(null);
   const [toastMensaje, setToastMensaje] = useState("");
@@ -99,6 +103,9 @@ export default function CancionCRUD() {
         imagenUrl: cancion.imagenUrl || "",
         visiblePrincipal: cancion.visiblePrincipal || false,
         videoDefault: cancion.videoDefault || false,
+        videoDefaultMesas: cancion.videoDefaultMesas || false,
+        videoDefaultConcurso: cancion.videoDefaultConcurso || false,
+        videoFinalConcurso: cancion.videoFinalConcurso || false,
       });
     } else {
       setEditId(null);
@@ -111,6 +118,9 @@ export default function CancionCRUD() {
         imagenUrl: "",
         visiblePrincipal: false,
         videoDefault: false,
+        videoDefaultMesas: false,
+        videoDefaultConcurso: false,
+        videoFinalConcurso: false,
       });
     }
     new window.bootstrap.Modal(document.getElementById("cancionModal")).show();
@@ -128,7 +138,10 @@ export default function CancionCRUD() {
       !generos ||
       !videoUrl.trim()
     ) {
-      alert("Por favor, complete todos los campos obligatorios.");
+      showInfo(
+        "Campos obligatorios",
+        "Por favor, complete todos los campos obligatorios.",
+      );
       return;
     }
 
@@ -153,6 +166,9 @@ export default function CancionCRUD() {
           imagenUrl: "",
           visiblePrincipal: false,
           videoDefault: false,
+          videoDefaultMesas: false,
+          videoDefaultConcurso: false,
+          videoFinalConcurso: false,
         }));
       }
 
@@ -164,9 +180,10 @@ export default function CancionCRUD() {
   };
 
   const handleDelete = async (id) => {
-    const confirmar = window.confirm(
-      "⚠️ ¿Estás seguro de eliminar esta canción?"
-    );
+    const confirmar = await confirmAction({
+      title: "Eliminar cancion",
+      confirmButtonText: "Si, eliminar",
+    });
     if (!confirmar) return;
 
     try {
@@ -243,6 +260,9 @@ export default function CancionCRUD() {
             <th>Artista</th>
             <th>Género</th>
             <th>Video</th>
+            <th>Video Mesas</th>
+            <th>Video Concurso</th>
+            <th>Final Concurso</th>
             <th>Imagen</th>
             <th>Visible Principal</th>
             <th>Video Default</th>
@@ -261,6 +281,9 @@ export default function CancionCRUD() {
                   Ver Video
                 </a>
               </td>
+              <td>{cancion.videoDefaultMesas ? "Si" : "No"}</td>
+              <td>{cancion.videoDefaultConcurso ? "Si" : "No"}</td>
+              <td>{cancion.videoFinalConcurso ? "Si" : "No"}</td>
               <td>
                 {cancion.imagenUrl ? (
                   <img
@@ -447,6 +470,69 @@ export default function CancionCRUD() {
                         htmlFor="videoDefault"
                       >
                         Video default
+                      </label>
+                    </div>
+
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="videoDefaultMesas"
+                        checked={form.videoDefaultMesas}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            videoDefaultMesas: e.target.checked,
+                          })
+                        }
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="videoDefaultMesas"
+                      >
+                        Video inicial mesas
+                      </label>
+                    </div>
+
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="videoDefaultConcurso"
+                        checked={form.videoDefaultConcurso}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            videoDefaultConcurso: e.target.checked,
+                          })
+                        }
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="videoDefaultConcurso"
+                      >
+                        Video inicial concurso
+                      </label>
+                    </div>
+
+                    <div className="mb-3 form-check">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="videoFinalConcurso"
+                        checked={form.videoFinalConcurso}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            videoFinalConcurso: e.target.checked,
+                          })
+                        }
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor="videoFinalConcurso"
+                      >
+                        Video final concurso
                       </label>
                     </div>
                   </div>

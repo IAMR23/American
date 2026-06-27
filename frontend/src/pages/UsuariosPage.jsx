@@ -1,301 +1,537 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
-import { FiSave, FiTrash } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiPlus,
+  FiRefreshCw,
+  FiSave,
+  FiSearch,
+  FiTrash,
+  FiX,
+} from "react-icons/fi";
+import { confirmAction, showError, showSuccess } from "../utils/swalAlerts";
+import "./UsuariosPage.css";
+
+const DEFAULT_PASSWORD = "AmericanKaraoke100.";
+
+const emptyForm = {
+  nombre: "",
+  email: "",
+  password: DEFAULT_PASSWORD,
+  rol: "cantante",
+  suscrito: false,
+  subscriptionStart: "",
+  subscriptionEnd: "",
+};
+
+const toDatetimeLocal = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60000);
+  return localDate.toISOString().slice(0, 16);
+};
+
+const fromDatetimeLocal = (value) => (value ? new Date(value).toISOString() : null);
+
+const getSubscriptionState = (user) => {
+  if (!user.suscrito) return "Sin suscripcion";
+  if (!user.subscriptionEnd) return "Activa";
+
+  return new Date(user.subscriptionEnd) > new Date() ? "Activa" : "Vencida";
+};
 
 const UsuariosPage = () => {
   const [usuarios, setUsuarios] = useState([]);
-  const [filtroSuscripcion, setFiltroSuscripcion] = useState("todos");
-
+  const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [nuevoUsuario, setNuevoUsuario] = useState({
-    nombre: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [modalMode, setModalMode] = useState("crear");
+  const [selectedId, setSelectedId] = useState(null);
+  const [form, setForm] = useState(emptyForm);
   const [errorCreate, setErrorCreate] = useState(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [filtroSuscripcion, setFiltroSuscripcion] = useState("todos");
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     fetchUsuarios();
   }, []);
 
+  const normalizeUser = (user) => ({
+    ...user,
+    editSuscrito: !!user.suscrito,
+    editStart: toDatetimeLocal(user.subscriptionStart),
+    editEnd: toDatetimeLocal(user.subscriptionEnd),
+    editRol: user.rol || "cantante",
+  });
+
   const fetchUsuarios = async () => {
+    setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/users`);
-      const usuariosConEdicion = (res.data.user || []).map((u) => ({
-        ...u,
-        editSuscrito: !!u.suscrito,
-        editStart: u.subscriptionStart ? u.subscriptionStart.slice(0, 10) : "",
-        editEnd: u.subscriptionEnd ? u.subscriptionEnd.slice(0, 10) : "",
-      }));
-      setUsuarios(usuariosConEdicion);
+      setUsuarios((res.data.user || []).map(normalizeUser));
     } catch (err) {
       console.error("Error al obtener usuarios:", err);
+      showError("Error al cargar usuarios");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const stats = useMemo(() => {
+    const total = usuarios.length;
+    const activos = usuarios.filter(
+      (user) =>
+        user.suscrito &&
+        user.subscriptionEnd &&
+        new Date(user.subscriptionEnd) > new Date(),
+    ).length;
+    const vencidos = usuarios.filter(
+      (user) =>
+        user.suscrito &&
+        user.subscriptionEnd &&
+        new Date(user.subscriptionEnd) <= new Date(),
+    ).length;
+    const admins = usuarios.filter((user) => user.rol === "admin").length;
+
+    return { total, activos, vencidos, admins };
+  }, [usuarios]);
+
+  const usuariosFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+
+    return usuarios.filter((usuario) => {
+      const estado = getSubscriptionState(usuario);
+      const coincideFiltro =
+        filtroSuscripcion === "todos" ||
+        (filtroSuscripcion === "suscritos" && estado === "Activa") ||
+        (filtroSuscripcion === "vencidos" && estado === "Vencida") ||
+        (filtroSuscripcion === "noSuscritos" && !usuario.suscrito);
+
+      const coincideBusqueda =
+        !texto ||
+        usuario.nombre?.toLowerCase().includes(texto) ||
+        usuario.email?.toLowerCase().includes(texto) ||
+        usuario.rol?.toLowerCase().includes(texto);
+
+      return coincideFiltro && coincideBusqueda;
+    });
+  }, [busqueda, filtroSuscripcion, usuarios]);
 
   const handleInputChange = (id, field, value) => {
     setUsuarios((prev) =>
-      prev.map((u) => (u._id === id ? { ...u, [field]: value } : u))
+      prev.map((user) => (user._id === id ? { ...user, [field]: value } : user)),
     );
   };
 
-  const handleUpdateUser = async (user) => {
-    try {
-      await axios.patch(`${API_URL}/users/${user._id}`, {
-        suscrito: user.editSuscrito,
-        subscriptionStart: user.editStart,
-        subscriptionEnd: user.editEnd,
-      });
-      fetchUsuarios();
-      alert("Usuario Guardado")
-    } catch (err) {
-      console.error("Error actualizando usuario:", err);
-      alert("Error al actualizar");
-    }
+  const handleFormChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Función para eliminar usuario
-  const handleDeleteUser = async (id) => {
-    const confirmDelete = window.confirm("¿Eliminar usuario?");
-    if (!confirmDelete) return;
-    try {
-      await axios.delete(`${API_URL}/user/${id}`);
-      fetchUsuarios();
-    } catch (err) {
-      console.error("Error eliminando usuario:", err);
-      alert("Error al eliminar usuario");
-    }
-  };
-
-  const handleChangeNuevoUsuario = (e) => {
-    const { name, value } = e.target;
-    setNuevoUsuario((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
+  const openCreateModal = () => {
+    setModalMode("crear");
+    setSelectedId(null);
     setErrorCreate(null);
+    setForm(emptyForm);
+    setModalVisible(true);
+  };
 
-    nuevoUsuario.password = "AmericanKaraoke100.";
+  const openEditModal = (user) => {
+    setModalMode("editar");
+    setSelectedId(user._id);
+    setErrorCreate(null);
+    setForm({
+      nombre: user.nombre || "",
+      email: user.email || "",
+      password: "",
+      rol: user.rol || "cantante",
+      suscrito: !!user.suscrito,
+      subscriptionStart: toDatetimeLocal(user.subscriptionStart),
+      subscriptionEnd: toDatetimeLocal(user.subscriptionEnd),
+    });
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedId(null);
+    setErrorCreate(null);
+    setForm(emptyForm);
+  };
+
+  const buildUserPayload = ({ includePassword = false } = {}) => {
+    const payload = {
+      nombre: form.nombre.trim(),
+      email: form.email.trim(),
+      rol: form.rol,
+      suscrito: Boolean(form.suscrito),
+      subscriptionStart: fromDatetimeLocal(form.subscriptionStart),
+      subscriptionEnd: fromDatetimeLocal(form.subscriptionEnd),
+    };
+
+    if (includePassword || form.password.trim()) {
+      payload.password = form.password.trim();
+    }
+
+    return payload;
+  };
+
+  const handleSubmitModal = async (event) => {
+    event.preventDefault();
+    setErrorCreate(null);
     setLoadingCreate(true);
+
     try {
-      await axios.post(`${API_URL}/user`, {
-        nombre: nuevoUsuario.nombre,
-        email: nuevoUsuario.email,
-        password: nuevoUsuario.password,
-      });
-      alert("Usuario creado exitosamente");
-      setModalVisible(false);
-      setNuevoUsuario({
-        nombre: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-      });
+      if (modalMode === "crear") {
+        await axios.post(`${API_URL}/user`, buildUserPayload({ includePassword: true }));
+        showSuccess("Usuario creado exitosamente");
+      } else {
+        await axios.patch(`${API_URL}/users/${selectedId}`, buildUserPayload());
+        showSuccess("Usuario actualizado");
+      }
+
+      closeModal();
       fetchUsuarios();
     } catch (err) {
-      console.error("Error creando usuario:", err);
-      setErrorCreate(err.response?.data?.message || "Error al crear usuario.");
+      console.error("Error guardando usuario:", err);
+      setErrorCreate(err.response?.data?.message || "Error al guardar usuario.");
     } finally {
       setLoadingCreate(false);
     }
   };
 
-  const usuariosFiltrados = usuarios
-    .filter((usuario) => usuario.rol !== "admin") // primero excluimos los admin
-    .filter((usuario) => {
-      if (filtroSuscripcion === "todos") return true;
-      if (filtroSuscripcion === "suscritos") return usuario.suscrito === true;
-      if (filtroSuscripcion === "noSuscritos")
-        return usuario.suscrito === false;
-      return true;
+  const handleUpdateInline = async (user) => {
+    setSavingId(user._id);
+    try {
+      await axios.patch(`${API_URL}/users/${user._id}`, {
+        suscrito: Boolean(user.editSuscrito),
+        subscriptionStart: fromDatetimeLocal(user.editStart),
+        subscriptionEnd: fromDatetimeLocal(user.editEnd),
+        rol: user.editRol,
+      });
+      showSuccess("Usuario guardado");
+      fetchUsuarios();
+    } catch (err) {
+      console.error("Error actualizando usuario:", err);
+      showError("Error al actualizar");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    const confirmDelete = await confirmAction({
+      title: "Eliminar usuario",
+      text: "Eliminar usuario?",
+      confirmButtonText: "Si, eliminar",
     });
 
-  const hoy = new Date().toISOString().split("T")[0];
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`${API_URL}/user/${id}`);
+      showSuccess("Usuario eliminado");
+      fetchUsuarios();
+    } catch (err) {
+      console.error("Error eliminando usuario:", err);
+      showError("Error al eliminar usuario");
+    }
+  };
 
   return (
-    <div>
-      <h2 className="font-bold mb-4">Lista de Usuarios</h2>
-
-      <div className="mb-4 flex items-center gap-4 justify-between">
+    <div className="users-admin">
+      <div className="users-admin__header">
         <div>
-          <label className="mr-2 font-medium">Filtrar por suscripción:</label>
-          <select
-            value={filtroSuscripcion}
-            onChange={(e) => setFiltroSuscripcion(e.target.value)}
-            className="border p-2 rounded"
-          >
-            <option value="todos">Todos</option>
-            <option value="suscritos">Suscritos</option>
-            <option value="noSuscritos">No Suscritos</option>
-          </select>
+          <p className="users-admin__eyebrow">Dashboard</p>
+          <h2>Usuarios</h2>
+          <span>Gestiona cuentas, roles y suscripciones desde un solo modulo.</span>
         </div>
-        <button
-          onClick={() => setModalVisible(true)}
-          className="bg-primary text-white px-4 py-2 rounded"
-        >
-          + Crear Usuario
+
+        <button className="users-admin__primary" onClick={openCreateModal}>
+          <FiPlus />
+          Crear usuario
         </button>
       </div>
 
-      <table className="min-w-full bg-white border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="py-2 px-4 border">Nombre</th>
-            <th className="py-2 px-4 border">Email</th>
-            <th className="py-2 px-4 border">Rol</th>
-            <th className="py-2 px-4 border">Activar</th>
-            <th className="py-2 px-4 border">Inicio</th>
-            <th className="py-2 px-4 border">Fin</th>
-            <th className="py-2 px-4 border">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usuariosFiltrados.map((user) => (
-            <tr key={user._id} className="text-center">
-              <td className="py-2 px-4 border">{user.nombre}</td>
-              <td className="py-2 px-4 border">{user.email}</td>
-              <td className="py-2 px-4 border">{user.rol}</td>
-              <td className="py-2 px-4 border">
+      <div className="users-admin__stats">
+        <div>
+          <span>Total</span>
+          <strong>{stats.total}</strong>
+        </div>
+        <div>
+          <span>Suscripciones activas</span>
+          <strong>{stats.activos}</strong>
+        </div>
+        <div>
+          <span>Vencidas</span>
+          <strong>{stats.vencidos}</strong>
+        </div>
+        <div>
+          <span>Admins</span>
+          <strong>{stats.admins}</strong>
+        </div>
+      </div>
+
+      <div className="users-admin__toolbar">
+        <label className="users-admin__search">
+          <FiSearch />
+          <input
+            value={busqueda}
+            onChange={(event) => setBusqueda(event.target.value)}
+            placeholder="Buscar por nombre, email o rol"
+          />
+        </label>
+
+        <select
+          value={filtroSuscripcion}
+          onChange={(event) => setFiltroSuscripcion(event.target.value)}
+        >
+          <option value="todos">Todos</option>
+          <option value="suscritos">Suscritos activos</option>
+          <option value="vencidos">Vencidos</option>
+          <option value="noSuscritos">No suscritos</option>
+        </select>
+
+        <button className="users-admin__ghost" onClick={fetchUsuarios}>
+          <FiRefreshCw />
+          Actualizar
+        </button>
+      </div>
+
+      <div className="users-admin__tableShell">
+        <table className="users-admin__table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="6" className="users-admin__empty">
+                  Cargando usuarios...
+                </td>
+              </tr>
+            ) : usuariosFiltrados.length ? (
+              usuariosFiltrados.map((user) => {
+                const estado = getSubscriptionState(user);
+
+                return (
+                  <tr key={user._id}>
+                    <td>
+                      <div className="users-admin__identity">
+                        <strong>{user.nombre}</strong>
+                        <span>{user.email}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <select
+                        value={user.editRol}
+                        onChange={(event) =>
+                          handleInputChange(user._id, "editRol", event.target.value)
+                        }
+                      >
+                        <option value="cantante">Cantante</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td>
+                      <label className="users-admin__switch">
+                        <input
+                          type="checkbox"
+                          checked={user.editSuscrito}
+                          onChange={(event) =>
+                            handleInputChange(
+                              user._id,
+                              "editSuscrito",
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span>{estado}</span>
+                      </label>
+                    </td>
+                    <td>
+                      <input
+                        type="datetime-local"
+                        value={user.editStart}
+                        onChange={(event) =>
+                          handleInputChange(user._id, "editStart", event.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="datetime-local"
+                        value={user.editEnd}
+                        onChange={(event) =>
+                          handleInputChange(user._id, "editEnd", event.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <div className="users-admin__actions">
+                        <button
+                          className="users-admin__iconButton users-admin__iconButton--save"
+                          onClick={() => handleUpdateInline(user)}
+                          disabled={savingId === user._id}
+                          title="Guardar suscripcion"
+                        >
+                          <FiSave />
+                        </button>
+                        <button
+                          className="users-admin__iconButton"
+                          onClick={() => openEditModal(user)}
+                          title="Editar usuario"
+                        >
+                          <FiEdit2 />
+                        </button>
+                        <button
+                          className="users-admin__iconButton users-admin__iconButton--danger"
+                          onClick={() => handleDeleteUser(user._id)}
+                          title="Eliminar usuario"
+                        >
+                          <FiTrash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan="6" className="users-admin__empty">
+                  No hay usuarios para mostrar.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modalVisible && (
+        <div className="users-admin__modalBackdrop" onClick={closeModal}>
+          <form
+            className="users-admin__modal"
+            onSubmit={handleSubmitModal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="users-admin__modalHeader">
+              <div>
+                <span>{modalMode === "crear" ? "Nuevo registro" : "Edicion"}</span>
+                <h3>{modalMode === "crear" ? "Crear usuario" : "Editar usuario"}</h3>
+              </div>
+              <button type="button" onClick={closeModal}>
+                <FiX />
+              </button>
+            </div>
+
+            {errorCreate && <div className="users-admin__error">{errorCreate}</div>}
+
+            <div className="users-admin__formGrid">
+              <label>
+                Nombre
+                <input
+                  type="text"
+                  value={form.nombre}
+                  onChange={(event) => handleFormChange("nombre", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => handleFormChange("email", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label>
+                {modalMode === "crear" ? "Contrasena" : "Nueva contrasena"}
+                <input
+                  type={modalMode === "crear" ? "text" : "password"}
+                  value={form.password}
+                  onChange={(event) => handleFormChange("password", event.target.value)}
+                  placeholder={
+                    modalMode === "crear" ? DEFAULT_PASSWORD : "Dejar vacio para no cambiar"
+                  }
+                  required={modalMode === "crear"}
+                />
+              </label>
+
+              <label>
+                Rol
+                <select
+                  value={form.rol}
+                  onChange={(event) => handleFormChange("rol", event.target.value)}
+                >
+                  <option value="cantante">Cantante</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+
+              <label className="users-admin__check">
                 <input
                   type="checkbox"
-                  checked={user.editSuscrito}
-                  onChange={(e) =>
-                    handleInputChange(
-                      user._id,
-                      "editSuscrito",
-                      e.target.checked
-                    )
-                  }
+                  checked={form.suscrito}
+                  onChange={(event) => handleFormChange("suscrito", event.target.checked)}
                 />
-              </td>
-              <td className="py-2 px-4 border">
-                <input
-                  type="date"
-                  min={hoy}
-                  value={user.editStart}
-                  onChange={(e) =>
-                    handleInputChange(user._id, "editStart", e.target.value)
-                  }
-                  className="border rounded px-2"
-                />
-              </td>
-              <td className="py-2 px-4 border">
-                <input
-                  type="date"
-                  min={hoy}
-                  value={user.editEnd}
-                  onChange={(e) =>
-                    handleInputChange(user._id, "editEnd", e.target.value)
-                  }
-                  className="border rounded px-2"
-                />
-              </td>
-              <td className="py-2 px-4 border flex justify-center gap-2">
-                <button
-                  onClick={() => handleUpdateUser(user)}
-                  className="bg-success text-white px-2 py-1 rounded hover:bg-blue-600"
-                  title="Guardar Cambios"
-                >
-                  <FiSave />
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(user._id)}
-                  className="bg-danger text-white px-2 py-1 rounded "
-                  title="Eliminar Usuario"
-                >
-                  <FiTrash />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                Usuario suscrito
+              </label>
 
-      {/* Modal Crear Usuario */}
-      {modalVisible && (
-        <div
-          className="modal show fade d-block"
-          tabIndex="-1"
-          role="dialog"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-          onClick={() => setModalVisible(false)}
-        >
-          <div
-            className="modal-dialog"
-            role="document"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Crear Usuario</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setModalVisible(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                {errorCreate && (
-                  <div className="alert alert-danger">{errorCreate}</div>
-                )}
-                <form onSubmit={handleCreateUser}>
-                  <div className="mb-3">
-                    <label className="form-label">Nombre</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="nombre"
-                      value={nuevoUsuario.nombre}
-                      onChange={handleChangeNuevoUsuario}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Email</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      name="email"
-                      value={nuevoUsuario.email}
-                      onChange={handleChangeNuevoUsuario}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Contraseña</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      name="confirmPassword"
-                      value="AmericanKaraoke100."
-                      readOnly
-                    />
-                  </div>
+              <label>
+                Fecha inicio
+                <input
+                  type="datetime-local"
+                  value={form.subscriptionStart}
+                  onChange={(event) =>
+                    handleFormChange("subscriptionStart", event.target.value)
+                  }
+                />
+              </label>
 
-                  <div className="d-flex justify-content-end gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setModalVisible(false)}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={loadingCreate}
-                    >
-                      {loadingCreate ? "Creando..." : "Crear"}
-                    </button>
-                  </div>
-                </form>
-              </div>
+              <label>
+                Fecha fin
+                <input
+                  type="datetime-local"
+                  value={form.subscriptionEnd}
+                  onChange={(event) =>
+                    handleFormChange("subscriptionEnd", event.target.value)
+                  }
+                />
+              </label>
             </div>
-          </div>
+
+            <div className="users-admin__modalFooter">
+              <button type="button" className="users-admin__ghost" onClick={closeModal}>
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="users-admin__primary"
+                disabled={loadingCreate}
+              >
+                {loadingCreate
+                  ? "Guardando..."
+                  : modalMode === "crear"
+                    ? "Crear usuario"
+                    : "Guardar cambios"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import ToastModal from "../components/modal/ToastModal";
 import PaginationControls from "../components/PaginationControls";
+import { confirmAction } from "../utils/swalAlerts";
 
 const PAGE_LIMIT = 20;
 
@@ -79,7 +80,12 @@ export default function PlaylistPropiaCRUD() {
     e.stopPropagation(); // evita que se dispare el onClick de <li> o <Link>
     e.preventDefault(); // previene la navegación en caso de que esté dentro de <Link>
 
-    if (!window.confirm("¿Seguro que quieres eliminar esta playlist?")) return;
+    const confirmed = await confirmAction({
+      title: "Eliminar playlist",
+      text: "Seguro que quieres eliminar esta playlist?",
+      confirmButtonText: "Si, eliminar",
+    });
+    if (!confirmed) return;
 
     try {
       await axios.delete(
@@ -165,3 +171,4 @@ export default function PlaylistPropiaCRUD() {
     </div>
   );
 }
+

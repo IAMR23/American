@@ -4,6 +4,7 @@ import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { API_URL } from "../config"
 import { getToken } from "../utils/auth";
 import PaginationControls from "../components/PaginationControls";
+import { confirmAction } from "../utils/swalAlerts";
 
 const API_GENERO = `${API_URL}/genero`;
 const PAGE_LIMIT = 24;
@@ -80,7 +81,12 @@ export default function GeneroCRUD() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar este género?")) return;
+    const confirmed = await confirmAction({
+      title: "Eliminar genero",
+      text: "Estas seguro de eliminar este genero?",
+      confirmButtonText: "Si, eliminar",
+    });
+    if (!confirmed) return;
     try {
       await axios.delete(`${API_GENERO}/${id}`, { headers });
       fetchGeneros();
@@ -187,3 +193,4 @@ export default function GeneroCRUD() {
     </div>
   );
 }
+

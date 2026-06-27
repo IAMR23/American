@@ -3,7 +3,8 @@ const { validationResult } = require("express-validator");
 const User = require("../models/User.js");
 
 async function createUser(req, res) {
-  const { nombre, email, password, rol } = req.body;
+  const { nombre, email, password, rol, suscrito, subscriptionStart, subscriptionEnd } =
+    req.body;
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -35,6 +36,9 @@ async function createUser(req, res) {
       email,
       password: hashedPassword,
       rol,
+      suscrito: Boolean(suscrito),
+      subscriptionStart: subscriptionStart ? new Date(subscriptionStart) : null,
+      subscriptionEnd: subscriptionEnd ? new Date(subscriptionEnd) : null,
     });
 
     await newUser.save();

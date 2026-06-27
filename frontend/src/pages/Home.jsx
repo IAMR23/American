@@ -379,6 +379,7 @@ export default function Home() {
 
     const itemMesa = modoMesaItems?.[indexTerminado];
     if (!itemMesa) return;
+    if (itemMesa.esVideoDefaultMesas) return;
 
     const mesas = getMesasGuardadas();
     let huboCambios = false;
@@ -702,7 +703,7 @@ export default function Home() {
                   onClick={() => setSeccionActiva("mesas")}
                   disabled={!suscrito}
                 >
-                  <img src="./BotonMesas1.png" alt="Mesas" />
+                  <img src="./Botonmesas22.png" alt="Mesas" />
                 </button>
 
                 <button
@@ -712,7 +713,7 @@ export default function Home() {
                   onClick={() => setSeccionActiva("concurso")}
                   disabled={!suscrito || modoCalificacion}
                 >
-                  <img src="./BotonConcurso1.png" alt="Concurso" />
+                  <img src="./BotonConcurso22.png" alt="Concurso" />
                 </button>
               </div>
             </div>

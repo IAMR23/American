@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { FiSave, FiTrash } from "react-icons/fi";
+import { confirmAction, showError, showSuccess } from "../utils/swalAlerts";
 
 const UsuariosCrud = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -51,24 +52,28 @@ const UsuariosCrud = () => {
         subscriptionEnd: user.editEnd,
         rol: user.rol,
       });
-      alert("Usuario actualizado");
+      showSuccess("Usuario actualizado");
       fetchUsuarios();
     } catch (err) {
       console.error("Error actualizando usuario:", err);
-      alert("Error al actualizar");
+      showError("Error al actualizar");
     }
   };
 
   const handleDeleteUser = async (id) => {
-    const confirmDelete = window.confirm("¿Eliminar usuario?");
+    const confirmDelete = await confirmAction({
+      title: "Eliminar usuario",
+      text: "Eliminar usuario?",
+      confirmButtonText: "Si, eliminar",
+    });
     if (!confirmDelete) return;
     try {
       await axios.delete(`${API_URL}/user/${id}`);
-      alert("Usuario eliminado");
+      showSuccess("Usuario eliminado");
       fetchUsuarios();
     } catch (err) {
       console.error("Error eliminando usuario:", err);
-      alert("Error al eliminar usuario");
+      showError("Error al eliminar usuario");
     }
   };
 
@@ -88,7 +93,7 @@ const UsuariosCrud = () => {
         password: nuevoUsuario.password,
         rol: nuevoUsuario.rol,
       });
-      alert("Usuario creado exitosamente");
+      showSuccess("Usuario creado exitosamente");
       setModalVisible(false);
       setNuevoUsuario({
         nombre: "",
@@ -136,13 +141,13 @@ const UsuariosCrud = () => {
 
         await axios.patch(`${API_URL}/users/${usuarioSeleccionado._id}`, data);
 
-        alert("Usuario actualizado");
+        showSuccess("Usuario actualizado");
         setModalVisible(false);
         setUsuarioSeleccionado(null);
         fetchUsuarios();
       } catch (err) {
         console.error("Error actualizando usuario:", err);
-        alert("Error al actualizar usuario");
+        showError("Error al actualizar usuario");
       }
     }
   };
@@ -386,3 +391,4 @@ const UsuariosCrud = () => {
 };
 
 export default UsuariosCrud;
+

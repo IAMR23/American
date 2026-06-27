@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
+import { confirmAction, showInfo } from "../utils/swalAlerts";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -87,7 +88,10 @@ export default function EditarMasReproducidas() {
       !generos ||
       !videoUrl.trim()
     ) {
-      alert("Por favor, complete todos los campos obligatorios.");
+      showInfo(
+        "Campos obligatorios",
+        "Por favor, complete todos los campos obligatorios.",
+      );
       return;
     }
 
@@ -120,7 +124,12 @@ export default function EditarMasReproducidas() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Estás seguro de eliminar esta canción?")) return;
+    const confirmed = await confirmAction({
+      title: "Eliminar cancion",
+      text: "Estas seguro de eliminar esta cancion?",
+      confirmButtonText: "Si, eliminar",
+    });
+    if (!confirmed) return;
     try {
       await axios.delete(`${API_URL}/song/${id}`, { headers });
       fetchCanciones();
@@ -306,3 +315,4 @@ export default function EditarMasReproducidas() {
     </div>
   );
 }
+

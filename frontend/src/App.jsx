@@ -26,7 +26,6 @@ import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 import ListaCanciones from "./components/ListaCanciones";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
 import EditarMasReproducidas from "./pages/EditarMasReproducidas";
-import UsuariosCrud from "./pages/UsuariosCRUD";
 
 import { AuthProvider } from "./utils/AuthContext";
 import { getToken, removeToken, saveToken } from "./utils/auth";
@@ -126,7 +125,7 @@ function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="promociones" element={<PromocionesPage />} />
                     <Route path="usuarios" element={<UsuariosPage />} />
-                    <Route path="register-user" element={<UsuariosCrud />} />
+                    <Route path="register-user" element={<UsuariosPage />} />
                     <Route path="productos" element={<Productos />} />
                     <Route path="producto/:id" element={<ProductoDetalle />} />
                                       <Route path="/subir-pdf" element={<SubirPDF/>} />

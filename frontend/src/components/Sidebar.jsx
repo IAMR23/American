@@ -13,7 +13,6 @@ import {
   FaStar,
   FaTags,
   FaUpload,
-  FaUserPlus,
   FaUsers,
 } from "react-icons/fa";
 
@@ -31,7 +30,6 @@ const menuItems = [
     icon: FaCompactDisc,
   },
   { to: "/usuarios", label: "Usuarios", icon: FaUsers },
-  { to: "/register-user", label: "Registrar Usuarios", icon: FaUserPlus },
   { to: "/anuncios", label: "Anuncios", icon: FaAd },
   { to: "/solicitudes", label: "Solicitudes", icon: FaClipboardList },
   { to: "/calificaciones", label: "Calificaciones", icon: FaBookOpen },

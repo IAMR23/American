@@ -163,6 +163,64 @@ export default function VideoPlayer({
     return `${participante} - ${titulo}`;
   }, []);
 
+  const isModoDefaultItem = useCallback(
+    (item) =>
+      Boolean(
+        item?.esVideoDefaultMesas ||
+          item?.esVideoDefaultConcurso ||
+          item?.esVideoFinalConcurso,
+      ),
+    [],
+  );
+
+  const getNextAnnouncement = useCallback(
+    (startIndex) => {
+      if (esColaDefault) {
+        const next = playlist[defaultOrder[startIndex]];
+        return next
+          ? { text: next.titulo || "Siguiente cancion", song: next }
+          : null;
+      }
+
+      for (let index = startIndex; index < playlist.length; index++) {
+        const next = playlist[index];
+        if (!next) continue;
+
+        const nextMesaItem = modoMesaActivo ? modoMesaItems?.[index] : null;
+        const nextConcursoItem = modoConcursoActivo
+          ? concursoItems?.[index]
+          : null;
+
+        if (isModoDefaultItem(nextMesaItem) || isModoDefaultItem(nextConcursoItem)) {
+          continue;
+        }
+
+        return {
+          song: next,
+          text: nextConcursoItem
+            ? formatConcursoText(nextConcursoItem, next)
+            : nextMesaItem
+            ? formatMesaText(nextMesaItem, next)
+            : next.titulo || "Siguiente cancion",
+        };
+      }
+
+      return null;
+    },
+    [
+      concursoItems,
+      defaultOrder,
+      esColaDefault,
+      formatConcursoText,
+      formatMesaText,
+      isModoDefaultItem,
+      modoConcursoActivo,
+      modoMesaActivo,
+      modoMesaItems,
+      playlist,
+    ],
+  );
+
   const stopCurrentPlayer = useCallback(() => {
     setIsPlaying(false);
     stopReactPlayer(playerRef.current);
@@ -422,10 +480,10 @@ export default function VideoPlayer({
     if (esColaDefault) return;
     if (!currentVideo) return;
     if (!modoMesaActivo && !modoConcursoActivo) return;
-    if (modoConcursoActivo && effectiveIndex === 0) return;
 
     const item = modoConcursoActivo ? currentConcursoItem : currentModoMesaItem;
     if (!item) return;
+    if (isModoDefaultItem(item)) return;
 
     const introKey = modoConcursoActivo
       ? `concurso-${item.participanteId}-${item.cancionIndex}-${currentVideo._id}`
@@ -455,6 +513,7 @@ export default function VideoPlayer({
     esColaDefault,
     formatConcursoText,
     formatMesaText,
+    isModoDefaultItem,
     modoConcursoActivo,
     modoMesaActivo,
   ]);
@@ -553,26 +612,10 @@ export default function VideoPlayer({
     const nextThreshold = modoMesaActivo || modoConcursoActivo ? 25 : 40;
 
     if (dur - playedSeconds <= nextThreshold) {
-      const nextIndex = effectiveIndex + 1;
-      const next = esColaDefault
-        ? playlist[defaultOrder[nextIndex]]
-        : playlist[nextIndex];
+      const announcement = getNextAnnouncement(effectiveIndex + 1);
 
-      if (next) {
-        const nextMesaItem =
-          modoMesaActivo && !esColaDefault ? modoMesaItems?.[nextIndex] : null;
-        const nextConcursoItem =
-          modoConcursoActivo && !esColaDefault
-            ? concursoItems?.[nextIndex]
-            : null;
-
-        setNextSongName(
-          nextConcursoItem
-            ? formatConcursoText(nextConcursoItem, next)
-            : nextMesaItem
-            ? formatMesaText(nextMesaItem, next)
-            : next.titulo || "Siguiente cancion",
-        );
+      if (announcement) {
+        setNextSongName(announcement.text);
         setShowNextMessage(true);
       } else {
         setShowNextMessage(false);

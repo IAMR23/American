@@ -3,6 +3,7 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { FiThumbsUp } from "react-icons/fi";
 import PaginationControls from "./PaginationControls";
+import { confirmAction } from "../utils/swalAlerts";
 
 const PAGE_LIMIT = 20;
 
@@ -30,7 +31,12 @@ export default function SolicitudesPage() {
   };
 
   const eliminarTodas = async () => {
-    if (!window.confirm("¿Estás seguro de eliminar todas las solicitudes?")) return;
+    const confirmed = await confirmAction({
+      title: "Eliminar solicitudes",
+      text: "Estas seguro de eliminar todas las solicitudes?",
+      confirmButtonText: "Si, eliminar todo",
+    });
+    if (!confirmed) return;
 
     try {
       await axios.delete(`${API_URL}/solicitud/all`);
@@ -97,3 +103,4 @@ export default function SolicitudesPage() {
     </div>
   );
 }
+

@@ -33,11 +33,33 @@ const emitirColaActualizada = async (req, roomId) => {
 
 const getCancionesConcursoActivas = (items = []) =>
   items
-    .filter((item) => item.estado !== "eliminada")
+    .filter((item) => item.estado !== "eliminada" && item.estado !== "reproducida")
     .map((item) => item.cancion);
 
+const crearItemsEspecialesConcurso = (canciones = [], tipo = "inicial") =>
+  canciones.map((cancion, index) => {
+    const esInicial = tipo === "inicial";
+
+    return {
+      participanteId: esInicial
+        ? `default-concurso-${index}`
+        : `final-concurso-${index}`,
+      participanteNombre: esInicial
+        ? "Video inicial concurso"
+        : "Video final concurso",
+      participanteIndex: -1,
+      cancionIndex: index,
+      esVideoDefaultConcurso: esInicial,
+      esVideoFinalConcurso: !esInicial,
+      estado: "pendiente",
+      cancion: cancion._id,
+    };
+  });
+
 const getActiveIndexFromItems = (items = [], fallback = 0) => {
-  const activeItems = items.filter((item) => item.estado !== "eliminada");
+  const activeItems = items.filter(
+    (item) => item.estado !== "eliminada" && item.estado !== "reproducida",
+  );
   const reproduciendoIndex = activeItems.findIndex(
     (item) => item.estado === "reproduciendo",
   );
@@ -149,7 +171,25 @@ router.post("/cola/modo-mesa/activar", async (req, res) => {
     }
 
     const colaModoMesa = generarColaModoMesa(mesas);
-    const canciones = colaModoMesa.map((item) => item.cancionId);
+    const videosDefaultMesas = await Cancion.find({
+      videoDefaultMesas: true,
+      videoUrl: { $exists: true, $ne: "" },
+    })
+      .sort({ numero: 1, _id: 1 })
+      .select("_id");
+    const itemsDefaultMesas = videosDefaultMesas.map((cancion, index) => ({
+      mesaNumero: 0,
+      mesaNombre: "Video inicial mesas",
+      participanteNombre: "Mesas",
+      participanteIndex: -1,
+      cancionIndex: index,
+      esVideoDefaultMesas: true,
+      cancion: cancion._id,
+    }));
+    const canciones = [
+      ...videosDefaultMesas.map((cancion) => cancion._id),
+      ...colaModoMesa.map((item) => item.cancionId),
+    ];
 
     if (!canciones.length) {
       return res.status(400).json({
@@ -174,14 +214,18 @@ router.post("/cola/modo-mesa/activar", async (req, res) => {
           canciones,
           currentIndex: 0,
           modoMesaActivo: true,
-          modoMesaItems: colaModoMesa.map((item) => ({
-            mesaNumero: item.mesaNumero,
-            mesaNombre: item.mesaNombre,
-            participanteNombre: item.participanteNombre,
-            participanteIndex: item.participanteIndex,
-            cancionIndex: item.cancionIndex,
-            cancion: item.cancionId,
-          })),
+          modoMesaItems: [
+            ...itemsDefaultMesas,
+            ...colaModoMesa.map((item) => ({
+              mesaNumero: item.mesaNumero,
+              mesaNombre: item.mesaNombre,
+              participanteNombre: item.participanteNombre,
+              participanteIndex: item.participanteIndex,
+              cancionIndex: item.cancionIndex,
+              esVideoDefaultMesas: false,
+              cancion: item.cancionId,
+            })),
+          ],
           modoConcursoActivo: false,
           modoConcursoFinalizado: false,
           concursoItems: [],
@@ -265,7 +309,49 @@ router.post("/cola/modo-concurso/activar", async (req, res) => {
       participantes,
       cancionesPorParticipante,
     );
-    const canciones = colaModoConcurso.map((item) => item.cancionId);
+    const videosDefaultConcurso = await Cancion.find({
+      videoDefaultConcurso: true,
+      videoUrl: { $exists: true, $ne: "" },
+    })
+      .sort({ numero: 1, _id: 1 })
+      .select("_id");
+    const videosFinalConcurso = await Cancion.find({
+      videoFinalConcurso: true,
+      videoUrl: { $exists: true, $ne: "" },
+    })
+      .sort({ numero: 1, _id: 1 })
+      .select("_id");
+    const itemsDefaultConcurso = crearItemsEspecialesConcurso(
+      videosDefaultConcurso,
+      "inicial",
+    );
+    const itemsFinalConcurso = crearItemsEspecialesConcurso(
+      videosFinalConcurso,
+      "final",
+    );
+    const hayVideosIniciales = itemsDefaultConcurso.length > 0;
+    if (itemsDefaultConcurso[0]) {
+      itemsDefaultConcurso[0].estado = "reproduciendo";
+    }
+    const itemsConcurso = [
+      ...itemsDefaultConcurso,
+      ...colaModoConcurso.map((item) => ({
+        participanteId: item.participanteId,
+        participanteNombre: item.participanteNombre,
+        participanteIndex: item.participanteIndex,
+        cancionIndex: item.cancionIndex,
+        estado: hayVideosIniciales ? "pendiente" : item.estado,
+        esVideoDefaultConcurso: false,
+        esVideoFinalConcurso: false,
+        cancion: item.cancionId,
+      })),
+      ...itemsFinalConcurso,
+    ];
+    const canciones = [
+      ...videosDefaultConcurso.map((cancion) => cancion._id),
+      ...colaModoConcurso.map((item) => item.cancionId),
+      ...videosFinalConcurso.map((cancion) => cancion._id),
+    ];
 
     if (!canciones.length) {
       return res.status(400).json({ error: "No hay canciones para el concurso" });
@@ -290,14 +376,7 @@ router.post("/cola/modo-concurso/activar", async (req, res) => {
           modoConcursoActivo: true,
           modoConcursoFinalizado: false,
           cancionesPorParticipanteConcurso: Number(cancionesPorParticipante),
-          concursoItems: colaModoConcurso.map((item) => ({
-            participanteId: item.participanteId,
-            participanteNombre: item.participanteNombre,
-            participanteIndex: item.participanteIndex,
-            cancionIndex: item.cancionIndex,
-            estado: item.estado,
-            cancion: item.cancionId,
-          })),
+          concursoItems: itemsConcurso,
           modoMesaActivo: false,
           modoMesaItems: [],
           colaNormalBackup: backupCanciones,
@@ -385,7 +464,9 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
     }
 
     const items = cola.concursoItems.map((item) => item.toObject());
-    const activeItems = items.filter((item) => item.estado !== "eliminada");
+    const activeItems = items.filter(
+      (item) => item.estado !== "eliminada" && item.estado !== "reproducida",
+    );
     const itemTerminado = activeItems[Number(indexActual) || 0];
 
     if (itemTerminado) {
