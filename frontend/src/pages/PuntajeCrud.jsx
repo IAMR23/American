@@ -10,7 +10,7 @@ const PAGE_LIMIT = 12;
 export default function PuntajeCrud() {
   const [puntajes, setPuntajes] = useState([]);
   const [formData, setFormData] = useState({
-    titulo: "",
+    calificacion: "",
     videoUrl: "",
     imagenUrl: "",
     weight: "",
@@ -55,7 +55,7 @@ export default function PuntajeCrud() {
       }
 
       setFormData({
-        titulo: "",
+        calificacion: "",
         videoUrl: "",
         imagenUrl: "",
         weight: "",
@@ -74,7 +74,7 @@ export default function PuntajeCrud() {
     if (puntaje) {
       setEditId(puntaje._id);
       setFormData({
-        titulo: puntaje.titulo || "",
+        calificacion: puntaje.calificacion || puntaje.titulo || "",
         videoUrl: puntaje.videoUrl || "",
         imagenUrl: puntaje.imagenUrl || "",
         weight: puntaje.weight || "",
@@ -83,7 +83,7 @@ export default function PuntajeCrud() {
     } else {
       setEditId(null);
       setFormData({
-        titulo: "",
+        calificacion: "",
         videoUrl: "",
         imagenUrl: "",
         weight: "",
@@ -145,12 +145,12 @@ export default function PuntajeCrud() {
               <form onSubmit={handleSubmit} className="row g-3">
                 
                 <div className="col-12">
-                  <label className="form-label">Título</label>
+                  <label className="form-label">Calificación</label>
                   <input
                     type="text"
                     className="form-control"
-                    name="titulo"
-                    value={formData.titulo}
+                    name="calificacion"
+                    value={formData.calificacion}
                     onChange={handleChange}
                     required
                   />
@@ -227,7 +227,9 @@ export default function PuntajeCrud() {
               <div className="card h-100 shadow-sm border-0">
 
                 <div className="card-body">
-                  <h4 className="card-title fw-bold">{p.titulo}</h4>
+                  <h4 className="card-title fw-bold">
+                    {p.calificacion || p.titulo}
+                  </h4>
 
                   <p className="card-text">
                     <strong>Video:</strong>{" "}

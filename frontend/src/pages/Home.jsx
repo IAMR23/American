@@ -447,11 +447,33 @@ export default function Home() {
         {
           roomId,
           indexActual: indexTerminado,
+          cancionId: _cancionTerminada?._id,
         },
       );
 
+      console.log("[Concurso] Avance de cancion", {
+        participante: res.data?.itemTerminado?.participanteNombre,
+        cancionId: _cancionTerminada?._id,
+        debugSistema: res.data?.debugSistema,
+        calificacionesSistemaAgregadas:
+          res.data?.calificacionesSistemaAgregadas || [],
+        resultados: res.data?.resultados || [],
+      });
+
       if (res.data?.modoConcursoActivo === false) {
         setModoConcurso(false);
+      }
+
+      if (res.data?.calificacionesSistemaAgregadas?.length) {
+        console.log("[Concurso] Calificaciones automaticas del sistema", {
+          participante: res.data?.itemTerminado?.participanteNombre,
+          cancionIndex: res.data?.itemTerminado?.cancionIndex,
+          calificaciones: res.data.calificacionesSistemaAgregadas,
+        });
+      } else if (res.data?.itemTerminado) {
+        console.warn(
+          "[Concurso] No se agregaron calificaciones automaticas del sistema. Revisa que /p/puntaje tenga registros con calificacion numerica.",
+        );
       }
     } catch (error) {
       console.error("Error al avanzar concurso:", error);
@@ -561,6 +583,7 @@ export default function Home() {
             modoMesaItems={modoMesaItems}
             modoConcursoActivo={modoConcursoEncendido}
             concursoItems={concursoItems}
+            roomId={roomId}
             currentIndex={currentIndex}
             setCurrentIndex={changeSong}
             requestedIndex={requestedIndex}

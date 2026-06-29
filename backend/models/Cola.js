@@ -33,6 +33,16 @@ const ColaSchema = new mongoose.Schema({
         enum: ["pendiente", "reproduciendo", "reproducida", "eliminada"],
         default: "pendiente",
       },
+      calificaciones: [
+        {
+          tipo: { type: String, enum: ["usuario", "sistema"], default: "usuario" },
+          valor: Number,
+          key: String,
+          calificacionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Puntaje' },
+          calificacion: String,
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
       cancion: { type: mongoose.Schema.Types.ObjectId, ref: 'Cancion' },
     },
   ],

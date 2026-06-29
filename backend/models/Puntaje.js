@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 
 const PuntajeSchema = new mongoose.Schema(
   {
-    titulo : String, 
+    calificacion: String,
     videoUrl: String,
     imagenUrl: String,
-    weight : Number, 
-    key : String
+    weight: Number,
+    key: String,
   },
   { timestamps: true }
 );

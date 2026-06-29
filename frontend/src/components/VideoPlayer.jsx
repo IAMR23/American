@@ -76,6 +76,7 @@ export default function VideoPlayer({
   modoMesaItems = [],
   modoConcursoActivo = false,
   concursoItems = [],
+  roomId,
   requestedIndex = null,
   onRequestedIndexHandled,
 }) {
@@ -92,6 +93,8 @@ export default function VideoPlayer({
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [calificaciones, setCalificaciones] = useState([]);
+  const [concursoResultados, setConcursoResultados] = useState([]);
+  const [concursoRatingMessage, setConcursoRatingMessage] = useState("");
   const [videoCalificacion, setVideoCalificacion] = useState(null);
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
   const [playerInstanceKey, setPlayerInstanceKey] = useState(0);
@@ -129,9 +132,26 @@ export default function VideoPlayer({
   const currentModoMesaItem = !esColaDefault
     ? modoMesaItems?.[effectiveIndex]
     : null;
-  const currentConcursoItem = !esColaDefault
-    ? concursoItems?.[effectiveIndex]
+  const activeConcursoItems = !esColaDefault
+    ? (Array.isArray(concursoItems) ? concursoItems : []).filter(
+        (item) => item?.estado !== "eliminada" && item?.estado !== "reproducida",
+      )
+    : [];
+  const currentVideoId = currentVideo?._id || currentVideo?.id;
+  const concursoItemByIndex = !esColaDefault
+    ? activeConcursoItems?.[effectiveIndex]
     : null;
+  const concursoItemByVideo = !esColaDefault && currentVideoId
+    ? activeConcursoItems.find(
+        (item) => String(item?.cancion?._id || item?.cancion) === String(currentVideoId),
+      )
+    : null;
+  const currentConcursoItem = concursoItemByIndex || concursoItemByVideo || null;
+  const esVideoFinalConcursoActual = Boolean(
+    modoConcursoActivo &&
+      (currentConcursoItem?.esVideoFinalConcurso ||
+        concursoItemByVideo?.esVideoFinalConcurso),
+  );
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -167,9 +187,13 @@ export default function VideoPlayer({
     (item) =>
       Boolean(
         item?.esVideoDefaultMesas ||
-          item?.esVideoDefaultConcurso ||
-          item?.esVideoFinalConcurso,
+          item?.esVideoDefaultConcurso,
       ),
+    [],
+  );
+
+  const isVideoFinalConcursoItem = useCallback(
+    (item) => Boolean(item?.esVideoFinalConcurso),
     [],
   );
 
@@ -188,11 +212,18 @@ export default function VideoPlayer({
 
         const nextMesaItem = modoMesaActivo ? modoMesaItems?.[index] : null;
         const nextConcursoItem = modoConcursoActivo
-          ? concursoItems?.[index]
+          ? activeConcursoItems?.[index]
           : null;
 
         if (isModoDefaultItem(nextMesaItem) || isModoDefaultItem(nextConcursoItem)) {
           continue;
+        }
+
+        if (isVideoFinalConcursoItem(nextConcursoItem)) {
+          return {
+            song: next,
+            text: `Próxima canción - ${next.titulo || "Resultados del concurso"}`,
+          };
         }
 
         return {
@@ -208,12 +239,13 @@ export default function VideoPlayer({
       return null;
     },
     [
-      concursoItems,
+      activeConcursoItems,
       defaultOrder,
       esColaDefault,
       formatConcursoText,
       formatMesaText,
       isModoDefaultItem,
+      isVideoFinalConcursoItem,
       modoConcursoActivo,
       modoMesaActivo,
       modoMesaItems,
@@ -403,8 +435,119 @@ export default function VideoPlayer({
     setColaCalificaciones((prev) => [...prev, { ...video, esForzado: true }]);
   }, []);
 
+  const getPuntajeLocalPorKey = useCallback(
+    (key) => {
+      const aliases = key === "0" ? ["0", "10"] : [String(key)];
+
+      return calificaciones.find((item) =>
+        aliases.includes(String(item?.key ?? "").trim()),
+      );
+    },
+    [calificaciones],
+  );
+
+  const cargarResultadosConcurso = useCallback(async () => {
+    if (!roomId) return;
+
+    try {
+      const res = await axios.get(
+        `${API_URL}/t/cola/modo-concurso/resultados/${roomId}`,
+      );
+      setConcursoResultados(res.data?.resultados || []);
+      console.log("[Concurso] Resultados finales cargados", {
+        roomId,
+        resultados: res.data?.resultados || [],
+      });
+    } catch (error) {
+      console.error("Error al obtener resultados de concurso:", error);
+    }
+  }, [roomId]);
+
+  const guardarCalificacionConcurso = useCallback(
+    async (key) => {
+      if (!roomId || !modoConcursoActivo) return;
+      if (!currentConcursoItem || isModoDefaultItem(currentConcursoItem)) return;
+      if (isVideoFinalConcursoItem(currentConcursoItem)) return;
+
+      try {
+        const puntajeLocal = getPuntajeLocalPorKey(key);
+
+        console.log("[Concurso] Tecla presionada", {
+          tecla: key,
+          calificacionApi: puntajeLocal?.calificacion,
+          puntajeApi: puntajeLocal || null,
+          participante: currentConcursoItem.participanteNombre,
+          cancion: currentVideo?.titulo,
+        });
+
+        if (!puntajeLocal) {
+          console.warn(
+            `[Concurso] No encontre una calificacion en /p/puntaje para la tecla ${key}`,
+          );
+        }
+
+        const res = await axios.post(`${API_URL}/t/cola/modo-concurso/calificar`, {
+          roomId,
+          indexActual: effectiveIndex,
+          key,
+        });
+
+        console.log("[Concurso] Calificacion guardada", {
+          tecla: key,
+          calificacionGuardada: res.data?.calificacionGuardada,
+          calificacionesSistemaAgregadas:
+            res.data?.calificacionesSistemaAgregadas || [],
+          todasLasCalificacionesDeLaCancion:
+            res.data?.item?.calificaciones || [],
+          promedioActual: res.data?.resultados || [],
+          participante: currentConcursoItem.participanteNombre,
+          cancion: currentVideo?.titulo,
+        });
+
+        if (res.data?.calificacionesSistemaAgregadas?.length) {
+          console.log(
+            "[Concurso] Calificaciones aleatorias del sistema para esta cancion",
+            res.data.calificacionesSistemaAgregadas,
+          );
+        } else {
+          console.warn(
+            "[Concurso] No se agregaron nuevas calificaciones aleatorias. Puede que ya existan 3 notas del sistema para esta cancion o que no haya puntajes validos en /p/puntaje.",
+          );
+        }
+
+        setConcursoResultados(res.data?.resultados || []);
+        setConcursoRatingMessage("");
+      } catch (error) {
+        console.error("Error al guardar calificacion de concurso:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          error,
+        });
+      }
+    },
+    [
+      currentConcursoItem,
+      currentVideo,
+      effectiveIndex,
+      getPuntajeLocalPorKey,
+      isModoDefaultItem,
+      isVideoFinalConcursoItem,
+      modoConcursoActivo,
+      roomId,
+    ],
+  );
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (modoConcursoActivo && !videoCalificacion && !switchingRef.current) {
+        const concursoKey = e.key === "0" ? "0" : /^[1-9]$/.test(e.key) ? e.key : null;
+
+        if (concursoKey) {
+          guardarCalificacionConcurso(concursoKey);
+          return;
+        }
+      }
+
       if (!modoCalificacion) return;
       if (videoCalificacion) return;
       if (switchingRef.current) return;
@@ -423,10 +566,20 @@ export default function VideoPlayer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     calificaciones,
+    guardarCalificacionConcurso,
+    modoConcursoActivo,
     modoCalificacion,
     videoCalificacion,
     insertarVideoDespuesActual,
   ]);
+
+  useEffect(() => {
+    if (esVideoFinalConcursoActual) {
+      cargarResultadosConcurso();
+    } else {
+      setConcursoResultados([]);
+    }
+  }, [cargarResultadosConcurso, esVideoFinalConcursoActual]);
 
   useEffect(() => {
     if (fullscreenRequested) {
@@ -985,6 +1138,42 @@ export default function VideoPlayer({
           />
         )}
 
+        {concursoRatingMessage && !videoCalificacion && (
+          <div style={ratingToastStyle}>{concursoRatingMessage}</div>
+        )}
+
+        {esVideoFinalConcursoActual && !videoCalificacion && (
+          <div style={resultadosConcursoStyle(isFullscreen)}>
+            <div style={resultadosHeaderStyle}>
+              <span>Resultados del concurso</span>
+              <strong>Promedios finales</strong>
+            </div>
+
+            {concursoResultados.length ? (
+              <div style={resultadosListStyle}>
+                {concursoResultados.slice(0, 8).map((resultado, index) => (
+                  <div
+                    key={resultado.participanteId || resultado.participanteNombre}
+                    style={resultadoRowStyle(index)}
+                  >
+                    <span style={resultadoRankStyle}>#{index + 1}</span>
+                    <span style={resultadoNameStyle}>
+                      {resultado.participanteNombre || "Participante"}
+                    </span>
+                    <strong style={resultadoScoreStyle}>
+                      {Number(resultado.promedio || 0).toFixed(2)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={resultadosEmptyStyle}>
+                Esperando calificaciones del concurso...
+              </div>
+            )}
+          </div>
+        )}
+
         {showNextMessage && !videoCalificacion && !mesaIntroText && (
           <BarraDeslizante
             texto={
@@ -1048,3 +1237,86 @@ const navButtonStyle = (side, disabled) => ({
   cursor: disabled ? "not-allowed" : "pointer",
   zIndex: 4,
 });
+
+const ratingToastStyle = {
+  position: "absolute",
+  top: "18%",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 7,
+  padding: "10px 18px",
+  color: "#fff",
+  fontSize: "22px",
+  fontWeight: 800,
+  background: "rgba(15, 23, 42, 0.82)",
+  border: "1px solid rgba(255,255,255,0.35)",
+  borderRadius: "8px",
+  boxShadow: "0 14px 30px rgba(0,0,0,0.35)",
+};
+
+const resultadosConcursoStyle = (isFullscreen) => ({
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  zIndex: 6,
+  width: isFullscreen ? "min(760px, 78vw)" : "min(620px, 82vw)",
+  maxHeight: isFullscreen ? "76vh" : "70%",
+  overflow: "auto",
+  padding: isFullscreen ? "24px" : "18px",
+  color: "#fff",
+  background: "rgba(4, 10, 24, 0.78)",
+  border: "1px solid rgba(255,255,255,0.28)",
+  borderRadius: "8px",
+  boxShadow: "0 28px 80px rgba(0,0,0,0.45)",
+  backdropFilter: "blur(8px)",
+});
+
+const resultadosHeaderStyle = {
+  display: "grid",
+  gap: "4px",
+  marginBottom: "14px",
+  textAlign: "center",
+};
+
+const resultadosListStyle = {
+  display: "grid",
+  gap: "8px",
+};
+
+const resultadoRowStyle = (index) => ({
+  display: "grid",
+  gridTemplateColumns: "58px 1fr 96px",
+  alignItems: "center",
+  gap: "10px",
+  padding: "10px 12px",
+  background:
+    index === 0 ? "rgba(250, 204, 21, 0.22)" : "rgba(255,255,255,0.1)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  borderRadius: "8px",
+});
+
+const resultadoRankStyle = {
+  fontWeight: 900,
+  color: "#facc15",
+};
+
+const resultadoNameStyle = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontWeight: 800,
+};
+
+const resultadoScoreStyle = {
+  textAlign: "right",
+  fontSize: "24px",
+  color: "#86efac",
+};
+
+const resultadosEmptyStyle = {
+  padding: "18px",
+  textAlign: "center",
+  color: "#cbd5e1",
+};

@@ -2,15 +2,25 @@ const express = require("express");
 const router = express.Router();
 const Puntaje = require("../models/Puntaje");
 
+const normalizarPuntaje = (puntaje) => {
+  const data = puntaje?.toObject ? puntaje.toObject() : puntaje;
+  if (!data) return data;
+
+  return {
+    ...data,
+    calificacion: data.calificacion || data.titulo || "",
+  };
+};
+
 // ---------------------------
 // ✅ Crear puntaje
 // ---------------------------
 router.post("/puntaje/", async (req, res) => {
   try {
-    const { titulo, videoUrl, imagenUrl, weight, key } = req.body;
+    const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
     const nuevoPuntaje = new Puntaje({
-      titulo,
+      calificacion: calificacion || titulo,
       videoUrl,
       imagenUrl,
       weight,
@@ -18,7 +28,7 @@ router.post("/puntaje/", async (req, res) => {
     });
 
     const guardado = await nuevoPuntaje.save();
-    res.status(201).json(guardado);
+    res.status(201).json(normalizarPuntaje(guardado));
   } catch (error) {
     res.status(500).json({ message: "Error al crear el puntaje", error });
   }
@@ -41,13 +51,14 @@ router.get("/puntaje/", async (req, res) => {
         Puntaje.find()
           .sort({ createdAt: -1, _id: -1 })
           .skip(skip)
-          .limit(limit),
+          .limit(limit)
+          .lean(),
         Puntaje.countDocuments(),
       ]);
       const totalPages = Math.ceil(total / limit);
 
       return res.json({
-        puntajes,
+        puntajes: puntajes.map(normalizarPuntaje),
         total,
         page,
         limit,
@@ -56,8 +67,8 @@ router.get("/puntaje/", async (req, res) => {
       });
     }
 
-    const puntajes = await Puntaje.find().sort({ createdAt: -1 });
-    res.json(puntajes);
+    const puntajes = await Puntaje.find().sort({ createdAt: -1 }).lean();
+    res.json(puntajes.map(normalizarPuntaje));
   } catch (error) {
     res.status(500).json({ message: "Error al obtener los puntajes", error });
   }
@@ -68,11 +79,11 @@ router.get("/puntaje/", async (req, res) => {
 // ---------------------------
 router.get("/puntaje/:id", async (req, res) => {
   try {
-    const puntaje = await Puntaje.findById(req.params.id);
+    const puntaje = await Puntaje.findById(req.params.id).lean();
     if (!puntaje) {
       return res.status(404).json({ message: "Puntaje no encontrado" });
     }
-    res.json(puntaje);
+    res.json(normalizarPuntaje(puntaje));
   } catch (error) {
     res.status(500).json({ message: "Error al obtener el puntaje", error });
   }
@@ -83,11 +94,20 @@ router.get("/puntaje/:id", async (req, res) => {
 // ---------------------------
 router.put("/puntaje/:id", async (req, res) => {
   try {
-    const { titulo, videoUrl, imagenUrl, weight, key } = req.body;
+    const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
     const actualizado = await Puntaje.findByIdAndUpdate(
       req.params.id,
-      { titulo, videoUrl, imagenUrl, weight, key },
+      {
+        $set: {
+          calificacion: calificacion || titulo,
+          videoUrl,
+          imagenUrl,
+          weight,
+          key,
+        },
+        $unset: { titulo: "" },
+      },
       { new: true }
     );
 
@@ -95,7 +115,7 @@ router.put("/puntaje/:id", async (req, res) => {
       return res.status(404).json({ message: "Puntaje no encontrado" });
     }
 
-    res.json(actualizado);
+    res.json(normalizarPuntaje(actualizado));
   } catch (error) {
     res.status(500).json({ message: "Error al actualizar el puntaje", error });
   }

@@ -7,6 +7,7 @@ const Cola = require("../models/Cola");
 const createListController = require("../controllers/listController");
 const { authenticate } = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
+const Puntaje = require("../models/Puntaje");
 const { generarColaModoMesa } = require("../services/modoMesaService");
 const { generarColaModoConcurso } = require("../services/modoConcursoService");
 
@@ -73,6 +74,165 @@ const getActiveIndexFromItems = (items = [], fallback = 0) => {
   if (pendienteIndex >= 0) return pendienteIndex;
 
   return Math.min(Math.max(Number(fallback) || 0, 0), Math.max(activeItems.length - 1, 0));
+};
+
+const esItemEspecialConcurso = (item = {}) =>
+  Boolean(item.esVideoDefaultConcurso || item.esVideoFinalConcurso);
+
+const getConcursoItemActivo = (items = [], indexActual = 0) => {
+  const activeItems = items.filter(
+    (item) => item.estado !== "eliminada" && item.estado !== "reproducida",
+  );
+
+  return activeItems[Number(indexActual) || 0] || null;
+};
+
+const findConcursoItemIndex = (items = [], target) => {
+  if (!target) return -1;
+
+  return items.findIndex(
+    (item) =>
+      String(item.cancion) === String(target.cancion) &&
+      item.participanteId === target.participanteId &&
+      item.cancionIndex === target.cancionIndex,
+  );
+};
+
+const normalizarKeyCalificacion = (key) => {
+  const normalizedKey = String(key || "").trim();
+  if (normalizedKey === "0") return "0";
+
+  const valor = Number(normalizedKey);
+  return Number.isInteger(valor) && valor >= 1 && valor <= 10
+    ? normalizedKey
+    : null;
+};
+
+const obtenerValorDesdePuntaje = (puntaje) => {
+  const rawValue = puntaje?.calificacion ?? puntaje?.titulo;
+  const valor = Number(String(rawValue ?? "").replace(",", ".").trim());
+  return Number.isFinite(valor) ? valor : null;
+};
+
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getKeyAliasesCalificacion = (keyNormalizada) =>
+  keyNormalizada === "0" ? ["0", "10"] : [keyNormalizada];
+
+const buscarPuntajePorKey = async (keyNormalizada) => {
+  const aliases = getKeyAliasesCalificacion(keyNormalizada);
+  const regexAliases = aliases.map((alias) => new RegExp(`^\\s*${escapeRegex(alias)}\\s*$`));
+
+  return Puntaje.collection.findOne({
+    $or: [
+      { key: { $in: aliases } },
+      { key: { $in: aliases.map((alias) => Number(alias)).filter(Number.isFinite) } },
+      { key: { $in: regexAliases } },
+      { $expr: { $in: [{ $toString: "$key" }, aliases] } },
+    ],
+  });
+};
+
+const crearCalificacionesSistema = async () => {
+  const puntajes = await Puntaje.collection
+    .find({
+      $or: [
+        { calificacion: { $exists: true, $ne: "" } },
+        { titulo: { $exists: true, $ne: "" } },
+      ],
+    })
+    .project({ _id: 1, key: 1, calificacion: 1, titulo: 1 })
+    .toArray();
+  const puntajesValidos = puntajes
+    .map((puntaje) => ({
+      puntaje,
+      valor: obtenerValorDesdePuntaje(puntaje),
+    }))
+    .filter(({ valor }) => Number.isFinite(valor));
+
+  return Array.from({ length: 3 }, () => {
+    if (!puntajesValidos.length) return null;
+
+    const { puntaje, valor } =
+      puntajesValidos[Math.floor(Math.random() * puntajesValidos.length)];
+
+    return {
+      tipo: "sistema",
+      valor,
+      key: puntaje.key || "",
+      calificacionId: puntaje._id,
+      calificacion: puntaje.calificacion || puntaje.titulo,
+      createdAt: new Date(),
+    };
+  }).filter(Boolean);
+};
+
+const agregarNotasSistemaSiFaltan = async (item = {}) => {
+  if (!item || esItemEspecialConcurso(item)) {
+    return { item, nuevasNotasSistema: [] };
+  }
+
+  const calificaciones = Array.isArray(item.calificaciones)
+    ? item.calificaciones
+    : [];
+  const notasSistema = calificaciones.filter((nota) => nota.tipo === "sistema");
+
+  if (notasSistema.length >= 3) {
+    return { item, nuevasNotasSistema: [] };
+  }
+
+  const nuevasNotasSistema = (await crearCalificacionesSistema()).slice(
+    0,
+    3 - notasSistema.length,
+  );
+
+  return {
+    item: {
+      ...item,
+      calificaciones: [...calificaciones, ...nuevasNotasSistema],
+    },
+    nuevasNotasSistema,
+  };
+};
+
+const calcularResultadosConcurso = (items = []) => {
+  const participantes = new Map();
+
+  items.forEach((item) => {
+    if (esItemEspecialConcurso(item)) return;
+    if (item.estado === "eliminada") return;
+
+    const calificaciones = (item.calificaciones || [])
+      .map((nota) => Number(nota.valor))
+      .filter((valor) => Number.isFinite(valor));
+
+    if (!calificaciones.length) return;
+
+    const key = item.participanteId || item.participanteNombre;
+    const current = participantes.get(key) || {
+      participanteId: item.participanteId,
+      participanteNombre: item.participanteNombre,
+      total: 0,
+      cantidad: 0,
+      canciones: 0,
+    };
+
+    current.total += calificaciones.reduce((sum, valor) => sum + valor, 0);
+    current.cantidad += calificaciones.length;
+    current.canciones += 1;
+    participantes.set(key, current);
+  });
+
+  return Array.from(participantes.values())
+    .map((item) => ({
+      participanteId: item.participanteId,
+      participanteNombre: item.participanteNombre,
+      promedio: item.cantidad ? Number((item.total / item.cantidad).toFixed(2)) : 0,
+      totalCalificaciones: item.cantidad,
+      cancionesCalificadas: item.canciones,
+    }))
+    .sort((a, b) => b.promedio - a.promedio);
 };
 
 const bloquearCambiosSiConcursoActivo = async (roomId, res) => {
@@ -450,9 +610,117 @@ router.post("/cola/modo-concurso/desactivar", async (req, res) => {
   }
 });
 
+router.get("/cola/modo-concurso/resultados/:roomId", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const cola = await Cola.findOne({ roomId });
+
+    if (!cola) {
+      return res.json({ resultados: [] });
+    }
+
+    res.json({
+      resultados: calcularResultadosConcurso(
+        cola.concursoItems.map((item) => item.toObject()),
+      ),
+    });
+  } catch (err) {
+    console.error("Error al obtener resultados de concurso:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/cola/modo-concurso/calificar", async (req, res) => {
+  try {
+    const { roomId, indexActual, key } = req.body;
+    const keyNormalizada = normalizarKeyCalificacion(key);
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    if (!keyNormalizada) {
+      return res.status(400).json({ error: "Tecla de calificacion invalida" });
+    }
+
+    const cola = await Cola.findOne({ roomId });
+    if (!cola?.modoConcursoActivo) {
+      return res.status(400).json({ error: "Concurso no activo" });
+    }
+
+    const items = cola.concursoItems.map((item) => item.toObject());
+    const itemActivo = getConcursoItemActivo(items, indexActual);
+
+    if (!itemActivo || esItemEspecialConcurso(itemActivo)) {
+      return res.status(400).json({ error: "No hay participante activo para calificar" });
+    }
+
+    const originalIndex = findConcursoItemIndex(items, itemActivo);
+    if (originalIndex < 0) {
+      return res.status(404).json({ error: "Item de concurso no encontrado" });
+    }
+
+    const puntaje = await buscarPuntajePorKey(keyNormalizada);
+    const valor = obtenerValorDesdePuntaje(puntaje);
+
+    if (!puntaje || !Number.isFinite(valor)) {
+      return res.status(400).json({
+        error: "No existe una calificacion valida asociada a esa tecla",
+      });
+    }
+
+    const calificaciones = Array.isArray(items[originalIndex].calificaciones)
+      ? items[originalIndex].calificaciones
+      : [];
+    const calificacionGuardada = {
+      tipo: "usuario",
+      valor,
+      key: puntaje.key || keyNormalizada,
+      calificacionId: puntaje._id,
+      calificacion: puntaje.calificacion || puntaje.titulo,
+      createdAt: new Date(),
+    };
+
+    items[originalIndex].calificaciones = [
+      ...calificaciones.filter((nota) => nota.tipo !== "usuario"),
+      calificacionGuardada,
+    ];
+
+    const resultadoSistema = await agregarNotasSistemaSiFaltan(
+      items[originalIndex],
+    );
+    items[originalIndex] = resultadoSistema.item;
+    const calificacionesSistemaAgregadas =
+      resultadoSistema.nuevasNotasSistema || [];
+
+    await Cola.updateOne(
+      { roomId },
+      {
+        $set: {
+          concursoItems: items,
+        },
+      },
+    );
+
+    const colaActualizada = await emitirColaActualizada(req, roomId);
+
+    res.json({
+      message: "Calificacion guardada",
+      item: items[originalIndex],
+      calificacionGuardada,
+      calificacionesSistemaAgregadas,
+      resultados: calcularResultadosConcurso(items),
+      concursoItems: colaActualizada.concursoItems,
+    });
+  } catch (err) {
+    console.error("Error al calificar concurso:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
   try {
-    const { roomId, indexActual } = req.body;
+    const { roomId, indexActual, cancionId } = req.body;
 
     if (!roomId) {
       return res.status(400).json({ error: "roomId requerido" });
@@ -467,7 +735,13 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
     const activeItems = items.filter(
       (item) => item.estado !== "eliminada" && item.estado !== "reproducida",
     );
-    const itemTerminado = activeItems[Number(indexActual) || 0];
+    const itemTerminadoPorCancion = cancionId
+      ? activeItems.find((item) => String(item.cancion) === String(cancionId))
+      : null;
+    const itemTerminado = itemTerminadoPorCancion || activeItems[Number(indexActual) || 0];
+    let itemTerminadoActualizado = null;
+    let calificacionesSistemaAgregadas = [];
+    let debugSistema = null;
 
     if (itemTerminado) {
       const originalIndex = items.findIndex(
@@ -478,7 +752,18 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
       );
 
       if (originalIndex >= 0 && items[originalIndex].estado !== "eliminada") {
+        const resultadoSistema = await agregarNotasSistemaSiFaltan(items[originalIndex]);
+        items[originalIndex] = resultadoSistema.item;
+        calificacionesSistemaAgregadas =
+          resultadoSistema.nuevasNotasSistema || [];
         items[originalIndex].estado = "reproducida";
+        itemTerminadoActualizado = items[originalIndex];
+        debugSistema = {
+          participante: itemTerminadoActualizado.participanteNombre,
+          cancion: String(itemTerminadoActualizado.cancion),
+          totalNotas: itemTerminadoActualizado.calificaciones?.length || 0,
+          notasSistemaAgregadas: calificacionesSistemaAgregadas.length,
+        };
       }
     }
 
@@ -515,6 +800,10 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
       cola: colaActualizada.canciones,
       currentIndex: colaActualizada.currentIndex || 0,
       modoConcursoActivo: Boolean(colaActualizada.modoConcursoActivo),
+      itemTerminado: itemTerminadoActualizado,
+      calificacionesSistemaAgregadas,
+      debugSistema,
+      resultados: calcularResultadosConcurso(items),
     });
   } catch (err) {
     console.error("Error al avanzar modo concurso:", err);

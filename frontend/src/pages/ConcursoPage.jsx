@@ -45,7 +45,11 @@ export default function ConcursoPage({
   const participanteActivo =
     participantes.find((item) => item.id === participanteActivoId) || null;
   const edicionBloqueada = modoConcursoActivo;
-  const puedeCambiarCantidad = !modoConcursoActivo && participantes.length === 0;
+  const puedeCambiarCantidad = !modoConcursoActivo;
+  const maxCancionesAsignadas = Math.max(
+    0,
+    ...participantes.map((participante) => participante.canciones.length),
+  );
 
   const persistir = (nextParticipantes, nextCantidad = cancionesPorParticipante) => {
     setParticipantes(nextParticipantes);
@@ -59,7 +63,17 @@ export default function ConcursoPage({
   };
 
   const handleCantidadChange = (e) => {
-    const next = Math.max(1, Number(e.target.value) || 1);
+    const requested = Math.max(1, Number(e.target.value) || 1);
+    const next = Math.max(requested, maxCancionesAsignadas);
+
+    if (requested < maxCancionesAsignadas) {
+      setToastMsg(
+        `No puedes bajar de ${maxCancionesAsignadas} porque ya hay participantes con esa cantidad de canciones`,
+      );
+    } else if (next > cancionesPorParticipante) {
+      setToastMsg(`Ahora cada participante debe completar ${next} canciones`);
+    }
+
     setCancionesPorParticipante(next);
     persistir(participantes, next);
   };
@@ -104,7 +118,7 @@ export default function ConcursoPage({
     }
 
     if (participanteActivo.canciones.length >= cancionesPorParticipante) {
-      setToastMsg("Este participante ya tiene la cantidad de canciones definida");
+      setToastMsg("Este participante ya ha elegido todas sus canciones");
       return;
     }
 
@@ -183,6 +197,38 @@ export default function ConcursoPage({
     }
 
     setToastMsg("Participante eliminado");
+  };
+
+  const limpiarConcurso = async () => {
+    if (loading) return;
+
+    if (!participantes.length && !modoConcursoActivo) {
+      setToastMsg("No hay participantes para limpiar");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (modoConcursoActivo && roomId) {
+        await axios.post(`${API_URL}/t/cola/modo-concurso/desactivar`, {
+          roomId,
+          finalizado: true,
+        });
+        onModoConcursoChange?.(false);
+      }
+
+      persistir([]);
+      setParticipanteActivoId(null);
+      setNombreParticipante("");
+      setNumeroCancion("");
+      setToastMsg("Concurso limpiado");
+    } catch (error) {
+      console.error("Error limpiando concurso:", error);
+      setToastMsg(error.response?.data?.error || "No se pudo limpiar el concurso");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const quitarCancion = (songId) => {
@@ -270,16 +316,26 @@ export default function ConcursoPage({
           >
             <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
               <h2 className="h4 mb-0">Concurso</h2>
-              <button
-                className={`btn btn-success btn-sm ${
-                  modoConcursoActivo ? "boto-activo" : ""
-                }`}
-                type="button"
-                onClick={toggleConcurso}
-                disabled={loading || (modoCalificacionActivo && !modoConcursoActivo)}
-              >
-                {modoConcursoActivo ? "Concurso activo" : "Comenzar concurso"}
-              </button>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <button
+                  className={`btn btn-success btn-sm ${
+                    modoConcursoActivo ? "boto-activo" : ""
+                  }`}
+                  type="button"
+                  onClick={toggleConcurso}
+                  disabled={loading || (modoCalificacionActivo && !modoConcursoActivo)}
+                >
+                  {modoConcursoActivo ? "Concurso activo" : "Comenzar concurso"}
+                </button>
+                <button
+                  className="btn btn-outline-danger btn-sm"
+                  type="button"
+                  onClick={limpiarConcurso}
+                  disabled={loading || (!participantes.length && !modoConcursoActivo)}
+                >
+                  Limpiar concurso
+                </button>
+              </div>
             </div>
 
             <label className="form-label">Canciones por participante</label>
@@ -291,6 +347,11 @@ export default function ConcursoPage({
               onChange={handleCantidadChange}
               disabled={!puedeCambiarCantidad}
             />
+            <div className="text-muted small mb-3">
+              Puedes aumentar la cantidad para completar nuevas canciones por
+              participante. No se puede bajar por debajo de las canciones ya
+              asignadas.
+            </div>
 
             <form className="d-flex gap-2 mb-3" onSubmit={agregarParticipante}>
               <input
