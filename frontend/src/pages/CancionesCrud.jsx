@@ -259,10 +259,7 @@ export default function CancionCRUD() {
             <th>Título</th>
             <th>Artista</th>
             <th>Género</th>
-            <th>Video</th>
-            <th>Video Mesas</th>
-            <th>Video Concurso</th>
-            <th>Final Concurso</th>
+            <th>Video</th>         
             <th>Imagen</th>
             <th>Visible Principal</th>
             <th>Video Default</th>
@@ -281,9 +278,7 @@ export default function CancionCRUD() {
                   Ver Video
                 </a>
               </td>
-              <td>{cancion.videoDefaultMesas ? "Si" : "No"}</td>
-              <td>{cancion.videoDefaultConcurso ? "Si" : "No"}</td>
-              <td>{cancion.videoFinalConcurso ? "Si" : "No"}</td>
+            
               <td>
                 {cancion.imagenUrl ? (
                   <img

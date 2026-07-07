@@ -8,18 +8,7 @@ import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
-const SONG_URL = `${API_URL}/song/visibles`;
-
-const mezclarVideos = (items) => {
-  const mezclados = [...items];
-
-  for (let i = mezclados.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [mezclados[i], mezclados[j]] = [mezclados[j], mezclados[i]];
-  }
-
-  return mezclados;
-};
+const SONG_URL = `${API_URL}/song/ultsubidas`;
 
 export default function VideoCarouselVisibles({ onPlaySolo }) {
   const [indice, setIndice] = useState(0);
@@ -68,7 +57,10 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
 
-      const res = await axios.get(SONG_URL, { headers });
+      const res = await axios.get(SONG_URL, {
+        headers,
+        params: { limit: 24 },
+      });
 
       const payload = res.data;
       const data = Array.isArray(payload)
@@ -77,7 +69,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
           ? payload.canciones
           : [];
 
-      setVideos(mezclarVideos(data));
+      setVideos(data);
       setIndice(0);
     } catch (err) {
       console.error("Error al cargar videos", err);

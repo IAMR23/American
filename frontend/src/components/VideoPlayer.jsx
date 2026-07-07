@@ -633,6 +633,7 @@ export default function VideoPlayer({
     if (esColaDefault) return;
     if (!currentVideo) return;
     if (!modoMesaActivo && !modoConcursoActivo) return;
+    if (modoMesaActivo || modoConcursoActivo) return;
 
     const item = modoConcursoActivo ? currentConcursoItem : currentModoMesaItem;
     if (!item) return;
@@ -1186,7 +1187,11 @@ export default function VideoPlayer({
                     width={isFullscreen ? 45 : 30}
                   />
 
-                  <span className="outlined">Próxima canción: </span>
+                  <span className="outlined">
+                    {modoMesaActivo || modoConcursoActivo
+                      ? "Turno: "
+                      : "Próxima canción: "}
+                  </span>
 
                   <span style={{ fontSize: "120%" }} className="outlined-white">
                     {nextSongName}

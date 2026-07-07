@@ -387,6 +387,25 @@ const listarCancionesVisibles = async (req, res) => {
 };
 
 // Listar canciones por últimas subidas
+const listarCancionesUltimasRecientes = async (req, res) => {
+  try {
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 24, 1),
+      100,
+    );
+
+    const canciones = await Cancion.find()
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
+      .populate("generos", "nombre");
+
+    res.set("Cache-Control", "no-store");
+    res.json(canciones);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const listarCancionesUltimas = async (req, res) => {
   try {
     const canciones = await Cancion.find()
@@ -411,5 +430,6 @@ module.exports = {
   listarCancionesArtista,
   listarCancionesNumero,
   listarCancionesUltimas,
+  listarCancionesUltimasRecientes,
   getVideoDefault,
 };

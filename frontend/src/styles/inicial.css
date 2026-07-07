@@ -118,7 +118,8 @@ body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  row-gap: 18px;
+  column-gap: clamp(28px, 4vw, 56px);
   margin-top: 10px;
 }
 
