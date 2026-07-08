@@ -720,7 +720,15 @@ router.post("/cola/modo-concurso/calificar", async (req, res) => {
 
 router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
   try {
-    const { roomId, indexActual, cancionId } = req.body;
+    const {
+      roomId,
+      indexActual,
+      cancionId,
+      participanteId,
+      cancionIndex,
+      esVideoDefaultConcurso,
+      esVideoFinalConcurso,
+    } = req.body;
 
     if (!roomId) {
       return res.status(400).json({ error: "roomId requerido" });
@@ -735,10 +743,93 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
     const activeItems = items.filter(
       (item) => item.estado !== "eliminada" && item.estado !== "reproducida",
     );
-    const itemTerminadoPorCancion = cancionId
-      ? activeItems.find((item) => String(item.cancion) === String(cancionId))
+    const requestedIndex = Number(indexActual);
+    const safeIndex = Number.isFinite(requestedIndex)
+      ? Math.max(requestedIndex, 0)
+      : 0;
+    const hasCancionIndex = cancionIndex !== undefined && cancionIndex !== null;
+    const hasDefaultFlag = typeof esVideoDefaultConcurso === "boolean";
+    const hasFinalFlag = typeof esVideoFinalConcurso === "boolean";
+    const hasConcursoMeta =
+      Boolean(participanteId) || hasCancionIndex || hasDefaultFlag || hasFinalFlag;
+    const matchesTerminado = (item = {}) => {
+      if (cancionId && String(item.cancion) !== String(cancionId)) return false;
+      if (participanteId && item.participanteId !== participanteId) return false;
+      if (hasCancionIndex && Number(item.cancionIndex) !== Number(cancionIndex)) {
+        return false;
+      }
+      if (
+        hasDefaultFlag &&
+        Boolean(item.esVideoDefaultConcurso) !== esVideoDefaultConcurso
+      ) {
+        return false;
+      }
+      if (
+        hasFinalFlag &&
+        Boolean(item.esVideoFinalConcurso) !== esVideoFinalConcurso
+      ) {
+        return false;
+      }
+
+      return true;
+    };
+    const itemPorIndice = activeItems[safeIndex] || null;
+    let itemTerminado = hasConcursoMeta
+      ? activeItems.find(matchesTerminado)
       : null;
-    const itemTerminado = itemTerminadoPorCancion || activeItems[Number(indexActual) || 0];
+
+    if (!itemTerminado && cancionId && itemPorIndice) {
+      itemTerminado =
+        String(itemPorIndice.cancion) === String(cancionId)
+          ? itemPorIndice
+          : null;
+    }
+
+    if (!itemTerminado && !cancionId && !hasConcursoMeta) {
+      itemTerminado = itemPorIndice;
+    }
+
+    if (!itemTerminado && (cancionId || hasConcursoMeta)) {
+      const itemYaProcesado = items.find(matchesTerminado);
+
+      if (itemYaProcesado?.estado === "reproducida") {
+        const colaActualizada = await emitirColaActualizada(req, roomId);
+
+        return res.json({
+          message: "Cancion ya procesada",
+          cola: colaActualizada.canciones,
+          currentIndex: colaActualizada.currentIndex || 0,
+          modoConcursoActivo: Boolean(colaActualizada.modoConcursoActivo),
+          itemTerminado: itemYaProcesado,
+          calificacionesSistemaAgregadas: [],
+          debugSistema: {
+            duplicadoIgnorado: true,
+            cancion: cancionId,
+          },
+          resultados: calcularResultadosConcurso(items),
+        });
+      }
+    }
+
+    if (!itemTerminado && (cancionId || hasConcursoMeta)) {
+      const colaActualizada = await emitirColaActualizada(req, roomId);
+
+      return res.json({
+        message: "Cancion terminada no coincide con el item activo",
+        cola: colaActualizada.canciones,
+        currentIndex: colaActualizada.currentIndex || 0,
+        modoConcursoActivo: Boolean(colaActualizada.modoConcursoActivo),
+        itemTerminado: null,
+        calificacionesSistemaAgregadas: [],
+        debugSistema: {
+          avanceIgnorado: true,
+          cancion: cancionId,
+          indexActual,
+        },
+        resultados: calcularResultadosConcurso(items),
+      });
+    }
+
     let itemTerminadoActualizado = null;
     let calificacionesSistemaAgregadas = [];
     let debugSistema = null;

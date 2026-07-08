@@ -815,6 +815,11 @@ export default function VideoPlayer({
       endedLockRef.current = false;
     }, 1200);
 
+    if (modoConcursoActivo && !videoCalificacion && currentVideo?._id) {
+      onCancionTerminada?.(currentVideo, effectiveIndex, currentConcursoItem);
+      return;
+    }
+
     if (!videoCalificacion && currentVideo?._id) {
       onCancionTerminada?.(currentVideo, effectiveIndex);
     }

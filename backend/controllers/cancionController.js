@@ -1,6 +1,8 @@
 const Cancion = require("../models/Cancion");
 const mongoose = require("mongoose");
 
+const parseBoolean = (value) => value === true || value === "true";
+
 const crearCancion = async (req, res) => {
   try {
     const {
@@ -17,6 +19,8 @@ const crearCancion = async (req, res) => {
       videoDefault,
     } = req.body;
 
+    const esVideoDefault = parseBoolean(videoDefault);
+
     const nuevaCancion = new Cancion({
       numero,
       titulo,
@@ -28,7 +32,8 @@ const crearCancion = async (req, res) => {
       videoFinalConcurso: Boolean(videoFinalConcurso),
       imagenUrl,
       visiblePrincipal: visiblePrincipal || false,
-      videoDefault,
+      videoDefault: esVideoDefault,
+      videoDefaultAt: esVideoDefault ? new Date() : null,
     });
 
     await nuevaCancion.save();
@@ -99,6 +104,14 @@ const actualizarCancion = async (req, res) => {
       videoDefault,
     } = req.body;
 
+    const cancionActual = await Cancion.findById(req.params.id);
+
+    if (!cancionActual)
+      return res.status(404).json({ error: "CanciÃ³n no encontrada" });
+
+    const esVideoDefault = parseBoolean(videoDefault);
+    const videoDefaultActivado = esVideoDefault && !cancionActual.videoDefault;
+
     const cancionActualizada = await Cancion.findByIdAndUpdate(
       req.params.id,
       {
@@ -112,7 +125,12 @@ const actualizarCancion = async (req, res) => {
         videoFinalConcurso: Boolean(videoFinalConcurso),
         imagenUrl,
         visiblePrincipal,
-        videoDefault,
+        videoDefault: esVideoDefault,
+        videoDefaultAt: esVideoDefault
+          ? videoDefaultActivado
+            ? new Date()
+            : cancionActual.videoDefaultAt || cancionActual.updatedAt
+          : null,
       },
       { new: true },
     );
@@ -393,9 +411,14 @@ const listarCancionesUltimasRecientes = async (req, res) => {
       Math.max(parseInt(req.query.limit, 10) || 24, 1),
       100,
     );
+    const soloVideoDefault = req.query.videoDefault === "true";
+    const filtro = soloVideoDefault ? { videoDefault: true } : {};
+    const orden = soloVideoDefault
+      ? { videoDefaultAt: -1, updatedAt: -1, createdAt: -1, _id: -1 }
+      : { createdAt: -1, _id: -1 };
 
-    const canciones = await Cancion.find()
-      .sort({ createdAt: -1, _id: -1 })
+    const canciones = await Cancion.find(filtro)
+      .sort(orden)
       .limit(limit)
       .populate("generos", "nombre");
 

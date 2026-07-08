@@ -14,6 +14,7 @@ const CancionSchema = new mongoose.Schema(
     imagenUrl: String,
     visiblePrincipal: Boolean,
     videoDefault: {type : Boolean , default : false },
+    videoDefaultAt: { type: Date, default: null },
     reproducciones: { type: Number, default: 0 },
   },
   { timestamps: true }

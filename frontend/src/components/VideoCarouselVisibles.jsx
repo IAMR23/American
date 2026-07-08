@@ -59,7 +59,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
 
       const res = await axios.get(SONG_URL, {
         headers,
-        params: { limit: 24 },
+        params: { limit: 24, videoDefault: true },
       });
 
       const payload = res.data;

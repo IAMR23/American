@@ -438,6 +438,7 @@ export default function Home() {
   const marcarCancionTerminadaDeConcurso = async (
     _cancionTerminada,
     indexTerminado,
+    itemConcurso,
   ) => {
     if (!modoConcursoEncendido || !roomId) return;
 
@@ -448,6 +449,10 @@ export default function Home() {
           roomId,
           indexActual: indexTerminado,
           cancionId: _cancionTerminada?._id,
+          participanteId: itemConcurso?.participanteId,
+          cancionIndex: itemConcurso?.cancionIndex,
+          esVideoDefaultConcurso: itemConcurso?.esVideoDefaultConcurso,
+          esVideoFinalConcurso: itemConcurso?.esVideoFinalConcurso,
         },
       );
 
@@ -480,9 +485,17 @@ export default function Home() {
     }
   };
 
-  const handleCancionTerminada = (cancionTerminada, indexTerminado) => {
+  const handleCancionTerminada = (
+    cancionTerminada,
+    indexTerminado,
+    itemConcurso,
+  ) => {
     borrarCancionTerminadaDeMesa(cancionTerminada, indexTerminado);
-    marcarCancionTerminadaDeConcurso(cancionTerminada, indexTerminado);
+    marcarCancionTerminadaDeConcurso(
+      cancionTerminada,
+      indexTerminado,
+      itemConcurso,
+    );
   };
 
   const activarPantallaCompletaPlayer = () => {
