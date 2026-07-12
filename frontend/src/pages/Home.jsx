@@ -499,6 +499,12 @@ export default function Home() {
   };
 
   const activarPantallaCompletaPlayer = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch((err) => {
+        console.warn("No se pudo activar pantalla completa:", err);
+      });
+    }
+
     setSeccionActiva("video");
     setShouldFullscreen(true);
   };
@@ -565,6 +571,7 @@ export default function Home() {
             roomId={roomId}
             modoMesaActivo={modoMesaEncendido}
             onModoMesaChange={handleModoMesaChange}
+            onOpenPlayerFullscreen={activarPantallaCompletaPlayer}
           />
         );
 
@@ -575,6 +582,7 @@ export default function Home() {
             modoConcursoActivo={modoConcursoEncendido}
             modoCalificacionActivo={modoCalificacion}
             onModoConcursoChange={handleModoConcursoChange}
+            onOpenPlayerFullscreen={activarPantallaCompletaPlayer}
           />
         );
 
@@ -879,7 +887,7 @@ export default function Home() {
       <div className="fondo p-2">
         <AnunciosVisibles />
 
-        <h1 className="p-2 text-white">Selección especial</h1>
+        <h1 className="p-2 text-white">Recomendados</h1>
         <VideoCarouselVisibles onPlaySolo={activarPantallaCompletaPlayer} />
 
         <h1 className="p-2 text-white">Las más populares</h1>

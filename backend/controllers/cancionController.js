@@ -397,7 +397,12 @@ const listarCancionesVisibles = async (req, res) => {
   try {
     const cancionesVisibles = await Cancion.find({
       visiblePrincipal: true,
-    }).populate("generos");
+      videoUrl: { $exists: true, $ne: "" },
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .populate("generos", "nombre");
+
+    res.set("Cache-Control", "no-store");
     res.json(cancionesVisibles);
   } catch (error) {
     res.status(500).json({ error: error.message });

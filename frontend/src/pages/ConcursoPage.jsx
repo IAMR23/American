@@ -28,6 +28,7 @@ export default function ConcursoPage({
   modoConcursoActivo = false,
   modoCalificacionActivo = false,
   onModoConcursoChange,
+  onOpenPlayerFullscreen,
 }) {
   const initialState = useMemo(loadState, []);
   const [participantes, setParticipantes] = useState(initialState.participantes);
@@ -286,6 +287,8 @@ export default function ConcursoPage({
         );
         return;
       }
+
+      onOpenPlayerFullscreen?.();
 
       await axios.post(`${API_URL}/t/cola/modo-concurso/activar`, {
         roomId,

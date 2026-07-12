@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
@@ -152,6 +152,30 @@ export default function VideoPlayer({
       (currentConcursoItem?.esVideoFinalConcurso ||
         concursoItemByVideo?.esVideoFinalConcurso),
   );
+  const resultadosConcursoOrdenados = useMemo(
+    () =>
+      [...concursoResultados].sort(
+        (a, b) => Number(a?.promedio || 0) - Number(b?.promedio || 0),
+      ),
+    [concursoResultados],
+  );
+  const ganadorConcurso = useMemo(
+    () =>
+      [...concursoResultados].sort(
+        (a, b) => Number(b?.promedio || 0) - Number(a?.promedio || 0),
+      )[0] || null,
+    [concursoResultados],
+  );
+  const mostrarRankingConcurso =
+    esVideoFinalConcursoActual &&
+    !videoCalificacion &&
+    progress >= 10 &&
+    progress < 15;
+  const mostrarGanadorConcurso =
+    esVideoFinalConcursoActual &&
+    !videoCalificacion &&
+    progress >= 17 &&
+    Boolean(ganadorConcurso);
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -220,10 +244,7 @@ export default function VideoPlayer({
         }
 
         if (isVideoFinalConcursoItem(nextConcursoItem)) {
-          return {
-            song: next,
-            text: `Próxima canción - ${next.titulo || "Resultados del concurso"}`,
-          };
+          return null;
         }
 
         return {
@@ -1148,35 +1169,49 @@ export default function VideoPlayer({
           <div style={ratingToastStyle}>{concursoRatingMessage}</div>
         )}
 
-        {esVideoFinalConcursoActual && !videoCalificacion && (
-          <div style={resultadosConcursoStyle(isFullscreen)}>
-            <div style={resultadosHeaderStyle}>
-              <span>Resultados del concurso</span>
-              <strong>Promedios finales</strong>
-            </div>
+        {mostrarRankingConcurso && (
+          <div className="concurso-ranking-overlay">
+            {resultadosConcursoOrdenados.length ? (
+              <div className="concurso-ranking-list">
+                {resultadosConcursoOrdenados.map((resultado, index) => {
+                  const totalParticipantes = resultadosConcursoOrdenados.length;
+                  const delay = totalParticipantes
+                    ? (index * 5) / totalParticipantes
+                    : 0;
 
-            {concursoResultados.length ? (
-              <div style={resultadosListStyle}>
-                {concursoResultados.slice(0, 8).map((resultado, index) => (
-                  <div
-                    key={resultado.participanteId || resultado.participanteNombre}
-                    style={resultadoRowStyle(index)}
-                  >
-                    <span style={resultadoRankStyle}>#{index + 1}</span>
-                    <span style={resultadoNameStyle}>
-                      {resultado.participanteNombre || "Participante"}
-                    </span>
-                    <strong style={resultadoScoreStyle}>
-                      {Number(resultado.promedio || 0).toFixed(2)}
-                    </strong>
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={resultado.participanteId || resultado.participanteNombre}
+                      className="concurso-ranking-row"
+                      style={{ animationDelay: `${delay}s` }}
+                    >
+                      <span className="concurso-ranking-name">
+                        {resultado.participanteNombre || "Participante"}
+                      </span>
+                      <span className="concurso-ranking-dots" />
+                      <strong className="concurso-ranking-score">
+                        {Number(resultado.promedio || 0).toFixed(2)}
+                      </strong>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div style={resultadosEmptyStyle}>
+              <div className="concurso-ranking-empty">
                 Esperando calificaciones del concurso...
               </div>
             )}
+          </div>
+        )}
+
+        {mostrarGanadorConcurso && (
+          <div className="concurso-winner-overlay">
+            <strong className="concurso-winner-name">
+              {ganadorConcurso.participanteNombre || "Participante"}
+            </strong>
+            <span className="concurso-winner-score">
+              {Number(ganadorConcurso.promedio || 0).toFixed(2)} puntos
+            </span>
           </div>
         )}
 
@@ -1262,71 +1297,4 @@ const ratingToastStyle = {
   border: "1px solid rgba(255,255,255,0.35)",
   borderRadius: "8px",
   boxShadow: "0 14px 30px rgba(0,0,0,0.35)",
-};
-
-const resultadosConcursoStyle = (isFullscreen) => ({
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  zIndex: 6,
-  width: isFullscreen ? "min(760px, 78vw)" : "min(620px, 82vw)",
-  maxHeight: isFullscreen ? "76vh" : "70%",
-  overflow: "auto",
-  padding: isFullscreen ? "24px" : "18px",
-  color: "#fff",
-  background: "rgba(4, 10, 24, 0.78)",
-  border: "1px solid rgba(255,255,255,0.28)",
-  borderRadius: "8px",
-  boxShadow: "0 28px 80px rgba(0,0,0,0.45)",
-  backdropFilter: "blur(8px)",
-});
-
-const resultadosHeaderStyle = {
-  display: "grid",
-  gap: "4px",
-  marginBottom: "14px",
-  textAlign: "center",
-};
-
-const resultadosListStyle = {
-  display: "grid",
-  gap: "8px",
-};
-
-const resultadoRowStyle = (index) => ({
-  display: "grid",
-  gridTemplateColumns: "58px 1fr 96px",
-  alignItems: "center",
-  gap: "10px",
-  padding: "10px 12px",
-  background:
-    index === 0 ? "rgba(250, 204, 21, 0.22)" : "rgba(255,255,255,0.1)",
-  border: "1px solid rgba(255,255,255,0.14)",
-  borderRadius: "8px",
-});
-
-const resultadoRankStyle = {
-  fontWeight: 900,
-  color: "#facc15",
-};
-
-const resultadoNameStyle = {
-  minWidth: 0,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  fontWeight: 800,
-};
-
-const resultadoScoreStyle = {
-  textAlign: "right",
-  fontSize: "24px",
-  color: "#86efac",
-};
-
-const resultadosEmptyStyle = {
-  padding: "18px",
-  textAlign: "center",
-  color: "#cbd5e1",
 };

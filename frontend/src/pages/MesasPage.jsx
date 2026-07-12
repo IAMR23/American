@@ -26,6 +26,7 @@ export default function MesasPage({
   roomId,
   modoMesaActivo = false,
   onModoMesaChange,
+  onOpenPlayerFullscreen,
 }) {
   const [mesas, setMesas] = useState([]);
   const [mesaActivaId, setMesaActivaId] = useState(null);
@@ -95,6 +96,8 @@ export default function MesasPage({
         setToastMsg("Agrega canciones antes de comenzar mesas");
         return;
       }
+
+      onOpenPlayerFullscreen?.();
 
       await axios.post(`${API_URL}/t/cola/modo-mesa/activar`, {
         roomId,

@@ -8,7 +8,7 @@ import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import { getToken } from "../utils/auth";
 import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
-const SONG_URL = `${API_URL}/song/ultsubidas`;
+const SONG_URL = `${API_URL}/song/visibles`;
 
 export default function VideoCarouselVisibles({ onPlaySolo }) {
   const [indice, setIndice] = useState(0);
@@ -57,10 +57,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
 
-      const res = await axios.get(SONG_URL, {
-        headers,
-        params: { limit: 24, videoDefault: true },
-      });
+      const res = await axios.get(SONG_URL, { headers });
 
       const payload = res.data;
       const data = Array.isArray(payload)

@@ -87,3 +87,179 @@
   top: 0;
   left: 0;
 }
+
+.concurso-ranking-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 5vh 6vw;
+  color: #fff;
+  background: transparent;
+  pointer-events: none;
+}
+
+.concurso-ranking-title {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.concurso-ranking-title span {
+  font-size: clamp(18px, 2.2vw, 32px);
+  font-weight: 800;
+}
+
+.concurso-ranking-title strong {
+  font-size: clamp(26px, 4vw, 58px);
+  font-weight: 950;
+}
+
+.concurso-ranking-list {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  width: min(1120px, 94vw);
+}
+
+.concurso-ranking-row {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(90px, 1fr) 190px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  transform: translate(110vw, 26px);
+  animation: concurso-ranking-slide 0.72s ease-out forwards;
+}
+
+.concurso-ranking-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: clamp(28px, 4.2vw, 74px);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+
+.concurso-ranking-dots {
+  align-self: end;
+  min-width: 90px;
+  height: 0.9em;
+  overflow: hidden;
+}
+
+.concurso-ranking-dots::before {
+  display: block;
+  color: #fff;
+  content: "................................................................................................................................";
+  font-size: clamp(28px, 3.9vw, 66px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.75;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+}
+
+.concurso-ranking-score {
+  color: #86efac;
+  font-size: clamp(34px, 5vw, 88px);
+  font-weight: 950;
+  text-align: right;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);
+}
+
+.concurso-ranking-empty {
+  padding: 18px 24px;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: clamp(18px, 2vw, 30px);
+  font-weight: 800;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.concurso-winner-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 7vh 7vw;
+  color: #fff;
+  text-align: center;
+  background: transparent;
+  pointer-events: none;
+  animation: concurso-winner-pop 0.7s ease-out both;
+}
+
+.concurso-winner-label {
+  color: #facc15;
+  font-size: clamp(24px, 4vw, 72px);
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow: 0 5px 18px rgba(0, 0, 0, 0.9);
+}
+
+.concurso-winner-name {
+  max-width: 90vw;
+  overflow-wrap: anywhere;
+  font-size: clamp(46px, 8vw, 132px);
+  font-weight: 950;
+  line-height: 0.98;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.9);
+}
+
+.concurso-winner-score {
+  color: #86efac;
+  font-size: clamp(30px, 5vw, 86px);
+  font-weight: 950;
+  text-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+}
+
+@keyframes concurso-ranking-slide {
+  0% {
+    opacity: 0;
+    transform: translate(110vw, 26px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes concurso-winner-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .concurso-ranking-row {
+    grid-template-columns: minmax(0, max-content) minmax(42px, 1fr) 112px;
+    gap: 8px;
+    padding: 4px 6px;
+  }
+}
