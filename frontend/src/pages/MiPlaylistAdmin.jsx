@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
@@ -6,16 +6,18 @@ import "../styles/inicial.css";
 import { FaCompactDisc } from "react-icons/fa";
 import Logo from "../components/Logo";
 import { getToken } from "../utils/auth";
+import { useQueueContext } from "../hooks/QueueProvider";
+
+const SELECCION_ESPECIAL_ID = "seleccion-especial";
 
 const MiPlaylistUser = () => {
   const { id } = useParams();
   const [canciones, setCanciones] = useState([]);
-  const [todasLasCanciones, setTodasLasCanciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [mostrarModal, setMostrarModal] = useState(false);
-  const [busqueda, setBusqueda] = useState(""); // estado para el filtro
   const [nombrePlaylist, setNombrePlaylist] = useState("");
+  const navigate = useNavigate();
+  const { setNuevaCola } = useQueueContext();
 
   useEffect(() => {
     fetchCancionesDePlaylist();
@@ -24,17 +26,25 @@ const MiPlaylistUser = () => {
   const fetchCancionesDePlaylist = async () => {
     try {
       setLoading(true);
-      const token = getToken();
+      setError("");
 
+      if (id === SELECCION_ESPECIAL_ID) {
+        const response = await axios.get(`${API_URL}/song/default/all`);
+        setCanciones(Array.isArray(response.data) ? response.data : []);
+        setNombrePlaylist("Seleccion Especial");
+        return;
+      }
+
+      const token = getToken();
       const response = await axios.get(
         `${API_URL}/t2/playlistPropia/canciones/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       setCanciones(response.data.canciones || []);
-      setNombrePlaylist(response.data.nombre || ""); // 👈 aquí guardamos el nombre
+      setNombrePlaylist(response.data.nombre || "");
     } catch (err) {
       console.error("Error al obtener canciones:", err);
       setError("No se pudieron cargar las canciones");
@@ -43,19 +53,15 @@ const MiPlaylistUser = () => {
     }
   };
 
-  // Función para filtrar canciones por título o artista según búsqueda
-  const cancionesFiltradas = todasLasCanciones.filter((cancion) => {
-    const texto = busqueda.toLowerCase();
-    return (
-      cancion.titulo.toLowerCase().includes(texto) ||
-      cancion.artista.toLowerCase().includes(texto)
-    );
-  });
+  const handleCambiarCancion = (index) => {
+    setNuevaCola(canciones, index);
+    navigate("/");
+  };
 
   return (
     <>
       <div className="fondo container-fluid  ">
-      <Logo/>
+        <Logo />
         <div>
           <h1 className="text-white">
             Playlist: {nombrePlaylist || "Cargando..."}
@@ -84,15 +90,18 @@ const MiPlaylistUser = () => {
                     cursor: "pointer",
                     textAlign: "center",
                     width: "100px",
-                    color : "blue"
+                    color: "blue",
                   }}
                 >
-                  <FaCompactDisc
-                    size={50}
-                    
-                  />
-                  <div style={{ fontSize: "0.8rem", marginTop: "0.3rem" , color:"white" }}>
-                    <strong >{cancion.titulo}</strong>
+                  <FaCompactDisc size={50} />
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      marginTop: "0.3rem",
+                      color: "white",
+                    }}
+                  >
+                    <strong>{cancion.titulo}</strong>
                     <br />
                     <small>{cancion.artista}</small>
                   </div>

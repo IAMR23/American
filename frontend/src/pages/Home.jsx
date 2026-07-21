@@ -36,6 +36,7 @@ import { useSocketContext } from "../hooks/SocketContext";
 
 const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 const MESAS_STORAGE_KEY = "karaokeMesas";
+const CONCURSO_STORAGE_KEY = "karaokeConcurso";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -69,6 +70,10 @@ export default function Home() {
     modoConcursoActivo,
     concursoItems,
     setCola,
+    setCurrentIndex,
+    setModoConcursoActivo,
+    setModoConcursoFinalizado,
+    setConcursoItems,
     changeSong,
     clearQueue,
   } = useQueueContext();
@@ -365,6 +370,40 @@ export default function Home() {
     setRequestedIndex(null);
   };
 
+  const limpiarConcursoDesdePlayer = useCallback(async () => {
+    try {
+      if (roomId) {
+        await axios.post(`${API_URL}/t/cola/modo-concurso/desactivar`, {
+          roomId,
+          finalizado: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error limpiando concurso desde el reproductor:", error);
+    } finally {
+      localStorage.removeItem(CONCURSO_STORAGE_KEY);
+      setModoConcurso(false);
+      setModoMesa(false);
+      setModoCalificacion(false);
+      setRequestedIndex(null);
+      setCola([]);
+      setCurrentIndex?.(0);
+      setModoConcursoActivo?.(false);
+      setModoConcursoFinalizado?.(true);
+      setConcursoItems?.([]);
+      setPlayerResetKey((prev) => prev + 1);
+      setSeccionActiva("video");
+      document.exitFullscreen?.().catch?.(() => {});
+    }
+  }, [
+    roomId,
+    setCola,
+    setConcursoItems,
+    setCurrentIndex,
+    setModoConcursoActivo,
+    setModoConcursoFinalizado,
+  ]);
+
   const getMesasGuardadas = () => {
     try {
       const mesas = JSON.parse(localStorage.getItem(MESAS_STORAGE_KEY) || "[]");
@@ -612,6 +651,7 @@ export default function Home() {
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onCancionTerminada={handleCancionTerminada}
+            onLimpiarConcurso={limpiarConcursoDesdePlayer}
             onColaTerminada={() => {
               if (!esColaDefault && !modoConcursoEncendido) {
                 clearQueue();

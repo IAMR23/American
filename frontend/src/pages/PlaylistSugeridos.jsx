@@ -28,7 +28,7 @@ const PlaylistSugeridos = ({ playlists, onSelectAll }) => {
         >
           {playlists.map((playlist, i) => (
             <li
-              key={i}
+              key={playlist._id || i}
               className="list-group-item d-flex justify-content-between align-items-center"
               style={{
                 backgroundColor: selectedIndex === i ? "white" : "white",
@@ -40,7 +40,8 @@ const PlaylistSugeridos = ({ playlists, onSelectAll }) => {
                 className="d-flex align-items-center gap-2"
                 style={{ cursor: "pointer" }}
                 onClick={() => {
-                  if (playlist.canciones) {
+                  if (Array.isArray(playlist.canciones)) {
+                    setSelectedIndex(i);
                     setNuevaCola(playlist.canciones, 0);
                     onSelectAll?.();
                   }

@@ -170,6 +170,23 @@ const getVideoDefault = async (req, res) => {
   }
 };
 
+const getVideosDefaultAll = async (req, res) => {
+  try {
+    const canciones = await Cancion.find({
+      videoDefault: true,
+      videoUrl: { $exists: true, $ne: "" },
+    })
+      .sort({ videoDefaultAt: -1, numero: 1, _id: 1 })
+      .populate("generos", "nombre");
+
+    res.set("Cache-Control", "no-store");
+    res.json(canciones);
+  } catch (error) {
+    console.error("Error en getVideosDefaultAll:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const eliminarCancion = async (req, res) => {
   try {
     const cancionEliminada = await Cancion.findByIdAndDelete(req.params.id);
@@ -460,4 +477,5 @@ module.exports = {
   listarCancionesUltimas,
   listarCancionesUltimasRecientes,
   getVideoDefault,
+  getVideosDefaultAll,
 };

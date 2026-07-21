@@ -79,6 +79,7 @@ export default function VideoPlayer({
   roomId,
   requestedIndex = null,
   onRequestedIndexHandled,
+  onLimpiarConcurso,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
 
@@ -176,6 +177,11 @@ export default function VideoPlayer({
     !videoCalificacion &&
     progress >= 17 &&
     Boolean(ganadorConcurso);
+  const mostrarBotonLimpiarConcurso =
+    esVideoFinalConcursoActual &&
+    !videoCalificacion &&
+    duration > 0 &&
+    duration - progress <= 5;
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -837,6 +843,12 @@ export default function VideoPlayer({
     }, 1200);
 
     if (modoConcursoActivo && !videoCalificacion && currentVideo?._id) {
+      if (esVideoFinalConcursoActual) {
+        setIsPlaying(false);
+        setShowNextMessage(false);
+        return;
+      }
+
       onCancionTerminada?.(currentVideo, effectiveIndex, currentConcursoItem);
       return;
     }
@@ -1027,6 +1039,36 @@ export default function VideoPlayer({
             },
           }}
         />
+
+        {mostrarBotonLimpiarConcurso && (
+          <button
+            type="button"
+            onClick={() => {
+              stopCurrentPlayer();
+              onLimpiarConcurso?.();
+            }}
+            style={{
+              position: "absolute",
+              top: isFullscreen ? "24px" : "14px",
+              right: isFullscreen ? "28px" : "16px",
+              zIndex: 12,
+              background: "rgba(220, 53, 69, 0.92)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.45)",
+              borderRadius: "6px",
+              padding: "10px 14px",
+              fontSize: isFullscreen ? "16px" : "14px",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+              cursor: "pointer",
+              maxWidth: "min(220px, calc(100% - 32px))",
+              whiteSpace: "normal",
+            }}
+          >
+            Salir y limpiar concurso
+          </button>
+        )}
 
         <img
           src="izq.png"

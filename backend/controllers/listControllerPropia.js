@@ -1,6 +1,51 @@
 const PlaylistPropia = require("../models/PlaylistPropia");
 const Cancion = require("../models/Cancion");
 
+const SELECCION_ESPECIAL_NOMBRE = "SELECCION ESPECIAL";
+
+const escapeRegExp = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const esSeleccionEspecial = (nombre) =>
+  String(nombre || "").toUpperCase() === SELECCION_ESPECIAL_NOMBRE;
+
+const ordenarSeleccionEspecialPrimero = (playlists) =>
+  [...playlists].sort((a, b) => {
+    if (esSeleccionEspecial(a.nombre)) return -1;
+    if (esSeleccionEspecial(b.nombre)) return 1;
+    return 0;
+  });
+
+const sincronizarSeleccionEspecial = async () => {
+  const cancionesDefault = await Cancion.find({
+    videoDefault: true,
+    videoUrl: { $exists: true, $ne: "" },
+  })
+    .sort({ videoDefaultAt: -1, numero: 1, _id: 1 })
+    .select("_id")
+    .lean();
+
+  const canciones = cancionesDefault.map((cancion) => cancion._id);
+  const nombreRegex = new RegExp(
+    `^${escapeRegExp(SELECCION_ESPECIAL_NOMBRE)}$`,
+    "i"
+  );
+
+  const playlist = await PlaylistPropia.findOne({ nombre: nombreRegex });
+
+  if (playlist) {
+    playlist.nombre = SELECCION_ESPECIAL_NOMBRE;
+    playlist.canciones = canciones;
+    await playlist.save();
+    return playlist;
+  }
+
+  return PlaylistPropia.create({
+    nombre: SELECCION_ESPECIAL_NOMBRE,
+    canciones,
+  });
+};
+
 // controllers/listController.js
 function createListController(Model) {
   return {
@@ -110,6 +155,8 @@ function createListController(Model) {
 
     async getUserPlaylists(req, res) {
       try {
+        await sincronizarSeleccionEspecial();
+
         const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
         const limit = Math.min(
           Math.max(parseInt(req.query.limit, 10) || 0, 0),
@@ -142,8 +189,10 @@ function createListController(Model) {
           });
         }
 
-        const playlists = await PlaylistPropia.find().populate("canciones");
-        res.status(200).json(playlists);
+        const playlists = await PlaylistPropia.find()
+          .sort({ createdAt: -1, _id: -1 })
+          .populate("canciones");
+        res.status(200).json(ordenarSeleccionEspecialPrimero(playlists));
       } catch (error) {
         console.error("Error al obtener las playlists del usuario:", error);
         res.status(500).json({ error: "Error al obtener las playlists" });
@@ -175,7 +224,7 @@ function createListController(Model) {
         );
 
         if (page && limit) {
-          const playlistBase = await PlaylistPropia.findById(playlistId).select(
+          let playlistBase = await PlaylistPropia.findById(playlistId).select(
             "nombre canciones",
           );
 
@@ -183,6 +232,13 @@ function createListController(Model) {
             return res
               .status(404)
               .json({ error: "PlaylistPropia no encontrada" });
+          }
+
+          if (esSeleccionEspecial(playlistBase.nombre)) {
+            await sincronizarSeleccionEspecial();
+            playlistBase = await PlaylistPropia.findById(playlistId).select(
+              "nombre canciones",
+            );
           }
 
           const total = playlistBase.canciones?.length || 0;
@@ -211,7 +267,7 @@ function createListController(Model) {
           });
         }
 
-        const playlist = await PlaylistPropia.findById(playlistId).populate(
+        let playlist = await PlaylistPropia.findById(playlistId).populate(
           "canciones"
         );
 
@@ -219,6 +275,13 @@ function createListController(Model) {
           return res
             .status(404)
             .json({ error: "PlaylistPropia no encontrada" });
+        }
+
+        if (esSeleccionEspecial(playlist.nombre)) {
+          await sincronizarSeleccionEspecial();
+          playlist = await PlaylistPropia.findById(playlistId).populate(
+            "canciones"
+          );
         }
 
         res.status(200).json({
@@ -268,14 +331,13 @@ function createListController(Model) {
     },
     async deletePlaylist(req, res) {
       const { playlistId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id;
+      const esAdmin = req.user.rol === "admin";
 
       try {
-        // Buscar la playlist y asegurarse que pertenece al usuario
-        const playlist = await PlaylistPropia.findOne({
-          _id: playlistId,
-          user: userId,
-        });
+        const playlist = await PlaylistPropia.findOne(
+          esAdmin ? { _id: playlistId } : { _id: playlistId, user: userId }
+        );
 
         if (!playlist) {
           return res
@@ -283,7 +345,6 @@ function createListController(Model) {
             .json({ error: "PlaylistPropia no encontrada" });
         }
 
-        // Eliminar la playlist
         await PlaylistPropia.deleteOne({ _id: playlistId });
 
         res

@@ -123,6 +123,10 @@ export const QueueProvider = ({ children }) => {
         removeFromQueue,
         clearQueue,
         setCola,
+        setCurrentIndex,
+        setModoConcursoActivo,
+        setModoConcursoFinalizado,
+        setConcursoItems,
         setNuevaCola,
       }}
     >
