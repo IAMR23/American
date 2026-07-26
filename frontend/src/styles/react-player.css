@@ -123,7 +123,7 @@
 
 .concurso-ranking-list {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 10px;
   width: min(1120px, 94vw);
 }
@@ -143,6 +143,21 @@
   animation: concurso-ranking-slide 0.72s ease-out forwards;
 }
 
+.concurso-ranking-person {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(700px, 62vw);
+  gap: clamp(8px, 1.2vw, 18px);
+}
+
+.concurso-ranking-number {
+  flex: 0 0 auto;
+  width: clamp(52px, 7.4vw, 118px);
+  height: clamp(52px, 7.4vw, 118px);
+  object-fit: contain;
+}
+
 .concurso-ranking-name {
   min-width: 0;
   overflow: hidden;
@@ -152,6 +167,13 @@
   text-overflow: ellipsis;
   text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);
   white-space: nowrap;
+}
+
+.concurso-ranking-medal {
+  flex: 0 0 auto;
+  width: clamp(42px, 5.6vw, 92px);
+  height: clamp(58px, 7.6vw, 124px);
+  object-fit: contain;
 }
 
 .concurso-ranking-dots {
@@ -219,17 +241,21 @@
 .concurso-winner-name {
   max-width: 90vw;
   overflow-wrap: anywhere;
+  opacity: 0;
   font-size: clamp(46px, 8vw, 132px);
   font-weight: 950;
   line-height: 0.98;
   text-shadow: 0 8px 28px rgba(0, 0, 0, 0.9);
+  animation: concurso-winner-name-enter 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
 }
 
 .concurso-winner-score {
   color: #86efac;
+  opacity: 0;
   font-size: clamp(30px, 5vw, 86px);
   font-weight: 950;
   text-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+  animation: concurso-winner-name-enter 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.42s both;
 }
 
 @keyframes concurso-ranking-slide {
@@ -256,10 +282,30 @@
   }
 }
 
+@keyframes concurso-winner-name-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 768px) {
   .concurso-ranking-row {
-    grid-template-columns: minmax(0, max-content) minmax(42px, 1fr) 112px;
+    grid-template-columns: minmax(0, 1fr) 112px;
     gap: 8px;
     padding: 4px 6px;
+  }
+
+  .concurso-ranking-person {
+    max-width: none;
+  }
+
+  .concurso-ranking-dots {
+    display: none;
   }
 }

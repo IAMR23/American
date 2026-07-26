@@ -7,6 +7,24 @@ import axios from "axios";
 
 const API_PUNTAJE = `${API_URL}/p/puntaje`;
 
+const CONCURSO_RANKING_PREMIOS = [
+  {
+    numeroSrc: "/medallas/1-Photoroom.png",
+    medallaSrc: "/medallas/medalla%20oro-Photoroom.png",
+    label: "Primer lugar",
+  },
+  {
+    numeroSrc: "/medallas/2-Photoroom.png",
+    medallaSrc: "/medallas/medalla%20plata-Photoroom.png",
+    label: "Segundo lugar",
+  },
+  {
+    numeroSrc: "/medallas/3-Photoroom.png",
+    medallaSrc: "/medallas/medalla%20bronce-Photoroom.png",
+    label: "Tercer lugar",
+  },
+];
+
 let activePlayerOwner = null;
 let activePlayerStop = null;
 
@@ -156,7 +174,7 @@ export default function VideoPlayer({
   const resultadosConcursoOrdenados = useMemo(
     () =>
       [...concursoResultados].sort(
-        (a, b) => Number(a?.promedio || 0) - Number(b?.promedio || 0),
+        (a, b) => Number(b?.promedio || 0) - Number(a?.promedio || 0),
       ),
     [concursoResultados],
   );
@@ -175,7 +193,7 @@ export default function VideoPlayer({
   const mostrarGanadorConcurso =
     esVideoFinalConcursoActual &&
     !videoCalificacion &&
-    progress >= 17 &&
+    progress >= 22 &&
     Boolean(ganadorConcurso);
   const mostrarBotonLimpiarConcurso =
     esVideoFinalConcursoActual &&
@@ -1220,6 +1238,7 @@ export default function VideoPlayer({
                   const delay = totalParticipantes
                     ? (index * 5) / totalParticipantes
                     : 0;
+                  const premio = CONCURSO_RANKING_PREMIOS[index];
 
                   return (
                     <div
@@ -1227,8 +1246,25 @@ export default function VideoPlayer({
                       className="concurso-ranking-row"
                       style={{ animationDelay: `${delay}s` }}
                     >
-                      <span className="concurso-ranking-name">
-                        {resultado.participanteNombre || "Participante"}
+                      <span className="concurso-ranking-person">
+                        {premio && (
+                          <img
+                            className="concurso-ranking-number"
+                            src={premio.numeroSrc}
+                            alt={premio.label}
+                          />
+                        )}
+                        <span className="concurso-ranking-name">
+                          {resultado.participanteNombre || "Participante"}
+                        </span>
+                        {premio && (
+                          <img
+                            className="concurso-ranking-medal"
+                            src={premio.medallaSrc}
+                            alt=""
+                            aria-hidden="true"
+                          />
+                        )}
                       </span>
                       <span className="concurso-ranking-dots" />
                       <strong className="concurso-ranking-score">
