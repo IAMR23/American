@@ -24,6 +24,18 @@ Responsable de cambios en `frontend/`.
 - No cambiar la estructura visual general sin necesidad.
 - Si se toca una vista, revisar su CSS asociado.
 
+## Reglas Modo Mesa QR
+
+- Mantener dos rutas separadas:
+  - `/sala/:roomId` para cola normal.
+  - `/mesa/:roomId` para Mesa QR.
+- `CelularPage.jsx` debe mostrar ambos QR sin mezclar flujos.
+- `MesaUsuario.jsx` debe cargar mesas desde `/t/mesas/:roomId`, escuchar `mesasActualizadas` y agregar canciones con `/t/mesas/:roomId/cancion`.
+- `MesasPage.jsx` debe usar backend como fuente principal; `localStorage.karaokeMesas` solo es respaldo.
+- Al recibir `mesasActualizadas`, el host debe refrescar mesas sin requerir reload.
+- Cuando `modoConcursoActivo` este activo, bloquear UI de cambios de mesas y mostrar mensaje claro.
+- No agregar canciones de Mesa QR a `QueueProvider.addToQueue` ni a `/t/cola/add2`; la cola se actualiza desde backend si el modo mesa esta activo.
+
 ## Verificacion recomendada
 
 Despues de cambios frontend:
@@ -46,3 +58,4 @@ npm run lint
 - Hay usuarios autenticados y no autenticados en flujos de cola.
 - `localStorage.roomId` participa en reproduccion por sala.
 - Algunas respuestas de API devuelven arrays directos y otras objetos con propiedades como `canciones`.
+- La pantalla de mesas depende de socket por sala; si no actualiza, revisar `joinRoom`, `mesasActualizadas` y `colaActualizada`.

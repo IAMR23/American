@@ -68,3 +68,20 @@ docker compose up --build
 - El reproductor y la cola viven principalmente en providers dentro de `frontend/src/hooks`.
 - El backend monta rutas por prefijos como `/song`, `/genero`, `/t`, `/t2`, `/pdf`, `/sesion` y `/room`.
 - Socket.IO se inicializa desde `backend/sockets/socket.js`.
+
+## Modo Mesa QR
+
+El flujo de mesas tiene dos entradas moviles distintas:
+
+- `/sala/:roomId`: flujo actual de cola normal.
+- `/mesa/:roomId`: flujo Mesa QR para seleccionar mesa/persona y agregar canciones a mesas.
+
+Reglas importantes para agentes:
+
+- `backend/models/MesaSala.js` es la fuente principal de mesas por sala.
+- `localStorage.karaokeMesas` es solo respaldo en frontend; no debe ser la fuente principal.
+- `frontend/src/pages/MesasPage.jsx` debe reflejar backend y escuchar `mesasActualizadas`.
+- `frontend/src/pages/MesaUsuario.jsx` debe agregar canciones con `/t/mesas/:roomId/cancion`, nunca con `/t/cola/add2`.
+- Cuando se modifica una mesa/persona/cancion, backend debe emitir `mesasActualizadas`.
+- Si `Cola.modoMesaActivo` esta activo, backend tambien debe regenerar la cola con `generarColaModoMesa` y emitir `colaActualizada`.
+- Si `modoConcursoActivo` esta activo, los cambios de mesas deben bloquearse con un error claro.

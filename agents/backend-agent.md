@@ -30,6 +30,18 @@ Responsable de cambios en `backend/`.
 - Evitar mezclar logica de controlador dentro de rutas nuevas.
 - Si una ruta impacta cola, sala o reproduccion, revisar tambien sockets y frontend.
 
+## Reglas Modo Mesa QR
+
+- Las mesas persistentes viven en `models/MesaSala.js`, indexadas por `roomId`.
+- Antes de mutar mesas, validar que la sala exista en `Room`.
+- No crear mesas sin `nombre`, personas sin `nombre` ni canciones sin `songId`.
+- Evitar canciones duplicadas dentro de la misma persona.
+- Todas las mutaciones de `/t/mesas/:roomId/...` deben emitir `mesasActualizadas` a `io.to(roomId)`.
+- Si la cola de esa sala tiene `modoMesaActivo: true`, despues de mutar mesas hay que regenerar `Cola.canciones` y `Cola.modoMesaItems` con `generarColaModoMesa`, conservar un `currentIndex` seguro y emitir `colaActualizada`.
+- Si ya no quedan canciones reales de mesas/personas, desactivar modo mesa y restaurar `colaNormalBackup`.
+- Si `modoConcursoActivo` esta activo, bloquear mutaciones de mesas con `409` y mensaje claro.
+- No usar `/t/cola/add2` para canciones de mesas; ese endpoint pertenece a cola normal.
+
 ## Verificacion recomendada
 
 ```bash
@@ -50,3 +62,4 @@ npm run dev
 - Mongo corre con auth en Docker.
 - Los uploads se sirven desde `/uploads`.
 - Hay rutas con prefijos cortos (`/t`, `/t2`, `/p`) que el frontend ya puede depender.
+- Cambios de mesas pueden impactar dos sockets: `mesasActualizadas` y `colaActualizada`.
