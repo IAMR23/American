@@ -38,6 +38,7 @@ import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
 import SubirPDF from "./pages/SubirPDF";
 import SalaUsuario from "./pages/SalaUsuario";
+import MesaUsuario from "./pages/MesaUsuario";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
@@ -172,6 +173,7 @@ function App() {
                   {/* Resest password */}
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/sala/:roomId" element={<SalaUsuario />} />
+                  <Route path="/mesa/:roomId" element={<MesaUsuario />} />
 
 
                 </Routes>

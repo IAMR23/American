@@ -609,6 +609,7 @@ export default function Home() {
           <MesasPage
             roomId={roomId}
             modoMesaActivo={modoMesaEncendido}
+            modoConcursoActivo={modoConcursoEncendido}
             onModoMesaChange={handleModoMesaChange}
             onOpenPlayerFullscreen={activarPantallaCompletaPlayer}
           />

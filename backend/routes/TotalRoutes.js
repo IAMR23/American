@@ -4,6 +4,8 @@ const router = express.Router();
 const Favorito = require("../models/Favorito");
 const Playlist = require("../models/Playlist");
 const Cola = require("../models/Cola");
+const MesaSala = require("../models/MesaSala");
+const Room = require("../models/Room");
 const createListController = require("../controllers/listController");
 const { authenticate } = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
@@ -247,6 +249,152 @@ const bloquearCambiosSiConcursoActivo = async (roomId, res) => {
   return true;
 };
 
+const createMesaId = (prefix) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const validarRoomId = (roomId) =>
+  typeof roomId === "string" && roomId.trim().length > 0;
+
+const validarSalaExistente = async (roomId, res) => {
+  if (!validarRoomId(roomId)) {
+    res.status(400).json({ error: "roomId invalido" });
+    return false;
+  }
+
+  const sala = await Room.findOne({ roomId });
+  if (!sala) {
+    res.status(404).json({ error: "Sala no existe" });
+    return false;
+  }
+
+  return true;
+};
+
+const emitirMesasActualizadas = (req, roomId, mesas = []) => {
+  const io = req.app.get("io");
+  io.to(roomId).emit("mesasActualizadas", { roomId, mesas });
+};
+
+const obtenerMesaSala = async (roomId) => {
+  let mesaSala = await MesaSala.findOne({ roomId });
+
+  if (!mesaSala) {
+    mesaSala = await MesaSala.create({ roomId, mesas: [] });
+  }
+
+  return mesaSala;
+};
+
+const construirDatosModoMesa = async (mesas = []) => {
+  const colaModoMesa = generarColaModoMesa(mesas);
+  const videosDefaultMesas = await Cancion.find({
+    videoDefaultMesas: true,
+    videoUrl: { $exists: true, $ne: "" },
+  })
+    .sort({ numero: 1, _id: 1 })
+    .select("_id");
+  const itemsDefaultMesas = videosDefaultMesas.map((cancion, index) => ({
+    mesaNumero: 0,
+    mesaNombre: "Video inicial mesas",
+    participanteNombre: "Mesas",
+    participanteIndex: -1,
+    cancionIndex: index,
+    esVideoDefaultMesas: true,
+    cancion: cancion._id,
+  }));
+
+  return {
+    totalCancionesMesas: colaModoMesa.length,
+    canciones: [
+      ...videosDefaultMesas.map((cancion) => cancion._id),
+      ...colaModoMesa.map((item) => item.cancionId),
+    ],
+    modoMesaItems: [
+      ...itemsDefaultMesas,
+      ...colaModoMesa.map((item) => ({
+        mesaNumero: item.mesaNumero,
+        mesaNombre: item.mesaNombre,
+        participanteNombre: item.participanteNombre,
+        participanteIndex: item.participanteIndex,
+        cancionIndex: item.cancionIndex,
+        esVideoDefaultMesas: false,
+        cancion: item.cancionId,
+      })),
+    ],
+  };
+};
+
+const sincronizarColaModoMesaActiva = async (req, roomId, mesas = []) => {
+  const colaExistente = await Cola.findOne({ roomId });
+
+  if (!colaExistente?.modoMesaActivo || colaExistente?.modoConcursoActivo) {
+    return colaExistente;
+  }
+
+  const { canciones, modoMesaItems, totalCancionesMesas } =
+    await construirDatosModoMesa(mesas);
+
+  if (!totalCancionesMesas) {
+    await Cola.findOneAndUpdate(
+      { roomId },
+      {
+        $set: {
+          canciones: colaExistente.colaNormalBackup || [],
+          currentIndex: colaExistente.currentIndexNormalBackup || 0,
+          modoMesaActivo: false,
+          modoMesaItems: [],
+          colaNormalBackup: [],
+          currentIndexNormalBackup: 0,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    return emitirColaActualizada(req, roomId);
+  }
+
+  const safeCurrentIndex = Math.min(
+    Math.max(Number(colaExistente.currentIndex) || 0, 0),
+    Math.max(canciones.length - 1, 0),
+  );
+
+  await Cola.findOneAndUpdate(
+    { roomId },
+    {
+      $set: {
+        canciones,
+        currentIndex: safeCurrentIndex,
+        modoMesaItems,
+      },
+    },
+    { upsert: true, new: true },
+  );
+
+  return emitirColaActualizada(req, roomId);
+};
+
+const responderMesas = async (
+  req,
+  res,
+  roomId,
+  mesaSala,
+  status = 200,
+  extra = {},
+) => {
+  const mesas = mesaSala?.mesas || [];
+  emitirMesasActualizadas(req, roomId, mesas);
+  await sincronizarColaModoMesaActiva(req, roomId, mesas);
+
+  const cola = await Cola.findOne({ roomId }).select("modoConcursoActivo");
+
+  return res.status(status).json({
+    roomId,
+    mesas,
+    modoConcursoActivo: Boolean(cola?.modoConcursoActivo),
+    ...extra,
+  });
+};
+
 // ---------------- FAVORITOS ----------------
 router.post("/favoritos/add", authenticate, favoritoController.addSong);
 router.delete("/favoritos/remove", authenticate, favoritoController.removeSong);
@@ -256,6 +404,307 @@ router.delete(
   authenticate,
   favoritoController.clearList
 );
+
+// ---------------- MESAS POR SALA ----------------
+
+router.get("/mesas/:roomId", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    if (!(await validarSalaExistente(roomId, res))) return;
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const cola = await Cola.findOne({ roomId }).select("modoConcursoActivo");
+
+    res.json({
+      roomId,
+      mesas: mesaSala.mesas || [],
+      modoConcursoActivo: Boolean(cola?.modoConcursoActivo),
+    });
+  } catch (err) {
+    console.error("Error al obtener mesas:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/mesas/:roomId/mesa", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const nombre = String(req.body?.nombre || "").trim();
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!nombre) {
+      return res.status(400).json({ error: "Nombre de mesa requerido" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const maxNumero = (mesaSala.mesas || []).reduce(
+      (max, mesa, index) => Math.max(max, Number(mesa.numero) || index + 1),
+      0,
+    );
+    const mesa = {
+      id: createMesaId("mesa"),
+      numero: maxNumero + 1,
+      nombre,
+      personas: [],
+    };
+
+    mesaSala.mesas.push(mesa);
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+
+    return responderMesas(req, res, roomId, mesaSala, 201, { mesa });
+  } catch (err) {
+    console.error("Error al crear mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/mesas/:roomId/mesa", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { mesaId } = req.body || {};
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!mesaId) {
+      return res.status(400).json({ error: "mesaId requerido" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const prevLength = mesaSala.mesas.length;
+    mesaSala.mesas = mesaSala.mesas.filter((mesa) => mesa.id !== mesaId);
+
+    if (mesaSala.mesas.length === prevLength) {
+      return res.status(404).json({ error: "Mesa no encontrada" });
+    }
+
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+    return responderMesas(req, res, roomId, mesaSala);
+  } catch (err) {
+    console.error("Error al eliminar mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/mesas/:roomId/persona", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { mesaId } = req.body || {};
+    const nombre = String(req.body?.nombre || "").trim();
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!mesaId) {
+      return res.status(400).json({ error: "mesaId requerido" });
+    }
+    if (!nombre) {
+      return res.status(400).json({ error: "Nombre de persona requerido" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const mesa = mesaSala.mesas.find((item) => item.id === mesaId);
+
+    if (!mesa) {
+      return res.status(404).json({ error: "Mesa no encontrada" });
+    }
+
+    const persona = {
+      id: createMesaId("persona"),
+      nombre,
+      canciones: [],
+    };
+
+    mesa.personas.push(persona);
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+
+    return responderMesas(req, res, roomId, mesaSala, 201, { persona });
+  } catch (err) {
+    console.error("Error al crear persona:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/mesas/:roomId/persona", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { mesaId, personaId } = req.body || {};
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!mesaId || !personaId) {
+      return res.status(400).json({ error: "mesaId y personaId requeridos" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const mesa = mesaSala.mesas.find((item) => item.id === mesaId);
+
+    if (!mesa) {
+      return res.status(404).json({ error: "Mesa no encontrada" });
+    }
+
+    const prevLength = mesa.personas.length;
+    mesa.personas = mesa.personas.filter((persona) => persona.id !== personaId);
+
+    if (mesa.personas.length === prevLength) {
+      return res.status(404).json({ error: "Persona no encontrada" });
+    }
+
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+    return responderMesas(req, res, roomId, mesaSala);
+  } catch (err) {
+    console.error("Error al eliminar persona:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/mesas/:roomId/cancion", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { mesaId, personaId, songId } = req.body || {};
+    const nombrePersona = String(req.body?.nombrePersona || "").trim();
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!mesaId) {
+      return res.status(400).json({ error: "mesaId requerido" });
+    }
+    if (!personaId && !nombrePersona) {
+      return res.status(400).json({ error: "Selecciona o escribe una persona" });
+    }
+    if (!songId) {
+      return res.status(400).json({ error: "songId requerido" });
+    }
+
+    const cancion = await Cancion.findById(songId).select(
+      "_id numero titulo artista videoUrl",
+    );
+
+    if (!cancion) {
+      return res.status(404).json({ error: "Cancion no encontrada" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const mesa = mesaSala.mesas.find((item) => item.id === mesaId);
+
+    if (!mesa) {
+      return res.status(404).json({ error: "Mesa no encontrada" });
+    }
+
+    let persona = null;
+
+    if (personaId) {
+      persona = mesa.personas.find((item) => item.id === personaId);
+
+      if (!persona) {
+        return res.status(404).json({ error: "Persona no encontrada" });
+      }
+    } else {
+      persona = {
+        id: createMesaId("persona"),
+        nombre: nombrePersona,
+        canciones: [],
+      };
+      mesa.personas.push(persona);
+    }
+
+    const existe = (persona.canciones || []).some(
+      (item) => String(item._id) === String(cancion._id),
+    );
+
+    if (existe) {
+      return res.status(409).json({
+        error: "La cancion ya esta agregada para esta persona",
+        roomId,
+        mesas: mesaSala.mesas,
+      });
+    }
+
+    persona.canciones.push({
+      _id: cancion._id,
+      numero: cancion.numero,
+      titulo: cancion.titulo,
+      artista: cancion.artista,
+      videoUrl: cancion.videoUrl,
+    });
+
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+
+    return responderMesas(req, res, roomId, mesaSala, 201, {
+      mesaId: mesa.id,
+      personaId: persona.id,
+      cancion,
+    });
+  } catch (err) {
+    console.error("Error al agregar cancion a mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/mesas/:roomId/cancion", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { mesaId, personaId, songId } = req.body || {};
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+    if (!mesaId || !personaId || !songId) {
+      return res.status(400).json({ error: "mesaId, personaId y songId requeridos" });
+    }
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    const mesa = mesaSala.mesas.find((item) => item.id === mesaId);
+
+    if (!mesa) {
+      return res.status(404).json({ error: "Mesa no encontrada" });
+    }
+
+    const persona = mesa.personas.find((item) => item.id === personaId);
+
+    if (!persona) {
+      return res.status(404).json({ error: "Persona no encontrada" });
+    }
+
+    const prevLength = persona.canciones.length;
+    persona.canciones = persona.canciones.filter(
+      (item) => String(item._id) !== String(songId),
+    );
+
+    if (persona.canciones.length === prevLength) {
+      return res.status(404).json({ error: "Cancion no encontrada en la persona" });
+    }
+
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+    return responderMesas(req, res, roomId, mesaSala);
+  } catch (err) {
+    console.error("Error al quitar cancion de mesa:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/mesas/:roomId/reset", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    if (!(await validarSalaExistente(roomId, res))) return;
+    if (await bloquearCambiosSiConcursoActivo(roomId, res)) return;
+
+    const mesaSala = await obtenerMesaSala(roomId);
+    mesaSala.mesas = [];
+    mesaSala.markModified("mesas");
+    await mesaSala.save();
+
+    return responderMesas(req, res, roomId, mesaSala);
+  } catch (err) {
+    console.error("Error al reiniciar mesas:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ---------------- COLA ----------------
 

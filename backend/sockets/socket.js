@@ -1,4 +1,5 @@
 const Cola = require("../models/Cola");
+const MesaSala = require("../models/MesaSala");
 const Room = require("../models/Room"); // 🔥 IMPORTANTE
 
 const initSockets = (io) => {
@@ -42,6 +43,12 @@ const initSockets = (io) => {
           modoConcursoActivo: Boolean(cola.modoConcursoActivo),
           modoConcursoFinalizado: Boolean(cola.modoConcursoFinalizado),
           concursoItems: cola.concursoItems || [],
+        });
+
+        const mesaSala = await MesaSala.findOne({ roomId });
+        socket.emit("mesasActualizadas", {
+          roomId,
+          mesas: mesaSala?.mesas || [],
         });
       } catch (error) {
         console.error("Error en joinRoom:", error);
