@@ -90,17 +90,20 @@
 
 .concurso-ranking-overlay {
   position: absolute;
-  inset: 0;
+  top: 30%;
+  right: 0;
+  bottom: 5%;
+  left: 0;
   z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 5vh 6vw;
+  justify-content: flex-start;
+  padding: 0 6vw;
   color: #fff;
   background: transparent;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .concurso-ranking-title {
@@ -124,16 +127,20 @@
 .concurso-ranking-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: space-evenly;
+  gap: var(--concurso-ranking-gap, 10px);
   width: min(1120px, 94vw);
+  height: 100%;
+  min-height: 0;
 }
 
 .concurso-ranking-row {
   display: grid;
-  grid-template-columns: minmax(0, max-content) minmax(90px, 1fr) 190px;
+  grid-template-columns: minmax(0, max-content) minmax(36px, 1fr) minmax(92px, 190px);
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
+  min-height: 0;
+  padding: 2px 8px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -148,13 +155,13 @@
   align-items: center;
   min-width: 0;
   max-width: min(700px, 62vw);
-  gap: clamp(8px, 1.2vw, 18px);
+  gap: clamp(5px, 1.2vw, 18px);
 }
 
 .concurso-ranking-number {
   flex: 0 0 auto;
-  width: clamp(52px, 7.4vw, 118px);
-  height: clamp(52px, 7.4vw, 118px);
+  width: var(--concurso-ranking-number-size, clamp(52px, 7.4vw, 118px));
+  height: var(--concurso-ranking-number-size, clamp(52px, 7.4vw, 118px));
   object-fit: contain;
 }
 
@@ -162,7 +169,7 @@
   min-width: 0;
   overflow: hidden;
   color: #fff;
-  font-size: clamp(28px, 4.2vw, 74px);
+  font-size: var(--concurso-ranking-name-size, clamp(28px, 4.2vw, 74px));
   font-weight: 950;
   text-overflow: ellipsis;
   text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);
@@ -171,14 +178,14 @@
 
 .concurso-ranking-medal {
   flex: 0 0 auto;
-  width: clamp(42px, 5.6vw, 92px);
-  height: clamp(58px, 7.6vw, 124px);
+  width: var(--concurso-ranking-medal-width, clamp(42px, 5.6vw, 92px));
+  height: var(--concurso-ranking-medal-height, clamp(58px, 7.6vw, 124px));
   object-fit: contain;
 }
 
 .concurso-ranking-dots {
   align-self: end;
-  min-width: 90px;
+  min-width: 36px;
   height: 0.9em;
   overflow: hidden;
 }
@@ -187,7 +194,7 @@
   display: block;
   color: #fff;
   content: "................................................................................................................................";
-  font-size: clamp(28px, 3.9vw, 66px);
+  font-size: var(--concurso-ranking-dots-size, clamp(28px, 3.9vw, 66px));
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.75;
@@ -197,7 +204,7 @@
 
 .concurso-ranking-score {
   color: #86efac;
-  font-size: clamp(34px, 5vw, 88px);
+  font-size: var(--concurso-ranking-score-size, clamp(34px, 5vw, 88px));
   font-weight: 950;
   text-align: right;
   text-shadow: 0 4px 14px rgba(0, 0, 0, 0.95);

@@ -185,6 +185,32 @@ export default function VideoPlayer({
       )[0] || null,
     [concursoResultados],
   );
+  const rankingConcursoStyle = useMemo(() => {
+    const total = Math.max(resultadosConcursoOrdenados.length, 1);
+    const scale = Math.min(1, Math.max(0.46, 3.4 / total));
+
+    return {
+      "--concurso-ranking-gap": `${Math.max(3, 10 * scale)}px`,
+      "--concurso-ranking-number-size": `clamp(34px, ${7.4 * scale}vw, ${
+        118 * scale
+      }px)`,
+      "--concurso-ranking-medal-width": `clamp(28px, ${5.6 * scale}vw, ${
+        92 * scale
+      }px)`,
+      "--concurso-ranking-medal-height": `clamp(38px, ${7.6 * scale}vw, ${
+        124 * scale
+      }px)`,
+      "--concurso-ranking-name-size": `clamp(20px, ${4.2 * scale}vw, ${
+        74 * scale
+      }px)`,
+      "--concurso-ranking-score-size": `clamp(24px, ${5 * scale}vw, ${
+        88 * scale
+      }px)`,
+      "--concurso-ranking-dots-size": `clamp(18px, ${3.9 * scale}vw, ${
+        66 * scale
+      }px)`,
+    };
+  }, [resultadosConcursoOrdenados.length]);
   const mostrarRankingConcurso =
     esVideoFinalConcursoActual &&
     !videoCalificacion &&
@@ -1232,7 +1258,10 @@ export default function VideoPlayer({
         {mostrarRankingConcurso && (
           <div className="concurso-ranking-overlay">
             {resultadosConcursoOrdenados.length ? (
-              <div className="concurso-ranking-list">
+              <div
+                className="concurso-ranking-list"
+                style={rankingConcursoStyle}
+              >
                 {resultadosConcursoOrdenados.map((resultado, index) => {
                   const totalParticipantes = resultadosConcursoOrdenados.length;
                   const delay = totalParticipantes
