@@ -1,68 +1,80 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { API_URL } from "../config";
 
-const ListadoPDFCanciones = () => {
+const ListadoPDFCanciones = ({ autoDownloadOrden = null }) => {
   const [canciones, setCanciones] = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState("");
+  const autoDownloadDoneRef = useRef(false);
 
   useEffect(() => {
     obtenerCanciones();
   }, []);
 
   const obtenerCanciones = async () => {
+    setCargando(true);
+    setError("");
+
     try {
       const res = await axios.get(`${API_URL}/song/numero`);
-      setCanciones(res.data);
+      setCanciones(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error al obtener canciones:", error);
+      setError("No se pudieron cargar las canciones");
+    } finally {
+      setCargando(false);
     }
   };
 
+  const getGeneroNombre = (generos) =>
+    typeof generos === "object"
+      ? generos?.nombre || "Sin genero"
+      : generos || "Sin genero";
+
   const generarPDF = (orden) => {
+    if (!canciones.length) {
+      setError("No hay canciones disponibles para generar el PDF");
+      return;
+    }
+
     const doc = new jsPDF();
     let titulo = "AMERICAN KARAOKE - LISTA POR ";
-
-    let cancionesOrdenadas = [...canciones];
+    const cancionesOrdenadas = [...canciones];
     let head = [];
     let data = [];
 
     if (orden === "artista") {
       titulo += "ARTISTA";
-      cancionesOrdenadas.sort((a, b) => {
-        const artA = (a.artista || "").toLowerCase();
-        const artB = (b.artista || "").toLowerCase();
-        return artA.localeCompare(artB);
-      });
+      cancionesOrdenadas.sort((a, b) =>
+        (a.artista || "").toLowerCase().localeCompare(
+          (b.artista || "").toLowerCase(),
+        ),
+      );
 
-      // Encabezado y datos para orden por artista
-      head = [["Cantante", "Nº", "Canción", "Género"]];
+      head = [["Cantante", "Nro", "Cancion", "Genero"]];
       data = cancionesOrdenadas.map((cancion, index) => [
         cancion.artista || "Sin artista",
         cancion.numero != null ? cancion.numero : index + 1,
-        cancion.titulo || "Sin título",
-        typeof cancion.generos === "object"
-          ? cancion.generos.nombre || "Sin género"
-          : cancion.generos || "Sin género",
+        cancion.titulo || "Sin titulo",
+        getGeneroNombre(cancion.generos),
       ]);
-    } else if (orden === "cancion") {
+    } else {
       titulo += "CANCION";
-      cancionesOrdenadas.sort((a, b) => {
-        const titA = (a.titulo || "").toLowerCase();
-        const titB = (b.titulo || "").toLowerCase();
-        return titA.localeCompare(titB);
-      });
+      cancionesOrdenadas.sort((a, b) =>
+        (a.titulo || "").toLowerCase().localeCompare(
+          (b.titulo || "").toLowerCase(),
+        ),
+      );
 
-      // Encabezado y datos para orden por canción
-      head = [["Canción", "Nº", "Cantante", "Género"]];
+      head = [["Cancion", "Nro", "Cantante", "Genero"]];
       data = cancionesOrdenadas.map((cancion, index) => [
-        cancion.titulo || "Sin título",
+        cancion.titulo || "Sin titulo",
         cancion.numero != null ? cancion.numero : index + 1,
         cancion.artista || "Sin artista",
-        typeof cancion.generos === "object"
-          ? cancion.generos.nombre || "Sin género"
-          : cancion.generos || "Sin género",
+        getGeneroNombre(cancion.generos),
       ]);
     }
 
@@ -72,7 +84,7 @@ const ListadoPDFCanciones = () => {
     doc.text(titulo, x, 10);
 
     autoTable(doc, {
-      head: head,
+      head,
       body: data,
       startY: 20,
     });
@@ -80,18 +92,42 @@ const ListadoPDFCanciones = () => {
     doc.save(`listado_canciones_por_${orden}.pdf`);
   };
 
+  useEffect(() => {
+    if (!autoDownloadOrden || autoDownloadDoneRef.current || !canciones.length) {
+      return;
+    }
+
+    autoDownloadDoneRef.current = true;
+    generarPDF(autoDownloadOrden);
+  }, [autoDownloadOrden, canciones]);
+
   return (
-    <div>
+    <div className="container py-4">
       <div className="text-center mb-3">
+        {autoDownloadOrden && (
+          <div className="mb-3">
+            <h1 className="h4 fw-bold">Listado PDF de canciones</h1>
+            <p className="text-muted mb-0">
+              {cargando
+                ? "Preparando PDF..."
+                : "Si la descarga no inicia automaticamente, usa el boton."}
+            </p>
+          </div>
+        )}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
         <button
           className="btn btn-danger me-2"
           onClick={() => generarPDF("cancion")}
+          disabled={cargando || !canciones.length}
         >
-          Descargar PDF por Canción
+          Descargar PDF por Cancion
         </button>
         <button
           className="btn btn-success"
           onClick={() => generarPDF("artista")}
+          disabled={cargando || !canciones.length}
         >
           Descargar PDF por Cantante
         </button>

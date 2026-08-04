@@ -25,6 +25,7 @@ import MiPlaylistUser2 from "./pages/MiPlaylistUser2";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 import ListaCanciones from "./components/ListaCanciones";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
+import ListadoPDFCanciones from "./components/ListadoPDFCanciones";
 import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 
 import { AuthProvider } from "./utils/AuthContext";
@@ -174,6 +175,10 @@ function App() {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/sala/:roomId" element={<SalaUsuario />} />
                   <Route path="/mesa/:roomId" element={<MesaUsuario />} />
+                  <Route
+                    path="/listado-pdf/cancion"
+                    element={<ListadoPDFCanciones autoDownloadOrden="cancion" />}
+                  />
 
 
                 </Routes>

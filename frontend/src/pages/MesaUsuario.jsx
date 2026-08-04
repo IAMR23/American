@@ -22,6 +22,7 @@ export default function MesaUsuario() {
   const [mesas, setMesas] = useState([]);
   const [mesaActivaId, setMesaActivaId] = useState("");
   const [personaActivaId, setPersonaActivaId] = useState("");
+  const [nombreMesa, setNombreMesa] = useState("");
   const [nombrePersona, setNombrePersona] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [cargandoMesas, setCargandoMesas] = useState(false);
@@ -167,6 +168,29 @@ export default function MesaUsuario() {
     }
   };
 
+  const handleCrearMesa = async (e) => {
+    e.preventDefault();
+
+    const nombre = nombreMesa.trim();
+    if (!nombre) {
+      setToastMsg("Escribe el nombre de la mesa");
+      return;
+    }
+
+    const res = await ejecutarCambioMesa(
+      () => axios.post(`${API_URL}/t/mesas/${roomId}/mesa`, { nombre }),
+      "No se pudo crear la mesa",
+    );
+
+    if (res?.data?.mesa) {
+      setMesaActivaId(res.data.mesa.id);
+      setPersonaActivaId("");
+      setNombreMesa("");
+      setNombrePersona("");
+      setToastMsg(`Mesa creada: ${res.data.mesa.nombre}`);
+    }
+  };
+
   const handleCrearPersona = async (e) => {
     e.preventDefault();
 
@@ -189,6 +213,62 @@ export default function MesaUsuario() {
       setPersonaActivaId(res.data.persona.id);
       setNombrePersona("");
       setToastMsg(`Persona agregada a ${mesaActiva?.nombre || "la mesa"}`);
+    }
+  };
+
+  const eliminarMesa = async (mesaId) => {
+    if (!mesaId) return;
+
+    const res = await ejecutarCambioMesa(
+      () =>
+        axios.delete(`${API_URL}/t/mesas/${roomId}/mesa`, {
+          data: { mesaId },
+        }),
+      "No se pudo eliminar la mesa",
+    );
+
+    if (res && mesaActivaId === mesaId) {
+      const restantes = res.data?.mesas || [];
+      setMesaActivaId(restantes[0]?.id || "");
+      setPersonaActivaId(getPersonas(restantes[0])[0]?.id || "");
+      setNombrePersona("");
+      setToastMsg("Mesa eliminada");
+    }
+  };
+
+  const eliminarPersona = async (personaId) => {
+    if (!mesaActivaId || !personaId) return;
+
+    const res = await ejecutarCambioMesa(
+      () =>
+        axios.delete(`${API_URL}/t/mesas/${roomId}/persona`, {
+          data: { mesaId: mesaActivaId, personaId },
+        }),
+      "No se pudo eliminar la persona",
+    );
+
+    if (res && personaActivaId === personaId) {
+      const mesaActualizada = (res.data?.mesas || []).find(
+        (mesa) => mesa.id === mesaActivaId,
+      );
+      setPersonaActivaId(getPersonas(mesaActualizada)[0]?.id || "");
+      setToastMsg("Persona eliminada");
+    }
+  };
+
+  const borrarTodo = async () => {
+    const res = await ejecutarCambioMesa(
+      () => axios.delete(`${API_URL}/t/mesas/${roomId}/reset`),
+      "No se pudieron reiniciar las mesas",
+    );
+
+    if (res) {
+      setMesaActivaId("");
+      setPersonaActivaId("");
+      setNombreMesa("");
+      setNombrePersona("");
+      setBusqueda("");
+      setToastMsg("Mesas reiniciadas");
     }
   };
 
@@ -340,7 +420,7 @@ export default function MesaUsuario() {
       <div className="bg-white rounded shadow-sm border p-3 mb-3">
         <div className="d-flex align-items-start justify-content-between gap-2">
           <div>
-            <h1 className="h4 fw-bold mb-1">Mesas</h1>
+            <h1 className="h4 fw-bold mb-1">Mesas PRUEBA 1</h1>
             <div className="text-muted small">Sala {roomId}</div>
           </div>
           <div className="text-end">
@@ -382,8 +462,37 @@ export default function MesaUsuario() {
         <div className="bg-white rounded shadow-sm p-3 d-flex flex-column border">
           <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
             <h2 className="h5 mb-0">Mesas</h2>
-            {cargandoMesas && <span className="text-muted small">Cargando...</span>}
+            <div className="d-flex align-items-center gap-2">
+              {cargandoMesas && <span className="text-muted small">Cargando...</span>}
+              <button
+                className="btn btn-outline-danger btn-sm"
+                type="button"
+                onClick={borrarTodo}
+                disabled={!mesas.length || cambiosBloqueados}
+                title="Borrar todo"
+                aria-label="Borrar todas las mesas"
+              >
+                <FaTrashAlt aria-hidden="true" />
+              </button>
+            </div>
           </div>
+
+          <form className="d-flex gap-2 mb-3" onSubmit={handleCrearMesa}>
+            <input
+              className="form-control"
+              value={nombreMesa}
+              onChange={(e) => setNombreMesa(e.target.value)}
+              placeholder="Nombre de la mesa"
+              disabled={cambiosBloqueados}
+            />
+            <button
+              className="btn btn-danger"
+              type="submit"
+              disabled={cambiosBloqueados || !nombreMesa.trim()}
+            >
+              Crear
+            </button>
+          </form>
 
           <div className="d-flex flex-column gap-2">
             {mesas.map((mesa) => {
@@ -391,41 +500,55 @@ export default function MesaUsuario() {
               const mesaSeleccionada = mesa.id === mesaActivaId;
 
               return (
-                <button
+                <div
                   key={mesa.id}
-                  className={`btn text-start rounded border p-2 shadow-sm ${
-                    mesaSeleccionada
-                      ? "btn-danger border-danger text-white"
-                      : "btn-light text-dark"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    setMesaActivaId(mesa.id);
-                    setPersonaActivaId(personas[0]?.id || "");
-                    setNombrePersona("");
-                  }}
+                  className="d-flex align-items-stretch gap-2"
                 >
-                  <div className="d-flex align-items-center justify-content-between gap-2">
-                    <div>
-                      <strong>
-                        Mesa {mesa.numero || mesas.indexOf(mesa) + 1}:{" "}
-                        {mesa.nombre}
-                      </strong>
-                      <span
-                        className={`ms-2 ${
-                          mesaSeleccionada ? "text-white-50" : "text-muted"
-                        }`}
-                      >
-                        {personas.length} personas
-                      </span>
+                  <button
+                    className={`btn text-start rounded border p-2 shadow-sm flex-grow-1 ${
+                      mesaSeleccionada
+                        ? "btn-danger border-danger text-white"
+                        : "btn-light text-dark"
+                    }`}
+                    type="button"
+                    onClick={() => {
+                      setMesaActivaId(mesa.id);
+                      setPersonaActivaId(personas[0]?.id || "");
+                      setNombrePersona("");
+                    }}
+                  >
+                    <div className="d-flex align-items-center justify-content-between gap-2">
+                      <div>
+                        <strong>
+                          Mesa {mesa.numero || mesas.indexOf(mesa) + 1}:{" "}
+                          {mesa.nombre}
+                        </strong>
+                        <span
+                          className={`ms-2 ${
+                            mesaSeleccionada ? "text-white-50" : "text-muted"
+                          }`}
+                        >
+                          {personas.length} personas
+                        </span>
+                      </div>
+                      {mesaSeleccionada && (
+                        <span className="badge bg-light text-danger">
+                          Seleccionada
+                        </span>
+                      )}
                     </div>
-                    {mesaSeleccionada && (
-                      <span className="badge bg-light text-danger">
-                        Seleccionada
-                      </span>
-                    )}
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    className="btn btn-outline-danger px-3"
+                    type="button"
+                    onClick={() => eliminarMesa(mesa.id)}
+                    disabled={cambiosBloqueados}
+                    title="Eliminar mesa"
+                    aria-label={`Eliminar mesa ${mesa.nombre}`}
+                  >
+                    <FaTrashAlt aria-hidden="true" />
+                  </button>
+                </div>
               );
             })}
 
@@ -467,37 +590,51 @@ export default function MesaUsuario() {
               const personaSeleccionada = persona.id === personaActivaId;
 
               return (
-                <button
+                <div
                   key={persona.id}
-                  className={`btn text-start rounded border p-2 shadow-sm ${
-                    personaSeleccionada
-                      ? "btn-dark border-dark text-white"
-                      : "btn-light text-dark"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    setPersonaActivaId(persona.id);
-                    setNombrePersona("");
-                  }}
+                  className="d-flex align-items-stretch gap-2"
                 >
-                  <div className="d-flex align-items-center justify-content-between gap-2">
-                    <div>
-                      <strong>{persona.nombre}</strong>
-                      <span
-                        className={`ms-2 ${
-                          personaSeleccionada ? "text-white-50" : "text-muted"
-                        }`}
-                      >
-                        {(persona.canciones || []).length} canciones
-                      </span>
+                  <button
+                    className={`btn text-start rounded border p-2 shadow-sm flex-grow-1 ${
+                      personaSeleccionada
+                        ? "btn-dark border-dark text-white"
+                        : "btn-light text-dark"
+                    }`}
+                    type="button"
+                    onClick={() => {
+                      setPersonaActivaId(persona.id);
+                      setNombrePersona("");
+                    }}
+                  >
+                    <div className="d-flex align-items-center justify-content-between gap-2">
+                      <div>
+                        <strong>{persona.nombre}</strong>
+                        <span
+                          className={`ms-2 ${
+                            personaSeleccionada ? "text-white-50" : "text-muted"
+                          }`}
+                        >
+                          {(persona.canciones || []).length} canciones
+                        </span>
+                      </div>
+                      {personaSeleccionada && (
+                        <span className="badge bg-light text-dark">
+                          Seleccionado
+                        </span>
+                      )}
                     </div>
-                    {personaSeleccionada && (
-                      <span className="badge bg-light text-dark">
-                        Seleccionado
-                      </span>
-                    )}
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    className="btn btn-outline-danger px-3"
+                    type="button"
+                    onClick={() => eliminarPersona(persona.id)}
+                    disabled={cambiosBloqueados}
+                    title="Eliminar persona"
+                    aria-label={`Eliminar persona ${persona.nombre}`}
+                  >
+                    <FaTrashAlt aria-hidden="true" />
+                  </button>
+                </div>
               );
             })}
 
