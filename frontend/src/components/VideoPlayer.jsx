@@ -215,17 +215,14 @@ export default function VideoPlayer({
     esVideoFinalConcursoActual &&
     !videoCalificacion &&
     progress >= 10 &&
-    progress < 15;
+    progress < 20;
   const mostrarGanadorConcurso =
     esVideoFinalConcursoActual &&
     !videoCalificacion &&
     progress >= 22 &&
     Boolean(ganadorConcurso);
   const mostrarBotonLimpiarConcurso =
-    esVideoFinalConcursoActual &&
-    !videoCalificacion &&
-    duration > 0 &&
-    duration - progress <= 5;
+    mostrarGanadorConcurso && Boolean(onLimpiarConcurso);
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
@@ -1084,36 +1081,6 @@ export default function VideoPlayer({
           }}
         />
 
-        {mostrarBotonLimpiarConcurso && (
-          <button
-            type="button"
-            onClick={() => {
-              stopCurrentPlayer();
-              onLimpiarConcurso?.();
-            }}
-            style={{
-              position: "absolute",
-              top: isFullscreen ? "24px" : "14px",
-              right: isFullscreen ? "28px" : "16px",
-              zIndex: 12,
-              background: "rgba(220, 53, 69, 0.92)",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.45)",
-              borderRadius: "6px",
-              padding: "10px 14px",
-              fontSize: isFullscreen ? "16px" : "14px",
-              fontWeight: 700,
-              lineHeight: 1.15,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
-              cursor: "pointer",
-              maxWidth: "min(220px, calc(100% - 32px))",
-              whiteSpace: "normal",
-            }}
-          >
-            Salir y limpiar concurso
-          </button>
-        )}
-
         <img
           src="izq.png"
           alt="Anterior"
@@ -1319,6 +1286,19 @@ export default function VideoPlayer({
             <span className="concurso-winner-score">
               {Number(ganadorConcurso.promedio || 0).toFixed(2)} puntos
             </span>
+            {mostrarBotonLimpiarConcurso && (
+              <button
+                type="button"
+                className="concurso-winner-clean-button"
+                onClick={() => {
+                  stopCurrentPlayer();
+                  onLimpiarConcurso?.();
+                }}
+                aria-label="Limpiar concurso"
+              >
+                <img src="/LimpiarConcurso.png" alt="Limpiar concurso" />
+              </button>
+            )}
           </div>
         )}
 
