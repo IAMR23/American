@@ -2,14 +2,21 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { getToken } from "../utils/auth";
 import { API_URL } from "../config";
+import {
+  esErrorSuscripcionInactiva,
+  notificarSuscripcionInactiva,
+} from "./subscription";
 
-export default function usePlaylists(userId) {
+export default function usePlaylists(userId, enabled = false) {
   const [playlists, setPlaylists] = useState([]);
   const [playlistsPropia, setPlaylistsPropia] = useState([]);
-  const [suscrito, setSuscrito] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !enabled) {
+      setPlaylists([]);
+      setPlaylistsPropia([]);
+      return;
+    }
 
     const cargarTodo = async () => {
       const token = getToken();
@@ -26,19 +33,19 @@ export default function usePlaylists(userId) {
         });
         setPlaylistsPropia(Array.isArray(resPropia.data) ? resPropia.data : []);
 
-        const resSub = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSuscrito(resSub.data.suscrito === true);
-
-        console.log("Playlists y suscripción cargadas");
+        console.log("Playlists cargadas");
       } catch (error) {
         console.error("Error cargando playlists", error);
+        if (esErrorSuscripcionInactiva(error)) {
+          notificarSuscripcionInactiva(error.response?.data || {});
+        }
+        setPlaylists([]);
+        setPlaylistsPropia([]);
       }
     };
 
     cargarTodo();
-  }, [userId]);
+  }, [enabled, userId]);
 
   const handleAddPlaylist = async (name) => {
     const token = getToken();
@@ -53,9 +60,12 @@ export default function usePlaylists(userId) {
       console.log("Playlist creada:", nuevaPlaylist);
     } catch (err) {
       console.error(err.response?.data || err.message);
+      if (esErrorSuscripcionInactiva(err)) {
+        notificarSuscripcionInactiva(err.response?.data || {});
+      }
       alert("No se pudo crear el playlist. Quizás ya existe.");
     }
   };
 
-  return { playlists, playlistsPropia, suscrito, handleAddPlaylist };
+  return { playlists, playlistsPropia, handleAddPlaylist };
 }

@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import { API_URL } from "../config";
+import { getToken } from "../utils/auth";
+import { notificarSuscripcionInactiva } from "../utils/subscription";
 
 const SocketContext = createContext();
 
@@ -58,6 +60,9 @@ export function SocketProvider({ children }) {
 
       const newSocket = io(API_URL, {
         path: "/socket.io",
+        auth: {
+          token: getToken(),
+        },
         transports: ["websocket", "polling"],
         withCredentials: true,
         reconnection: true,
@@ -103,6 +108,10 @@ export function SocketProvider({ children }) {
 
       newSocket.on("error", (err) => {
         console.error("Socket error:", err);
+      });
+
+      newSocket.on("subscriptionInactive", (detail) => {
+        notificarSuscripcionInactiva(detail || {});
       });
     },
     [cleanupSocket, setConnected],

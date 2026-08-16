@@ -1,16 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const controlador = require("../controllers/solicitudCancionController");
-const { authenticate } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  verificarSuscripcionActiva,
+} = require("../middleware/authMiddleware");
+
+const protegerPremium = [authenticate, verificarSuscripcionActiva];
 
 // CRUD
-router.post("/", controlador.crearSolicitud);
-router.post("/:id/votar", controlador.votarPorSolicitud);
-router.get("/", controlador.obtenerSolicitudes);
-router.get("/:id", controlador.obtenerSolicitudPorId);
-router.put("/:id", controlador.actualizarSolicitud);
-router.delete("/all", controlador.eliminarTodasSolicitudes);
+router.post("/", ...protegerPremium, controlador.crearSolicitud);
+router.post("/:id/votar", ...protegerPremium, controlador.votarPorSolicitud);
+router.get("/", ...protegerPremium, controlador.obtenerSolicitudes);
+router.get("/:id", ...protegerPremium, controlador.obtenerSolicitudPorId);
+router.put("/:id", ...protegerPremium, controlador.actualizarSolicitud);
+router.delete("/all", ...protegerPremium, controlador.eliminarTodasSolicitudes);
 
-router.delete("/:id", controlador.eliminarSolicitud);
+router.delete("/:id", ...protegerPremium, controlador.eliminarSolicitud);
 
 module.exports = router;

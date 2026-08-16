@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
+import axios from "axios";
 import { useSocketContext } from "../hooks/SocketContext";
 import { API_URL } from "../config";
+import { getToken, getUserId } from "../utils/auth";
 
 export default function CelularPage() {
   const [roomId, setRoomId] = useState(null);
@@ -10,16 +12,28 @@ export default function CelularPage() {
   useEffect(() => {
     const crearSala = async () => {
       let savedRoomId = localStorage.getItem("roomId");
+      const ownerId = getUserId();
+      const savedRoomOwnerId = localStorage.getItem("roomOwnerId");
+
+      if (!ownerId) return;
+
+      if (savedRoomId && savedRoomOwnerId !== String(ownerId)) {
+        localStorage.removeItem("roomId");
+        localStorage.removeItem("roomOwnerId");
+        savedRoomId = null;
+      }
 
       if (!savedRoomId) {
-        const res = await fetch(`${API_URL}/room/create-room`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user: "HOST" }),
+        const token = getToken();
+        const res = await axios.post(`${API_URL}/room/create-room`, {
+          user: "HOST",
+        }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        const data = await res.json();
+        const data = res.data;
         savedRoomId = data.roomId;
         localStorage.setItem("roomId", savedRoomId);
+        localStorage.setItem("roomOwnerId", String(ownerId));
       }
 
       setRoomId(savedRoomId);

@@ -1,6 +1,10 @@
 const express = require("express");
 const { login, refresh, me, logout } = require("../controllers/authController");
-const { authenticate, verificarSuscripcionActiva } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  tieneAccesoKaraoke,
+  tieneSuscripcionVigente,
+} = require("../middleware/authMiddleware");
 const { forgotPassword } = require("../middleware/forgotPassword");
 const { resetPassword } = require("../middleware/resetPassword");
 
@@ -13,10 +17,13 @@ router.post("/api/auth/refresh", refresh);
 router.get("/api/auth/me", authenticate, me);
 router.post("/api/auth/logout", logout);
 
-router.get("/user/suscripcion", authenticate, verificarSuscripcionActiva, (req, res) => {
+router.get("/user/suscripcion", authenticate, (req, res) => {
   res.json({
-    suscrito: true, // sabemos que está suscrito porque pasó el middleware
+    rol: req.user.rol,
+    suscrito: req.user.suscrito === true,
     subscriptionEnd: req.user.subscriptionEnd,
+    suscripcionVigente: tieneSuscripcionVigente(req.user),
+    tieneAccesoKaraoke: tieneAccesoKaraoke(req.user),
   });
 });
 

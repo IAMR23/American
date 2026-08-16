@@ -70,7 +70,11 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
           ? { Authorization: `Bearer ${getToken()}` }
           : {};
 
-        const res = await axios.get(SONG_SEARCH_URL, {
+        const searchUrl = roomId
+          ? `${API_URL}/song/search-room/${roomId}`
+          : SONG_SEARCH_URL;
+
+        const res = await axios.get(searchUrl, {
           headers,
           signal: controller.signal,
           params: {
@@ -112,7 +116,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
         }
       }
     },
-    [debouncedSearch, filtroActivo, isAuthenticated],
+    [debouncedSearch, filtroActivo, isAuthenticated, roomId],
   );
 
   useEffect(() => {
@@ -203,7 +207,7 @@ export default function BuscadorTablaCelular({ onSelectAll, roomId }) {
   };
 
   const masReproducida = async (id) => {
-    await axios.post(`${API_URL}/song/${id}/reproducir`);
+    await axios.post(`${API_URL}/song/${id}/reproducir`).catch(() => {});
   };
 
   return (

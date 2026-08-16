@@ -3,7 +3,7 @@ import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
 import { FaCompactDisc } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 import axios from "axios";
 
@@ -33,13 +33,64 @@ import ForgotPassword from "./ForgotPassword";
 import WhatsAppButton from "../components/WhatsAppButton";
 import User from "./User";
 import { useSocketContext } from "../hooks/SocketContext";
+import { useSubscription } from "../utils/SubscriptionContext";
 
 const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 const MESAS_STORAGE_KEY = "karaokeMesas";
 const CONCURSO_STORAGE_KEY = "karaokeConcurso";
+const GUEST_PLAY_COUNT_KEY = "americanKaraokeGuestPlayCount";
+const GUEST_PLAY_LIMIT = 6;
+const REGISTERED_TRIAL_PLAY_COUNT_KEY =
+  "americanKaraokeRegisteredTrialPlayCount";
+const REGISTERED_TRIAL_LIMIT = 6;
+const SECCIONES_PUBLICAS = new Set([
+  "ingresar",
+  "registrar",
+  "password",
+  "suscribir",
+  "user",
+]);
+const SECCIONES_PREMIUM = new Set([
+  "video",
+  "buscador",
+  "favoritos",
+  "playlist",
+  "sugerirCanciones",
+  "listadoPdf",
+  "ayuda",
+  "Celular",
+  "mesas",
+  "concurso",
+]);
+
+const getGuestPlayCount = () => {
+  if (typeof window === "undefined") return 0;
+
+  const count = Number.parseInt(
+    window.localStorage.getItem(GUEST_PLAY_COUNT_KEY) || "0",
+    10,
+  );
+
+  return Number.isFinite(count) && count > 0 ? count : 0;
+};
+
+const getRegisteredTrialKey = (id) =>
+  `${REGISTERED_TRIAL_PLAY_COUNT_KEY}:${id || "sin-usuario"}`;
+
+const getRegisteredTrialPlayCount = (id) => {
+  if (typeof window === "undefined" || !id) return 0;
+
+  const count = Number.parseInt(
+    window.localStorage.getItem(getRegisteredTrialKey(id)) || "0",
+    10,
+  );
+
+  return Number.isFinite(count) && count > 0 ? count : 0;
+};
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -50,17 +101,23 @@ export default function Home() {
   const [modoMesa, setModoMesa] = useState(false);
   const [modoConcurso, setModoConcurso] = useState(false);
   const [auth, setAuth] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [colaDefault, setColaDefault] = useState([]);
   const [token, setToken] = useState(getToken());
   const [roomId, setRoomId] = useState(null);
   const [playerResetKey, setPlayerResetKey] = useState(0);
+  const [guestPlayCount, setGuestPlayCount] = useState(getGuestPlayCount);
+  const [registeredTrialPlayCount, setRegisteredTrialPlayCount] = useState(0);
+  const [showGuestRegisterModal, setShowGuestRegisterModal] = useState(false);
 
   // ✅ NUEVO: evita cambiar la canción directo desde Home
   const [requestedIndex, setRequestedIndex] = useState(null);
 
   const { background } = useBackground();
-  const { connectSocket } = useSocketContext();
+  const { connectSocket, disconnectSocket } = useSocketContext();
+  const {
+    loading: cargandoSuscripcion,
+    tieneAccesoKaraoke,
+  } = useSubscription();
 
   const {
     cola,
@@ -78,9 +135,57 @@ export default function Home() {
     clearQueue,
   } = useQueueContext();
 
-  const { playlistsPropia, suscrito } = usePlaylists(userId);
+  const { playlistsPropia } = usePlaylists(userId, tieneAccesoKaraoke);
+  const esInvitado = !auth && !token;
+  const esRegistradoSinSuscripcion =
+    auth && !cargandoSuscripcion && !tieneAccesoKaraoke;
+  const puedeVerVideoPublico =
+    tieneAccesoKaraoke || esInvitado || esRegistradoSinSuscripcion;
+  const accesoPremiumBloqueado = cargandoSuscripcion || !tieneAccesoKaraoke;
+  const carruselesSoloLectura = !tieneAccesoKaraoke;
+  const mostrarSuscripcionSuperior =
+    esRegistradoSinSuscripcion &&
+    registeredTrialPlayCount < REGISTERED_TRIAL_LIMIT &&
+    seccionActiva !== "suscribir";
+  const mostrarSuscripcionCentral =
+    esRegistradoSinSuscripcion &&
+    registeredTrialPlayCount >= REGISTERED_TRIAL_LIMIT &&
+    seccionActiva !== "suscribir";
   const modoMesaEncendido = modoMesa || modoMesaActivo;
   const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
+
+  const irASeccion = useCallback(
+    (seccion) => {
+      if (
+        seccion === "video" &&
+        (esInvitado || esRegistradoSinSuscripcion)
+      ) {
+        setSeccionActiva(seccion);
+        return;
+      }
+
+      if (SECCIONES_PREMIUM.has(seccion) && !tieneAccesoKaraoke) {
+        setSeccionActiva(auth ? "suscribir" : "ingresar");
+        return;
+      }
+
+      setSeccionActiva(seccion);
+    },
+    [auth, esInvitado, esRegistradoSinSuscripcion, tieneAccesoKaraoke],
+  );
+
+  const navegarPremium = useCallback(
+    (path) => {
+      if (!tieneAccesoKaraoke) {
+        setSeccionActiva(auth ? "suscribir" : "ingresar");
+        navigate("/", { replace: true });
+        return;
+      }
+
+      navigate(path);
+    },
+    [auth, navigate, tieneAccesoKaraoke],
+  );
 
   const handleModoMesaChange = useCallback((activo) => {
     setModoMesa(activo);
@@ -101,6 +206,8 @@ export default function Home() {
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
+    if (!tieneAccesoKaraoke) return [];
+
     const esColaDefault = !cola.length;
 
     if (esColaDefault) return [];
@@ -137,7 +244,7 @@ export default function Home() {
           setUserRole(null);
         } else {
           setAuth(true);
-          setUserId(decodedToken.userId);
+          setUserId(decodedToken.userId || decodedToken.id);
           setUserRole(decodedToken.rol);
         }
       } catch (error) {
@@ -159,11 +266,12 @@ export default function Home() {
 
   useEffect(() => {
     if (sessionStorage.getItem(FULLSCREEN_REQUEST_KEY) !== "1") return;
+    if (!puedeVerVideoPublico) return;
 
     sessionStorage.removeItem(FULLSCREEN_REQUEST_KEY);
-    setSeccionActiva("video");
+    irASeccion("video");
     setShouldFullscreen(true);
-  }, []);
+  }, [irASeccion, puedeVerVideoPublico]);
 
   const getUser = async (id) => {
     if (!id) return null;
@@ -193,11 +301,19 @@ export default function Home() {
   useEffect(() => {
     if (userId) {
       getUser(userId);
+      setRegisteredTrialPlayCount(getRegisteredTrialPlayCount(userId));
+    } else {
+      setUser(null);
+      setRegisteredTrialPlayCount(0);
     }
   }, [userId]);
 
-  // ✅ Cargar videos por defecto una sola vez
   useEffect(() => {
+    if (!puedeVerVideoPublico) {
+      setColaDefault([]);
+      return;
+    }
+
     const fetchDefaultVideos = async () => {
       try {
         const res = await axios.get(`${API_URL}/song/default`);
@@ -209,62 +325,32 @@ export default function Home() {
     };
 
     fetchDefaultVideos();
-  }, []);
-
-  // ✅ Verificar suscripción solo cuando cambie auth/token
-  useEffect(() => {
-    const currentToken = getToken();
-
-    if (!currentToken) {
-      setIsSubscribed(false);
-      return;
-    }
-
-    const verificarSuscripcion = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/user/suscripcion`, {
-          headers: { Authorization: `Bearer ${currentToken}` },
-        });
-
-        const { suscrito, subscriptionEnd } = res.data;
-        const ahora = new Date();
-        const fin = new Date(subscriptionEnd);
-
-        setIsSubscribed(Boolean(suscrito && ahora <= fin));
-      } catch (error) {
-        console.error("Error al verificar suscripción:", error);
-        setIsSubscribed(false);
-      }
-    };
-
-    verificarSuscripcion();
-  }, [auth, token]);
-
-  useEffect(() => {
-    if (user === null) return;
-
-    if (user.rol === "admin") return;
-
-    const vigente =
-      user.suscrito &&
-      user.subscriptionEnd &&
-      new Date(user.subscriptionEnd) > new Date();
-
-    if (!vigente) {
-      setSeccionActiva("suscribir");
-    } else {
-      setSeccionActiva("video");
-    }
-  }, [user]);
+  }, [puedeVerVideoPublico]);
 
   const ensureActiveRoom = useCallback(async () => {
+    if (!tieneAccesoKaraoke) return null;
+
     try {
       let savedRoomId = localStorage.getItem("roomId");
+      const savedRoomOwnerId = localStorage.getItem("roomOwnerId");
+      const currentToken = getToken();
+      const ownerId = userId ? String(userId) : "";
+
+      if (!currentToken || !ownerId) return null;
+
+      if (savedRoomId && savedRoomOwnerId !== ownerId) {
+        localStorage.removeItem("roomId");
+        localStorage.removeItem("roomOwnerId");
+        savedRoomId = null;
+      }
 
       if (!savedRoomId) {
         const res = await fetch(`${API_URL}/room/create-room`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${currentToken}`,
+          },
           body: JSON.stringify({ user: "HOST" }),
         });
 
@@ -275,6 +361,7 @@ export default function Home() {
         const data = await res.json();
         savedRoomId = data.roomId;
         localStorage.setItem("roomId", savedRoomId);
+        localStorage.setItem("roomOwnerId", ownerId);
       }
 
       setRoomId(savedRoomId);
@@ -284,12 +371,26 @@ export default function Home() {
       console.error("Error al crear/conectar sala:", error);
       return null;
     }
-  }, [connectSocket]);
+  }, [connectSocket, tieneAccesoKaraoke, userId]);
 
-  // ✅ Crear sala una sola vez o cuando cambie conexión relevante
   useEffect(() => {
-    ensureActiveRoom();
-  }, [ensureActiveRoom]);
+    if (cargandoSuscripcion) return;
+
+    if (tieneAccesoKaraoke) {
+      ensureActiveRoom();
+      return;
+    }
+
+    disconnectSocket();
+    setRoomId(null);
+    localStorage.removeItem("roomId");
+    localStorage.removeItem("roomOwnerId");
+  }, [
+    cargandoSuscripcion,
+    disconnectSocket,
+    ensureActiveRoom,
+    tieneAccesoKaraoke,
+  ]);
 
   const getColaActual = () => {
     const esColaVacia = !cola.length;
@@ -304,7 +405,7 @@ export default function Home() {
         const decoded = jwtDecode(currentToken);
 
         setToken(currentToken);
-        setUserId(decoded.userId);
+        setUserId(decoded.userId || decoded.id);
         setUserRole(decoded.rol);
         setCola([]);
         setAuth(true);
@@ -343,6 +444,7 @@ export default function Home() {
 
     removeToken();
     localStorage.removeItem("roomId");
+    localStorage.removeItem("roomOwnerId");
 
     setToken(null);
     setUserId(null);
@@ -355,17 +457,19 @@ export default function Home() {
     setModoConcurso(false);
     setPlayerResetKey((prev) => prev + 1);
     setRequestedIndex(null);
-    setSeccionActiva("video");
+    setSeccionActiva("ingresar");
   };
 
   // ✅ CAMBIO IMPORTANTE:
   // Ya no cambia directo con changeSong(index).
   // Primero manda requestedIndex al VideoPlayer.
   const handleCambiarCancion = (index) => {
+    if (!tieneAccesoKaraoke) return;
     setRequestedIndex(index);
   };
 
   const limpiarCola = () => {
+    if (!tieneAccesoKaraoke) return;
     clearQueue();
     setRequestedIndex(null);
   };
@@ -392,7 +496,7 @@ export default function Home() {
       setModoConcursoFinalizado?.(true);
       setConcursoItems?.([]);
       setPlayerResetKey((prev) => prev + 1);
-      setSeccionActiva("video");
+      setSeccionActiva(tieneAccesoKaraoke ? "video" : "suscribir");
       document.exitFullscreen?.().catch?.(() => {});
     }
   }, [
@@ -402,6 +506,7 @@ export default function Home() {
     setCurrentIndex,
     setModoConcursoActivo,
     setModoConcursoFinalizado,
+    tieneAccesoKaraoke,
   ]);
 
   const getMesasGuardadas = () => {
@@ -479,7 +584,7 @@ export default function Home() {
     indexTerminado,
     itemConcurso,
   ) => {
-    if (!modoConcursoEncendido || !roomId) return;
+    if (!tieneAccesoKaraoke || !modoConcursoEncendido || !roomId) return;
 
     try {
       const res = await axios.post(
@@ -537,31 +642,162 @@ export default function Home() {
     );
   };
 
+  const registrarReproduccionInvitado = () => {
+    if (!esInvitado) return;
+
+    setGuestPlayCount((prev) => {
+      const next = prev + 1;
+      localStorage.setItem(GUEST_PLAY_COUNT_KEY, String(next));
+
+      if (next >= GUEST_PLAY_LIMIT) {
+        setShowGuestRegisterModal(true);
+      }
+
+      return next;
+    });
+  };
+
+  const registrarReproduccionRegistradoSinSuscripcion = () => {
+    if (!esRegistradoSinSuscripcion || !userId) return;
+
+    setRegisteredTrialPlayCount((prev) => {
+      const next = prev + 1;
+      localStorage.setItem(getRegisteredTrialKey(userId), String(next));
+      return next;
+    });
+  };
+
+  const handleVideoTerminado = (
+    cancionTerminada,
+    indexTerminado,
+    itemConcurso,
+  ) => {
+    registrarReproduccionInvitado();
+    registrarReproduccionRegistradoSinSuscripcion();
+    handleCancionTerminada(cancionTerminada, indexTerminado, itemConcurso);
+  };
+
   const activarPantallaCompletaPlayer = () => {
+    if (!puedeVerVideoPublico) {
+      irASeccion("suscribir");
+      return;
+    }
+
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen?.().catch((err) => {
         console.warn("No se pudo activar pantalla completa:", err);
       });
     }
 
-    setSeccionActiva("video");
+    irASeccion("video");
     setShouldFullscreen(true);
   };
 
   const handleRegisterSuccess = () => {
-    setSeccionActiva("suscribir");
+    setShowGuestRegisterModal(false);
+    setSeccionActiva("video");
   };
 
+  useEffect(() => {
+    if (!esInvitado) {
+      setShowGuestRegisterModal(false);
+      return;
+    }
+
+    if (guestPlayCount >= GUEST_PLAY_LIMIT) {
+      setShowGuestRegisterModal(true);
+    }
+  }, [esInvitado, guestPlayCount]);
+
+  useEffect(() => {
+    if (location.state?.seccion) {
+      irASeccion(location.state.seccion);
+    }
+  }, [irASeccion, location.state]);
+
+  useEffect(() => {
+    if (cargandoSuscripcion) return;
+
+    if (tieneAccesoKaraoke) {
+      if (auth && seccionActiva === "suscribir") {
+        setSeccionActiva("video");
+      }
+      return;
+    }
+
+    if (
+      seccionActiva === "video" &&
+      (esInvitado || esRegistradoSinSuscripcion)
+    ) {
+      return;
+    }
+
+    setCola([]);
+    setCurrentIndex?.(0);
+    setModoMesa(false);
+    setModoConcurso(false);
+    setModoCalificacion(false);
+    setModoConcursoActivo?.(false);
+    setModoConcursoFinalizado?.(false);
+    setConcursoItems?.([]);
+    setRequestedIndex(null);
+    setShouldFullscreen(false);
+    setPlayerResetKey((prev) => prev + 1);
+    localStorage.removeItem(MESAS_STORAGE_KEY);
+    localStorage.removeItem(CONCURSO_STORAGE_KEY);
+    document.exitFullscreen?.().catch?.(() => {});
+
+    if (!SECCIONES_PUBLICAS.has(seccionActiva)) {
+      setSeccionActiva(auth ? "suscribir" : "ingresar");
+    }
+  }, [
+    auth,
+    cargandoSuscripcion,
+    esInvitado,
+    esRegistradoSinSuscripcion,
+    seccionActiva,
+    setCola,
+    setConcursoItems,
+    setCurrentIndex,
+    setModoConcursoActivo,
+    setModoConcursoFinalizado,
+    tieneAccesoKaraoke,
+  ]);
+
   const renderContenido = () => {
+    if (cargandoSuscripcion && SECCIONES_PREMIUM.has(seccionActiva)) {
+      return <p className="text-light">Cargando...</p>;
+    }
+
+    if (
+      !tieneAccesoKaraoke &&
+      SECCIONES_PREMIUM.has(seccionActiva) &&
+      !(
+        seccionActiva === "video" &&
+        (esInvitado || esRegistradoSinSuscripcion)
+      )
+    ) {
+      return auth ? (
+        <PlantTest />
+      ) : (
+        <LoginForm
+          setToken={setToken}
+          onLoginSuccess={handleLoginSuccess}
+          onGoRegister={() => irASeccion("registrar")}
+          onGoPasswordReset={() => irASeccion("password")}
+        />
+      );
+    }
+
     switch (seccionActiva) {
       case "buscador":
-        return <BuscadorTabla onSelectAll={() => setSeccionActiva("video")} />;
+        return <BuscadorTabla onSelectAll={() => irASeccion("video")} />;
 
       case "favoritos":
         return (
           <FavoritePlaylist
             userId={userId}
-            onSelectAll={() => setSeccionActiva("video")}
+            onSelectAll={() => irASeccion("video")}
           />
         );
 
@@ -569,7 +805,7 @@ export default function Home() {
         return (
           <PlaylistSugeridos
             playlists={playlistsPropia}
-            onSelectAll={() => setSeccionActiva("video")}
+            onSelectAll={() => irASeccion("video")}
           />
         );
 
@@ -581,8 +817,8 @@ export default function Home() {
           <LoginForm
             setToken={setToken}
             onLoginSuccess={handleLoginSuccess}
-            onGoRegister={() => setSeccionActiva("registrar")}
-            onGoPasswordReset={() => setSeccionActiva("password")}
+            onGoRegister={() => irASeccion("registrar")}
+            onGoPasswordReset={() => irASeccion("password")}
           />
         );
 
@@ -627,7 +863,7 @@ export default function Home() {
         );
 
       case "user":
-        return <User onGoPasswordReset={() => setSeccionActiva("password")} />;
+        return <User onGoPasswordReset={() => irASeccion("password")} />;
 
       case "video":
       default: {
@@ -651,7 +887,8 @@ export default function Home() {
             onRequestedIndexHandled={() => setRequestedIndex(null)}
             fullscreenRequested={shouldFullscreen}
             onFullscreenHandled={() => setShouldFullscreen(false)}
-            onCancionTerminada={handleCancionTerminada}
+            onCancionTerminada={handleVideoTerminado}
+            modoInvitado={!tieneAccesoKaraoke}
             onLimpiarConcurso={limpiarConcursoDesdePlayer}
             onColaTerminada={() => {
               if (!esColaDefault && !modoConcursoEncendido) {
@@ -683,7 +920,7 @@ export default function Home() {
 
           <div className="col-9 col-sm-8 col-md-7 col-lg-6 d-flex justify-content-center">
             <img
-              onClick={() => setSeccionActiva("video")}
+              onClick={() => irASeccion("video")}
               src="./logo.png"
               alt="logo"
               className="img-fluid home-logo"
@@ -696,7 +933,7 @@ export default function Home() {
                 <h3 className="outlined-black home-user-title">Bienvenido:</h3>
 
                 <button
-                  onClick={() => setSeccionActiva("user")}
+                  onClick={() => irASeccion("user")}
                   className="boton0"
                 >
                   {user.nombre}
@@ -718,50 +955,59 @@ export default function Home() {
                 </button>
               )}
 
+              {mostrarSuscripcionSuperior && (
+                <button
+                  className="boton8 subscribe-action-top"
+                  onClick={() => irASeccion("suscribir")}
+                >
+                  Suscribirse
+                </button>
+              )}
+
               <button
                 className="boton1"
-                onClick={() => setSeccionActiva("buscador")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("buscador")}
+                disabled={accesoPremiumBloqueado}
               >
                 Buscador
               </button>
 
               <button
                 className="boton2"
-                onClick={() => setSeccionActiva("playlist")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("playlist")}
+                disabled={accesoPremiumBloqueado}
               >
                 PlayList
               </button>
 
               <button
                 className="boton3"
-                onClick={() => navigate("/ultimas-subidas")}
-                disabled={!suscrito}
+                onClick={() => navegarPremium("/ultimas-subidas")}
+                disabled={accesoPremiumBloqueado}
               >
                 Lo último
               </button>
 
               <button
                 className="boton4"
-                onClick={() => setSeccionActiva("favoritos")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("favoritos")}
+                disabled={accesoPremiumBloqueado}
               >
                 Favoritos
               </button>
 
               <button
-                onClick={() => navigate("/listaCanciones")}
+                onClick={() => navegarPremium("/listaCanciones")}
                 className="boton7"
-                disabled={!suscrito}
+                disabled={accesoPremiumBloqueado}
               >
                 Canciones
               </button>
 
               <button
                 className="boton3"
-                onClick={() => setSeccionActiva("sugerirCanciones")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("sugerirCanciones")}
+                disabled={accesoPremiumBloqueado}
               >
                 Sugerir
               </button>
@@ -775,8 +1021,8 @@ export default function Home() {
               <div className="home-bottom-actions">
                 <button
                   className="boton2"
-                  onClick={() => setSeccionActiva("Celular")}
-                  disabled={!suscrito}
+                  onClick={() => irASeccion("Celular")}
+                  disabled={accesoPremiumBloqueado}
                 >
                   Celular
                 </button>
@@ -785,8 +1031,8 @@ export default function Home() {
                   className={`boto home-mode-button ${
                     modoMesaEncendido ? "boto-activo" : ""
                   }`}
-                  onClick={() => setSeccionActiva("mesas")}
-                  disabled={!suscrito}
+                  onClick={() => irASeccion("mesas")}
+                  disabled={accesoPremiumBloqueado}
                 >
                   <img src="./Botonmesas22.png" alt="Mesas" />
                 </button>
@@ -795,8 +1041,8 @@ export default function Home() {
                   className={`boto home-mode-button ${
                     modoConcursoEncendido ? "boto-activo" : ""
                   }`}
-                  onClick={() => setSeccionActiva("concurso")}
-                  disabled={!suscrito || modoCalificacion}
+                  onClick={() => irASeccion("concurso")}
+                  disabled={accesoPremiumBloqueado || modoCalificacion}
                 >
                   <img src="./BotonConcurso22.png" alt="Concurso" />
                 </button>
@@ -812,7 +1058,7 @@ export default function Home() {
                     </h3>
 
                     <button
-                      onClick={() => setSeccionActiva("user")}
+                      onClick={() => irASeccion("user")}
                       className="boton0"
                     >
                       {user.nombre}
@@ -825,14 +1071,14 @@ export default function Home() {
                 <>
                   <button
                     className="boton8"
-                    onClick={() => setSeccionActiva("ingresar")}
+                    onClick={() => irASeccion("ingresar")}
                   >
                     Ingresar
                   </button>
 
                   <button
                     className="boton7"
-                    onClick={() => setSeccionActiva("registrar")}
+                    onClick={() => irASeccion("registrar")}
                   >
                     Registrar
                   </button>
@@ -841,16 +1087,20 @@ export default function Home() {
 
               <button
                 className="boton9"
-                onClick={() => setSeccionActiva("listadoPdf")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("listadoPdf")}
+                disabled={accesoPremiumBloqueado}
               >
                 Listado PDF
               </button>
 
               <button
-                disabled={!suscrito || modoConcursoEncendido}
+                disabled={accesoPremiumBloqueado || modoConcursoEncendido}
                 onClick={() => {
                   if (modoConcursoEncendido) return;
+                  if (!tieneAccesoKaraoke) {
+                    irASeccion("suscribir");
+                    return;
+                  }
                   setModoCalificacion((prev) => !prev);
                 }}
                 className={`boto ${modoCalificacion ? "boto-activo" : ""}`}
@@ -860,16 +1110,16 @@ export default function Home() {
 
               <button
                 className="boton1"
-                onClick={() => setSeccionActiva("ayuda")}
-                disabled={!suscrito}
+                onClick={() => irASeccion("ayuda")}
+                disabled={accesoPremiumBloqueado}
               >
                 Ayuda
               </button>
 
               <button
                 className="boton2"
-                onClick={() => navigate("/publicaciones")}
-                disabled={!suscrito}
+                onClick={() => navegarPremium("/publicaciones")}
+                disabled={accesoPremiumBloqueado}
               >
                 Galería Otros
               </button>
@@ -883,59 +1133,129 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="m-2 w-100">
-          <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3 queue-panel">
-            <h2 className="text-white queue-title">Canciones a la cola</h2>
+        {tieneAccesoKaraoke && (
+          <div className="m-2 w-100">
+            <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3 queue-panel">
+              <h2 className="text-white queue-title">Canciones a la cola</h2>
 
-            <div
-              className={`cola-canciones ${
-                getColaVisible().length > 8 ? "scrollable" : ""
-              }`}
-            >
-              {getColaVisible().map(({ cancion, index }) => (
-                <div
-                  key={`${cancion._id}-${index}`}
-                  onClick={() => {
-                    handleCambiarCancion(index);
-                    setSeccionActiva("video");
-                  }}
-                  className="song-icon position-relative"
-                  style={{ cursor: "pointer" }}
-                >
-                  <FaCompactDisc
-                    size={40}
-                    className={`mb-1 ${
-                      index === currentIndex ? "song-playing" : "text-primary"
-                    }`}
-                  />
+              <div
+                className={`cola-canciones ${
+                  getColaVisible().length > 8 ? "scrollable" : ""
+                }`}
+              >
+                {getColaVisible().map(({ cancion, index }) => (
+                  <div
+                    key={`${cancion._id}-${index}`}
+                    onClick={() => {
+                      handleCambiarCancion(index);
+                      irASeccion("video");
+                    }}
+                    className="song-icon position-relative"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <FaCompactDisc
+                      size={40}
+                      className={`mb-1 ${
+                        index === currentIndex ? "song-playing" : "text-primary"
+                      }`}
+                    />
 
-                  <div className="custom-tooltip">
-                    <strong>{cancion.titulo}</strong>
-                    <br />
-                    <small>{cancion.artista}</small>
+                    <div className="custom-tooltip">
+                      <strong>{cancion.titulo}</strong>
+                      <br />
+                      <small>{cancion.artista}</small>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <button className="btn" onClick={limpiarCola}>
-              <img className="m-2" src="/limpiar.png" alt="" width={120} />
-            </button>
+              <button className="btn" onClick={limpiarCola}>
+                <img className="m-2" src="/limpiar.png" alt="" width={120} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {mostrarSuscripcionCentral && (
+        <div
+          className="registered-subscribe-center"
+          role="dialog"
+          aria-modal="false"
+          aria-live="polite"
+        >
+          <button
+            type="button"
+            className="registered-subscribe-center-button"
+            onClick={() => irASeccion("suscribir")}
+          >
+            Suscribirse
+          </button>
+        </div>
+      )}
+
+      {showGuestRegisterModal && esInvitado && (
+        <div
+          className="guest-register-modal-backdrop"
+          role="dialog"
+          aria-modal="false"
+          aria-live="polite"
+        >
+          <div className="guest-register-modal">
+            <p>Deseas seguir cantando por favor registrate..</p>
+
+            <div className="guest-register-modal-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowGuestRegisterModal(false);
+                  irASeccion("registrar");
+                }}
+              >
+                Registrarme
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-light"
+                onClick={() => {
+                  setShowGuestRegisterModal(false);
+                  irASeccion("ingresar");
+                }}
+              >
+                Ingresar
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-outline-light"
+                onClick={() => setShowGuestRegisterModal(false)}
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="fondo p-2">
         <AnunciosVisibles />
 
         <h1 className="p-2 text-white">Recomendados</h1>
-        <VideoCarouselVisibles onPlaySolo={activarPantallaCompletaPlayer} />
+        <VideoCarouselVisibles
+          accionesDeshabilitadas={carruselesSoloLectura}
+          onPlaySolo={activarPantallaCompletaPlayer}
+        />
 
         <h1 className="p-2 text-white">Las más populares</h1>
-        <VideoCarousel onPlaySolo={activarPantallaCompletaPlayer} />
+        <VideoCarousel
+          accionesDeshabilitadas={carruselesSoloLectura}
+          onPlaySolo={activarPantallaCompletaPlayer}
+        />
       </div>
 
-      {!isSubscribed && <WhatsAppButton />}
+      {!cargandoSuscripcion && !tieneAccesoKaraoke && <WhatsAppButton />}
     </>
   );
 }

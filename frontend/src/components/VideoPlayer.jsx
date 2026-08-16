@@ -98,6 +98,7 @@ export default function VideoPlayer({
   requestedIndex = null,
   onRequestedIndexHandled,
   onLimpiarConcurso,
+  modoInvitado = false,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
 
@@ -422,6 +423,11 @@ export default function VideoPlayer({
   }, [claimActivePlayer, stopCurrentPlayer]);
 
   const obtenerPuntajes = async () => {
+    if (modoInvitado) {
+      setCalificaciones([]);
+      return;
+    }
+
     try {
       const res = await axios.get(API_PUNTAJE);
       setCalificaciones(res.data || []);
@@ -448,7 +454,7 @@ export default function VideoPlayer({
 
   useEffect(() => {
     obtenerPuntajes();
-  }, []);
+  }, [modoInvitado]);
 
   const refillPool = useCallback(() => {
     if (!Array.isArray(calificaciones) || calificaciones.length === 0) {

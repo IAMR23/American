@@ -1,10 +1,71 @@
 const Cola = require("../models/Cola");
 const MesaSala = require("../models/MesaSala");
 const Room = require("../models/Room"); // 🔥 IMPORTANTE
+const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const {
+  SUBSCRIPTION_INACTIVE_CODE,
+  SUBSCRIPTION_INACTIVE_MESSAGE,
+  tieneAccesoKaraoke,
+} = require("../middleware/authMiddleware");
 
 const initSockets = (io) => {
   io.on("connection", (socket) => {
     console.log("🟢 Cliente conectado:", socket.id);
+    const token = socket.handshake.auth?.token;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded.type || decoded.type === "access") {
+          socket.data.userId = decoded.userId;
+          socket.data.tokenVersion = decoded.tokenVersion;
+        }
+      } catch (error) {
+        socket.data.userId = null;
+      }
+    }
+
+    const emitirSuscripcionInactiva = () => {
+      const payload = {
+        code: SUBSCRIPTION_INACTIVE_CODE,
+        message: SUBSCRIPTION_INACTIVE_MESSAGE,
+        mensaje: SUBSCRIPTION_INACTIVE_MESSAGE,
+      };
+
+      socket.emit("subscriptionInactive", payload);
+      socket.emit("error", SUBSCRIPTION_INACTIVE_MESSAGE);
+    };
+
+    const validarAccesoSocket = async () => {
+      if (!socket.data.userId) {
+        emitirSuscripcionInactiva();
+        return false;
+      }
+
+      const usuario = await User.findById(socket.data.userId);
+
+      if (
+        !usuario ||
+        socket.data.tokenVersion !== usuario.tokenVersion ||
+        !tieneAccesoKaraoke(usuario)
+      ) {
+        emitirSuscripcionInactiva();
+        return false;
+      }
+
+      return true;
+    };
+
+    const validarHostSala = async (room) => {
+      if (!room?.host || !mongoose.Types.ObjectId.isValid(String(room.host))) {
+        return false;
+      }
+
+      const host = await User.findById(room.host);
+      return tieneAccesoKaraoke(host);
+    };
 
     /**
      * 🔹 UNIRSE A UNA SALA (CON VALIDACIÓN)
@@ -18,6 +79,10 @@ const initSockets = (io) => {
 
         if (!room) {
           return socket.emit("error", "Sala no existe");
+        }
+
+        if (!(await validarHostSala(room))) {
+          return socket.emit("error", "Sala no autorizada");
         }
 
         // ✅ SOLO SI EXISTE, SE UNE
@@ -97,6 +162,8 @@ const initSockets = (io) => {
       if (!roomId || index == null) return;
 
       try {
+        if (!(await validarAccesoSocket())) return;
+
         const cola = await Cola.findOne({ roomId }).populate("canciones");
         if (!cola) return;
 
@@ -140,6 +207,8 @@ const initSockets = (io) => {
       if (!roomId || !songId) return;
 
       try {
+        if (!(await validarAccesoSocket())) return;
+
         const cola = await Cola.findOne({ roomId });
         if (!cola) return;
 
@@ -167,6 +236,8 @@ const initSockets = (io) => {
       if (!roomId) return;
 
       try {
+        if (!(await validarAccesoSocket())) return;
+
         await Cola.findOneAndUpdate(
           { roomId },
           { canciones: [], currentIndex: 0 }
@@ -185,6 +256,8 @@ const initSockets = (io) => {
   if (!roomId || !Array.isArray(nuevaCola)) return;
 
   try {
+    if (!(await validarAccesoSocket())) return;
+
     let cola = await Cola.findOne({ roomId });
 
     if (!cola) {

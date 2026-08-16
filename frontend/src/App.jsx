@@ -25,7 +25,6 @@ import MiPlaylistUser2 from "./pages/MiPlaylistUser2";
 import MiPlaylistAdmin from "./pages/MiPlaylistAdmin";
 import ListaCanciones from "./components/ListaCanciones";
 import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
-import ListadoPDFCanciones from "./components/ListadoPDFCanciones";
 import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 
 import { AuthProvider } from "./utils/AuthContext";
@@ -39,7 +38,7 @@ import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
 import SubirPDF from "./pages/SubirPDF";
 import SalaUsuario from "./pages/SalaUsuario";
-import MesaUsuario from "./pages/MesaUsuario";
+import { SubscriptionProvider } from "./utils/SubscriptionContext";
 function App() {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
@@ -115,79 +114,76 @@ function App() {
 
     <BackgroundProvider>
       <SocketProvider>
-        <QueueProvider userId={auth.userId} roomId={roomId}>
-          <BrowserRouter>
-            <div>
-              <main className="flex-grow w-full">
-                <Routes>
-                  <Route path="/" element={<SidebarLayout />}>
-                    <Route path="anuncios" element={<AnunciosCRUD />} />
-                    <Route path="canciones" element={<CancionesCRUD />} />
-                    <Route path="genero" element={<GeneroCRUD />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="promociones" element={<PromocionesPage />} />
-                    <Route path="usuarios" element={<UsuariosPage />} />
-                    <Route path="register-user" element={<UsuariosPage />} />
-                    <Route path="productos" element={<Productos />} />
-                    <Route path="producto/:id" element={<ProductoDetalle />} />
-                                      <Route path="/subir-pdf" element={<SubirPDF/>} />
+        <SubscriptionProvider auth={auth} token={token}>
+          <QueueProvider userId={auth.userId} roomId={roomId}>
+            <BrowserRouter>
+              <div>
+                <main className="flex-grow w-full">
+                  <Routes>
+                    <Route path="/" element={<SidebarLayout />}>
+                      <Route path="anuncios" element={<AnunciosCRUD />} />
+                      <Route path="canciones" element={<CancionesCRUD />} />
+                      <Route path="genero" element={<GeneroCRUD />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="promociones" element={<PromocionesPage />} />
+                      <Route path="usuarios" element={<UsuariosPage />} />
+                      <Route path="register-user" element={<UsuariosPage />} />
+                      <Route path="productos" element={<Productos />} />
+                      <Route path="producto/:id" element={<ProductoDetalle />} />
+                                        <Route path="/subir-pdf" element={<SubirPDF/>} />
+
+                      <Route
+                        path="mas-reproducidas"
+                        element={<MasReproducidas />}
+                      />
+                      <Route
+                        path="editar-mas-reproducidas"
+                        element={<EditarMasReproducidas />}
+                      />
+                      <Route path="solicitudes" element={<SolicitudesPage />} />
+                      <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
+                      <Route path="playlist/:id" element={<MiPlaylist />} />
+                      <Route path="calificaciones" element={<PuntajeCrud />} />
+                    </Route>
 
                     <Route
-                      path="mas-reproducidas"
-                      element={<MasReproducidas />}
+                      path="/playlistPopular/:id"
+                      element={<MiPlaylistAdmin />}
                     />
                     <Route
-                      path="editar-mas-reproducidas"
-                      element={<EditarMasReproducidas />}
+                      path="/mis-playlist/:id"
+                      element={<MiPlaylistUser2 />}
                     />
-                    <Route path="solicitudes" element={<SolicitudesPage />} />
-                    <Route path="miplaylist" element={<PlaylistPropiaCRUD />} />
-                    <Route path="playlist/:id" element={<MiPlaylist />} />
-                    <Route path="calificaciones" element={<PuntajeCrud />} />
-                  </Route>
+                    <Route path="listacanciones" element={<ListaCanciones />} />
+                    <Route
+                      path="ultimas-subidas"
+                      element={<ListaCancionesUltimas />}
+                    />
+                    <Route path="test" element={<PublicacionesCrud />} />
+                    <Route index element={<Home />} />
+                    <Route
+                      path="/login"
+                      element={<LoginForm setToken={setToken} />}
+                    />
+                    {/* <Route path="/registro" element={<RegistrationForm />} /> */}
+                    <Route
+                      path="/publicaciones"
+                      element={<PublicacionesPage />}
+                    />
 
-                  <Route
-                    path="/playlistPopular/:id"
-                    element={<MiPlaylistAdmin />}
-                  />
-                  <Route
-                    path="/mis-playlist/:id"
-                    element={<MiPlaylistUser2 />}
-                  />
-                  <Route path="listacanciones" element={<ListaCanciones />} />
-                  <Route
-                    path="ultimas-subidas"
-                    element={<ListaCancionesUltimas />}
-                  />
-                  <Route path="test" element={<PublicacionesCrud />} />
-                  <Route index element={<Home />} />
-                  <Route
-                    path="/login"
-                    element={<LoginForm setToken={setToken} />}
-                  />
-                  {/* <Route path="/registro" element={<RegistrationForm />} /> */}
-                  <Route
-                    path="/publicaciones"
-                    element={<PublicacionesPage />}
-                  />
-
-                  {/* Resest password */}
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/sala/:roomId" element={<SalaUsuario />} />
-                  <Route path="/mesa/:roomId" element={<MesaUsuario />} />
-                  <Route
-                    path="/listado-pdf/cancion"
-                    element={<ListadoPDFCanciones autoDownloadOrden="cancion" />}
-                  />
+                    {/* Resest password */}
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/sala/:roomId" element={<SalaUsuario />} />
 
 
-                </Routes>
-              </main>
+                  </Routes>
+                </main>
 
-              <Footer />
-            </div>
-          </BrowserRouter>
-        </QueueProvider>
+                <Footer />
+              </div>
+            </BrowserRouter>
+          </QueueProvider>
+        </SubscriptionProvider>
       </SocketProvider>
     </BackgroundProvider>
     // </ReproductorProvider>

@@ -1,5 +1,9 @@
 import axios from "axios";
 import { getToken, removeToken, saveToken } from "../utils/auth";
+import {
+  esErrorSuscripcionInactiva,
+  notificarSuscripcionInactiva,
+} from "../utils/subscription";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -62,6 +66,10 @@ const attachAuthInterceptors = (client) => {
     async (error) => {
       const originalRequest = error.config;
       const status = error.response?.status;
+
+      if (esErrorSuscripcionInactiva(error)) {
+        notificarSuscripcionInactiva(error.response?.data || {});
+      }
 
       if (
         status !== 401 ||

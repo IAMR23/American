@@ -10,7 +10,10 @@ import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/visibles`;
 
-export default function VideoCarouselVisibles({ onPlaySolo }) {
+export default function VideoCarouselVisibles({
+  accionesDeshabilitadas = false,
+  onPlaySolo,
+}) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
   const [selectedSongId, setSelectedSongId] = useState(null);
@@ -171,7 +174,11 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
   return (
     <div className="carousel-container">
       <div className="carousel-content">
-        <button className="arrow-btn left" onClick={prev}>
+        <button
+          className="arrow-btn left"
+          onClick={prev}
+          disabled={accionesDeshabilitadas || !videos.length}
+        >
           <FaChevronLeft />
         </button>
 
@@ -196,6 +203,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
                       className="btn-heart"
                       onClick={() => handleOpenModal(video._id)}
                       title="Agregar a playlist"
+                      disabled={accionesDeshabilitadas || !isAuthenticated}
                     >
                       <img src="./heart.png" alt="" />
                     </button>
@@ -207,7 +215,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
                         agregarACola(video._id);
                       }}
                       title="Agregar a cola"
-                      //  disabled={!isAuthenticated}
+                      disabled={accionesDeshabilitadas || !isAuthenticated}
                     >
                       <img src="./mas.png" alt="" width={"40px"} />
                     </button>
@@ -220,6 +228,7 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
                         await playNow(video);
                       }}
                       title="Reproducir ahora"
+                      disabled={accionesDeshabilitadas || !isAuthenticated}
                     >
                       <img src="./play.png" alt="" />
                     </button>
@@ -235,7 +244,11 @@ export default function VideoCarouselVisibles({ onPlaySolo }) {
           </div>
         </div>
 
-        <button className="arrow-btn right" onClick={next}>
+        <button
+          className="arrow-btn right"
+          onClick={next}
+          disabled={accionesDeshabilitadas || !videos.length}
+        >
           <FaChevronRight />
         </button>
       </div>

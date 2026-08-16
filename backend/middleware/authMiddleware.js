@@ -1,5 +1,33 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../models/User");
+const Room = require("../models/Room");
+
+const SUBSCRIPTION_INACTIVE_CODE = "SUBSCRIPTION_INACTIVE";
+const SUBSCRIPTION_INACTIVE_MESSAGE = "Tu suscripcion no esta vigente";
+
+const responderSuscripcionInactiva = (res) =>
+  res.status(403).json({
+    code: SUBSCRIPTION_INACTIVE_CODE,
+    message: SUBSCRIPTION_INACTIVE_MESSAGE,
+    mensaje: SUBSCRIPTION_INACTIVE_MESSAGE,
+  });
+
+const getSubscriptionEndDate = (subscriptionEnd) => {
+  if (!subscriptionEnd) return null;
+
+  const date = new Date(subscriptionEnd);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const tieneSuscripcionVigente = (usuario) => {
+  const fin = getSubscriptionEndDate(usuario?.subscriptionEnd);
+
+  return usuario?.suscrito === true && Boolean(fin) && Date.now() < fin.getTime();
+};
+
+const tieneAccesoKaraoke = (usuario) =>
+  usuario?.rol === "admin" || tieneSuscripcionVigente(usuario);
 
 // Middleware para verificar que el usuario está autenticado
 const authenticate = async (req, res, next) => {
@@ -72,24 +100,60 @@ const isAdmin = (req, res, next) => {
 
 const verificarSuscripcionActiva = async (req, res, next) => {
   try {
-    const usuario = req.user; // usuario autenticado
+    const usuarioId = req.user?._id || req.user?.id;
 
-    // Si es admin, saltar validación de suscripción
-    if (usuario.rol === "admin") {
-      return next();
+    if (!usuarioId) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
 
-    const ahora = new Date();
-    const fin = new Date(usuario.subscriptionEnd);
+    const usuario = await User.findById(usuarioId);
 
-    if (!usuario.suscrito || ahora > fin) {
-      return res.status(403).json({ mensaje: "Tu suscripción ha expirado" });
+    if (!usuario) {
+      return res.status(401).json({ message: "Usuario no encontrado" });
     }
 
-    next(); // usuario suscrito y activo
+    if (!tieneAccesoKaraoke(usuario)) {
+      return responderSuscripcionInactiva(res);
+    }
+
+    req.user = usuario;
+    next();
   } catch (err) {
     console.error("Error en middleware de suscripción:", err);
-    res.status(500).json({ mensaje: "Error del servidor" });
+    responderSuscripcionInactiva(res);
+  }
+};
+
+const verificarHostSalaConSuscripcionActiva = async (req, res, next) => {
+  try {
+    const roomId = req.params?.roomId || req.body?.roomId || req.query?.roomId;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    const sala = await Room.findOne({ roomId });
+
+    if (!sala) {
+      return res.status(404).json({ error: "Sala no existe" });
+    }
+
+    if (!sala.host || !mongoose.Types.ObjectId.isValid(String(sala.host))) {
+      return responderSuscripcionInactiva(res);
+    }
+
+    const host = await User.findById(sala.host);
+
+    if (!tieneAccesoKaraoke(host)) {
+      return responderSuscripcionInactiva(res);
+    }
+
+    req.room = sala;
+    req.roomHost = host;
+    next();
+  } catch (err) {
+    console.error("Error validando suscripcion del host de sala:", err);
+    responderSuscripcionInactiva(res);
   }
 };
 
@@ -99,4 +163,10 @@ module.exports = {
   isAprobado,
   isAdmin,
   verificarSuscripcionActiva,
+  verificarHostSalaConSuscripcionActiva,
+  responderSuscripcionInactiva,
+  tieneAccesoKaraoke,
+  tieneSuscripcionVigente,
+  SUBSCRIPTION_INACTIVE_CODE,
+  SUBSCRIPTION_INACTIVE_MESSAGE,
 };

@@ -3,40 +3,44 @@ const router = express.Router();
 
 const PlaylistPropia = require("../models/PlaylistPropia");
 const createListControllerPropia = require("../controllers/listControllerPropia");
-const { authenticate } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  verificarSuscripcionActiva,
+} = require("../middleware/authMiddleware");
 
 const listControllerPropia = createListControllerPropia(PlaylistPropia);
+const protegerPremium = [authenticate, verificarSuscripcionActiva];
 
 //Playlist.jsauthMiddleware
 
 router.post(
   "/playlistpropia",
-  authenticate,
+  ...protegerPremium,
   listControllerPropia.createPlaylist
 );
-router.get("/playlistpropia", listControllerPropia.getUserPlaylists);
+router.get("/playlistpropia", ...protegerPremium, listControllerPropia.getUserPlaylists);
 router.get(
   "/playlistpropia/canciones/:playlistId",
-  authenticate,
+  ...protegerPremium,
   listControllerPropia.getCancionesDePlaylist
 );
 router.post(
   "/playlistpropia/:playlistId/addsong",
-  authenticate,
+  ...protegerPremium,
   listControllerPropia.addCancionAPlaylist
 );
-router.post("/playlistpropia/add", authenticate, listControllerPropia.addSong);
+router.post("/playlistpropia/add", ...protegerPremium, listControllerPropia.addSong);
 router.delete(
   "/playlistpropia/:playlistId/remove/:songId",
-  authenticate,
+  ...protegerPremium,
   listControllerPropia.removeSong
 );
 router.delete(
   "/playlistpropia/:playlistId",
-  authenticate,
+  ...protegerPremium,
   listControllerPropia.deletePlaylist
 );
 
-router.delete("/playlistpropia/clear/:userId", listControllerPropia.clearList);
+router.delete("/playlistpropia/clear/:userId", ...protegerPremium, listControllerPropia.clearList);
 
 module.exports = router;

@@ -7,7 +7,11 @@ const Cola = require("../models/Cola");
 const MesaSala = require("../models/MesaSala");
 const Room = require("../models/Room");
 const createListController = require("../controllers/listController");
-const { authenticate } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  verificarHostSalaConSuscripcionActiva,
+  verificarSuscripcionActiva,
+} = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
 const Puntaje = require("../models/Puntaje");
 const { generarColaModoMesa } = require("../services/modoMesaService");
@@ -16,6 +20,7 @@ const { generarColaModoConcurso } = require("../services/modoConcursoService");
 const favoritoController = createListController(Favorito);
 const playlistController = createListController(Playlist);
 const colaController = createListController(Cola);
+const protegerPremium = [authenticate, verificarSuscripcionActiva];
 
 const emitirColaActualizada = async (req, roomId) => {
   const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
@@ -396,18 +401,18 @@ const responderMesas = async (
 };
 
 // ---------------- FAVORITOS ----------------
-router.post("/favoritos/add", authenticate, favoritoController.addSong);
-router.delete("/favoritos/remove", authenticate, favoritoController.removeSong);
-router.get("/favoritos/:userId", authenticate, favoritoController.getList);
+router.post("/favoritos/add", ...protegerPremium, favoritoController.addSong);
+router.delete("/favoritos/remove", ...protegerPremium, favoritoController.removeSong);
+router.get("/favoritos/:userId", ...protegerPremium, favoritoController.getList);
 router.delete(
   "/favoritos/clear/:userId",
-  authenticate,
+  ...protegerPremium,
   favoritoController.clearList
 );
 
 // ---------------- MESAS POR SALA ----------------
 
-router.get("/mesas/:roomId", async (req, res) => {
+router.get("/mesas/:roomId", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     if (!(await validarSalaExistente(roomId, res))) return;
@@ -426,7 +431,7 @@ router.get("/mesas/:roomId", async (req, res) => {
   }
 });
 
-router.post("/mesas/:roomId/mesa", async (req, res) => {
+router.post("/mesas/:roomId/mesa", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const nombre = String(req.body?.nombre || "").trim();
@@ -460,7 +465,7 @@ router.post("/mesas/:roomId/mesa", async (req, res) => {
   }
 });
 
-router.delete("/mesas/:roomId/mesa", async (req, res) => {
+router.delete("/mesas/:roomId/mesa", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const { mesaId } = req.body || {};
@@ -488,7 +493,7 @@ router.delete("/mesas/:roomId/mesa", async (req, res) => {
   }
 });
 
-router.post("/mesas/:roomId/persona", async (req, res) => {
+router.post("/mesas/:roomId/persona", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const { mesaId } = req.body || {};
@@ -527,7 +532,7 @@ router.post("/mesas/:roomId/persona", async (req, res) => {
   }
 });
 
-router.delete("/mesas/:roomId/persona", async (req, res) => {
+router.delete("/mesas/:roomId/persona", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const { mesaId, personaId } = req.body || {};
@@ -561,7 +566,7 @@ router.delete("/mesas/:roomId/persona", async (req, res) => {
   }
 });
 
-router.post("/mesas/:roomId/cancion", async (req, res) => {
+router.post("/mesas/:roomId/cancion", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const { mesaId, personaId, songId } = req.body || {};
@@ -645,7 +650,7 @@ router.post("/mesas/:roomId/cancion", async (req, res) => {
   }
 });
 
-router.delete("/mesas/:roomId/cancion", async (req, res) => {
+router.delete("/mesas/:roomId/cancion", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
     const { mesaId, personaId, songId } = req.body || {};
@@ -687,7 +692,7 @@ router.delete("/mesas/:roomId/cancion", async (req, res) => {
   }
 });
 
-router.delete("/mesas/:roomId/reset", async (req, res) => {
+router.delete("/mesas/:roomId/reset", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { roomId } = req.params;
 
@@ -710,7 +715,7 @@ router.delete("/mesas/:roomId/reset", async (req, res) => {
 
 // Agregar canción a la cola
 
-router.post("/cola/without/aut/add", async (req, res) => {
+router.post("/cola/without/aut/add", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { songId, position } = req.body;
     if (await bloquearCambiosSiConcursoActivo(null, res)) return;
@@ -767,7 +772,7 @@ router.post("/cola/without/aut/add", async (req, res) => {
 });
 
 
-router.post("/cola/modo-mesa/activar", async (req, res) => {
+router.post("/cola/modo-mesa/activar", ...protegerPremium, async (req, res) => {
   try {
     const { roomId, mesas } = req.body;
 
@@ -860,7 +865,7 @@ router.post("/cola/modo-mesa/activar", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-mesa/desactivar", async (req, res) => {
+router.post("/cola/modo-mesa/desactivar", ...protegerPremium, async (req, res) => {
   try {
     const { roomId } = req.body;
 
@@ -902,7 +907,7 @@ router.post("/cola/modo-mesa/desactivar", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-concurso/activar", async (req, res) => {
+router.post("/cola/modo-concurso/activar", ...protegerPremium, async (req, res) => {
   try {
     const { roomId, participantes, cancionesPorParticipante } = req.body;
 
@@ -1010,7 +1015,7 @@ router.post("/cola/modo-concurso/activar", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-concurso/desactivar", async (req, res) => {
+router.post("/cola/modo-concurso/desactivar", ...protegerPremium, async (req, res) => {
   try {
     const { roomId, finalizado = false } = req.body;
 
@@ -1059,7 +1064,7 @@ router.post("/cola/modo-concurso/desactivar", async (req, res) => {
   }
 });
 
-router.get("/cola/modo-concurso/resultados/:roomId", async (req, res) => {
+router.get("/cola/modo-concurso/resultados/:roomId", ...protegerPremium, async (req, res) => {
   try {
     const { roomId } = req.params;
     const cola = await Cola.findOne({ roomId });
@@ -1079,7 +1084,7 @@ router.get("/cola/modo-concurso/resultados/:roomId", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-concurso/calificar", async (req, res) => {
+router.post("/cola/modo-concurso/calificar", ...protegerPremium, async (req, res) => {
   try {
     const { roomId, indexActual, key } = req.body;
     const keyNormalizada = normalizarKeyCalificacion(key);
@@ -1167,7 +1172,7 @@ router.post("/cola/modo-concurso/calificar", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
+router.post("/cola/modo-concurso/cancion-terminada", ...protegerPremium, async (req, res) => {
   try {
     const {
       roomId,
@@ -1351,7 +1356,7 @@ router.post("/cola/modo-concurso/cancion-terminada", async (req, res) => {
   }
 });
 
-router.post("/cola/modo-concurso/eliminar-participante", async (req, res) => {
+router.post("/cola/modo-concurso/eliminar-participante", ...protegerPremium, async (req, res) => {
   try {
     const { roomId, participanteId } = req.body;
 
@@ -1427,7 +1432,7 @@ router.post("/cola/modo-concurso/eliminar-participante", async (req, res) => {
 });
 
 
-router.post("/cola/add", authenticate, async (req, res) => { 
+router.post("/cola/add", ...protegerPremium, async (req, res) => {
   try {
     const userId = req.user.id;
     const { songId, roomId, position } = req.body;
@@ -1493,7 +1498,7 @@ router.post("/cola/add", authenticate, async (req, res) => {
 });
 
  
-router.post("/cola/add2", async (req, res) => {
+router.post("/cola/add2", verificarHostSalaConSuscripcionActiva, async (req, res) => {
   try {
     const { songId, roomId, position } = req.body;
 
@@ -1558,7 +1563,7 @@ router.post("/cola/add2", async (req, res) => {
 });
 
 
-router.post("/cola/play-now", async (req, res) => {
+router.post("/cola/play-now", ...protegerPremium, async (req, res) => {
   try {
     const { songId, roomId } = req.body;
 
@@ -1646,29 +1651,29 @@ router.delete("/cola/remove", authenticate, async (req, res) => {
 
 
 // ---------------- PLAYLISTS ----------------
-router.post("/playlist", authenticate, playlistController.createPlaylist);
+router.post("/playlist", ...protegerPremium, playlistController.createPlaylist);
 router.get(
   "/playlist/:userId",
-  authenticate,
+  ...protegerPremium,
   playlistController.getUserPlaylists
 );
 router.get(
   "/playlist/canciones/:playlistId",
-  authenticate,
+  ...protegerPremium,
   playlistController.getCancionesDePlaylist
 );
 router.post(
   "/playlist/:playlistId/addsong",
-  authenticate,
+  ...protegerPremium,
   playlistController.addCancionAPlaylist
 );
-router.post("/playlist/add", authenticate, playlistController.addSong);
+router.post("/playlist/add", ...protegerPremium, playlistController.addSong);
 // router.delete("/playlist/remove", playlistController.removeSong);
 // router.delete("/playlist/clear/:userId", playlistController.clearList);
 
 router.delete(
   "/playlist/:playlistId",
-  authenticate,
+  ...protegerPremium,
   playlistController.deletePlaylist
 );
 

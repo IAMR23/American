@@ -7,8 +7,6 @@ import { useQueueContext } from "../hooks/QueueProvider";
 import { useSocketContext } from "../hooks/SocketContext";
 import ToastModal from "../components/modal/ToastModal";
 
-const SONG_SEARCH_URL = `${API_URL}/song/search`;
-
 const getPersonas = (mesa) => mesa?.personas || mesa?.participantes || [];
 
 export default function MesaUsuario() {
@@ -273,7 +271,7 @@ export default function MesaUsuario() {
   };
 
   const buscarCancionExactaPorNumero = async (numero) => {
-    const res = await axios.get(SONG_SEARCH_URL, {
+    const res = await axios.get(`${API_URL}/song/search-room/${roomId}`, {
       params: {
         page: 1,
         limit: 100,

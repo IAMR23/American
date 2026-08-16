@@ -3,6 +3,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config"
 import { getToken } from "../utils/auth";
+import { notificarSuscripcionActualizada } from "../utils/subscription";
 
 function Message({ content }) {
   return <p>{content}</p>;
@@ -16,7 +17,7 @@ function PaypalSuscripcion({ planId }) {
     const token = getToken();
     if (token && typeof token === "string") {
       const decoded = jwtDecode(token);
-      userId = decoded.userId;
+      userId = decoded.userId || decoded.id;
       isAuthenticated = true;
     }
   } catch (error) {
@@ -82,6 +83,7 @@ function PaypalSuscripcion({ planId }) {
 
               if (res.ok) {
                 setMessage("✅ Suscripción activada en tu cuenta.");
+                notificarSuscripcionActualizada(resultado);
                 // Opcional: recargar la página para ver funciones premium
                 // window.location.reload();
               } else {

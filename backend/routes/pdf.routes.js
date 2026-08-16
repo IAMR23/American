@@ -3,6 +3,12 @@ const router = express.Router();
 const uploadPdf = require("../middleware/uploadPdf");
 const fs = require("fs");
 const path = require("path");
+const {
+  authenticate,
+  verificarSuscripcionActiva,
+} = require("../middleware/authMiddleware");
+
+const protegerPremium = [authenticate, verificarSuscripcionActiva];
 
 const uploadDir = path.join(__dirname, "..", "uploads");
 
@@ -10,7 +16,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-router.post("/upload-pdf", (req, res) => {
+router.post("/upload-pdf", ...protegerPremium, (req, res) => {
   uploadPdf.single("archivo")(req, res, function (error) {
     if (error) {
       return res.status(400).json({
@@ -33,7 +39,7 @@ router.post("/upload-pdf", (req, res) => {
   });
 });
 
-router.get("/ultimo-pdf", async (req, res) => {
+router.get("/ultimo-pdf", ...protegerPremium, async (req, res) => {
   try {
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });

@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const Puntaje = require("../models/Puntaje");
+const {
+  authenticate,
+  verificarSuscripcionActiva,
+} = require("../middleware/authMiddleware");
+
+const protegerPremium = [authenticate, verificarSuscripcionActiva];
 
 const normalizarPuntaje = (puntaje) => {
   const data = puntaje?.toObject ? puntaje.toObject() : puntaje;
@@ -15,7 +21,7 @@ const normalizarPuntaje = (puntaje) => {
 // ---------------------------
 // ✅ Crear puntaje
 // ---------------------------
-router.post("/puntaje/", async (req, res) => {
+router.post("/puntaje/", ...protegerPremium, async (req, res) => {
   try {
     const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
@@ -37,7 +43,7 @@ router.post("/puntaje/", async (req, res) => {
 // ---------------------------
 // ✅ Obtener todos los puntajes
 // ---------------------------
-router.get("/puntaje/", async (req, res) => {
+router.get("/puntaje/", ...protegerPremium, async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 0, 0);
     const limit = Math.min(
@@ -77,7 +83,7 @@ router.get("/puntaje/", async (req, res) => {
 // ---------------------------
 // ✅ Obtener puntaje por ID
 // ---------------------------
-router.get("/puntaje/:id", async (req, res) => {
+router.get("/puntaje/:id", ...protegerPremium, async (req, res) => {
   try {
     const puntaje = await Puntaje.findById(req.params.id).lean();
     if (!puntaje) {
@@ -92,7 +98,7 @@ router.get("/puntaje/:id", async (req, res) => {
 // ---------------------------
 // ✅ Actualizar puntaje
 // ---------------------------
-router.put("/puntaje/:id", async (req, res) => {
+router.put("/puntaje/:id", ...protegerPremium, async (req, res) => {
   try {
     const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
@@ -124,7 +130,7 @@ router.put("/puntaje/:id", async (req, res) => {
 // ---------------------------
 // ✅ Eliminar puntaje
 // ---------------------------
-router.delete("/puntaje/:id", async (req, res) => {
+router.delete("/puntaje/:id", ...protegerPremium, async (req, res) => {
   try {
     const eliminado = await Puntaje.findByIdAndDelete(req.params.id);
     if (!eliminado) {
