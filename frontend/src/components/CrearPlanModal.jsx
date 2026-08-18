@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config"
+import { getToken } from "../utils/auth";
 
 const CrearPlanModal = ({ show, onClose, productId, onPlanCreado }) => {
 
@@ -25,11 +26,18 @@ const CrearPlanModal = ({ show, onClose, productId, onPlanCreado }) => {
     setLoading(true);
 
     try {
-      await axios.post(`${API_URL}/paypal/producto/${productId}/plan`, {
-        ...form,
-        precio: parseFloat(form.precio),
-        interval_count: parseInt(form.interval_count),
-      });
+      const token = getToken();
+      await axios.post(
+        `${API_URL}/paypal/producto/${productId}/plan`,
+        {
+          ...form,
+          precio: parseFloat(form.precio),
+          interval_count: parseInt(form.interval_count),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       onPlanCreado?.();
 

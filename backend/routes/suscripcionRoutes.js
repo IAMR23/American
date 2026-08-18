@@ -1,61 +1,56 @@
-const axios = require("axios");
 const express = require("express");
 const router = express.Router();
-const Usuario = require("../models/User"); // Asegúrate de tener esto
 const { authenticate } = require("../middleware/authMiddleware");
-const { generateAccessToken } = require("../paypal");
+const {
+  activateSubscriptionForUser,
+  getSafePaypalError,
+  handlePaypalWebhookEvent,
+  verifyPaypalWebhookSignature,
+} = require("../services/paypalSubscriptionService");
 
-const API_PAYPAL = process.env.PAYPAL_API
+router.post("/activar-suscripcion", authenticate, async (req, res) => {
+  const { subscriptionID } = req.body;
 
-async function getSubscriptionDetails(subscriptionID) {
-  const accessToken = await generateAccessToken();
-
-  const url = `${API_PAYPAL}/v1/billing/subscriptions/${subscriptionID}`;
+  if (!subscriptionID) {
+    return res.status(400).json({ message: "subscriptionID requerido" });
+  }
 
   try {
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+    const result = await activateSubscriptionForUser({
+      userId: req.user._id,
+      subscriptionID,
     });
 
-    return response.data;
+    return res.json({
+      message: "Suscripcion activada correctamente",
+      ...result,
+    });
   } catch (error) {
-    console.error("Error consultando la suscripción PayPal:", error.response.data);
-    throw error;
-  }
-}
-
-router.post("/activar-suscripcion", async (req, res) => {
-  const { userId, subscriptionID } = req.body;
-
-  if (!userId || !subscriptionID) {
-    return res.status(400).json({ message: "Faltan parámetros" });
-  }
-
-  try {
-    const subscription = await getSubscriptionDetails(subscriptionID);
-
-    if (subscription.status === "ACTIVE") {
-      await Usuario.updateOne(
-        { _id: userId },
-        {
-          suscrito: true,
-          paypalSubscriptionID: subscriptionID,
-          subscriptionStart: new Date(subscription.start_time),
-          subscriptionEnd: new Date(subscription.billing_info.next_billing_time),
-        }
-      );
-
-      return res.json({ message: "Suscripción activada correctamente" });
-    } else {
-      return res.status(400).json({ message: `Suscripción no activa: ${subscription.status}` });
-    }
-  } catch (error) {
-    return res.status(500).json({ message: "Error activando suscripción", error: error.message });
+    console.error("Error activando suscripcion:", getSafePaypalError(error));
+    return res.status(error.statusCode || 500).json({
+      code: error.code || "SUBSCRIPTION_ACTIVATION_FAILED",
+      message: error.message || "Error activando suscripcion",
+    });
   }
 });
 
+router.post("/paypal/webhook", async (req, res) => {
+  try {
+    const verified = await verifyPaypalWebhookSignature(req.headers, req.body);
+
+    if (!verified) {
+      return res.status(400).json({ message: "Firma PayPal invalida" });
+    }
+
+    const result = await handlePaypalWebhookEvent(req.body);
+    return res.status(200).json({ received: true, ...result });
+  } catch (error) {
+    console.error("Error procesando webhook PayPal:", getSafePaypalError(error));
+    return res.status(error.statusCode || 500).json({
+      code: error.code || "PAYPAL_WEBHOOK_ERROR",
+      message: error.message || "Error procesando webhook PayPal",
+    });
+  }
+});
 
 module.exports = router;

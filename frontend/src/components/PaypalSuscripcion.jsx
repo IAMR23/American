@@ -44,9 +44,14 @@ function PaypalSuscripcion({ planId }) {
             label: "subscribe",
           }}
           createSubscription={(data, actions) => {
+            if (!isAuthenticated || !userId) {
+              setMessage("Inicia sesion para suscribirte.");
+              return Promise.reject(new Error("AUTH_REQUIRED"));
+            }
+
             return actions.subscription.create({
               plan_id: planId,
-              custom_id: userId, // ¡Clave para saber quién paga!
+              custom_id: String(userId),
             });
           }}
           // onApprove={(data, actions) => {
@@ -73,7 +78,6 @@ function PaypalSuscripcion({ planId }) {
                   },
                   body: JSON.stringify({
                     subscriptionID: data.subscriptionID,
-                    userId: userId,
                   }),
                 }
               );
@@ -88,7 +92,7 @@ function PaypalSuscripcion({ planId }) {
                 // window.location.reload();
               } else {
                 setMessage(
-                  `⚠️ Error al activar suscripción: ${resultado.mensaje}`
+                  `⚠️ Error al activar suscripción: ${resultado.message || resultado.mensaje}`
                 );
               }
             } catch (err) {

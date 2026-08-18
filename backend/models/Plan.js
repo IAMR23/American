@@ -8,9 +8,13 @@ const PlanSchema = new mongoose.Schema({
   descripcion: { type: String },
   precio: { type: Number, required: true },
   duracionDias: { type: Number, required: true },
+  intervalUnit: { type: String, default: "MONTH" },
+  intervalCount: { type: Number, default: 1 },
   currency: { type: String, default: "USD" },
-  estado: { type: String, default: "INACTIVE" }, // El estado del plan: ACTIVE, INACTIVE
+  estado: { type: String, default: "INACTIVE" }, // ACTIVE, INACTIVE, CREATED
   create_time: { type: Date, default: Date.now },
-});
+}, { timestamps: true });
+
+PlanSchema.index({ productId: 1, estado: 1 });
 
 module.exports = mongoose.model("Plan", PlanSchema);

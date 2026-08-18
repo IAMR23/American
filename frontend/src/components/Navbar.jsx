@@ -2,15 +2,34 @@ import { useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import React from "react";
 import { AuthContext } from "../utils/AuthContext";
+import api from "../services/axiosConfig";
+import { removeToken } from "../utils/auth";
 
 export default function Navbar() {
-  const { auth, setAuth } = useContext(AuthContext);
+  const authContext = useContext(AuthContext) || {};
+  const {
+    auth = { isAuthenticated: false, rol: null, userId: null },
+    setAuth,
+    logout,
+  } = authContext;
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.clear();
-    setAuth({ isAuthenticated: false, rol: null, userId: null });
-    window.location.href = "/";
+  const handleLogout = async () => {
+    try {
+      if (logout) {
+        await logout();
+      } else {
+        await api.post("/api/auth/logout");
+      }
+    } catch (error) {
+      console.error("Error al cerrar sesion:", error);
+    } finally {
+      removeToken();
+      localStorage.removeItem("roomId");
+      localStorage.removeItem("roomOwnerId");
+      setAuth?.({ isAuthenticated: false, rol: null, userId: null });
+      navigate("/", { replace: true });
+    }
   };
 
   return (

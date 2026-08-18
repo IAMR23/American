@@ -7,13 +7,16 @@ const {
   deleteGenero,
   getGenero,
 } = require("../controllers/generoController");
+const { authenticate, isAdmin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
+const protegerAdmin = [authenticate, isAdmin];
 
 // Crear género
 router.post(
   "/",
   [
+    ...protegerAdmin,
     body("nombre").notEmpty().withMessage("El nombre es obligatorio"),
     body("description").optional().isString(),
   ],
@@ -27,6 +30,7 @@ router.get("/:id", getGeneroById);
 router.put(
   "/:id",
   [
+    ...protegerAdmin,
     body("nombre").optional().isString(),
     body("description").optional().isString(),
   ],
@@ -35,6 +39,6 @@ router.put(
 
 // Eliminar género
 router.get("/", getGenero);
-router.delete("/:id", deleteGenero);
+router.delete("/:id", ...protegerAdmin, deleteGenero);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
@@ -19,7 +19,7 @@ import AyudaPage from "./AyudaPage";
 import PlantTest from "../components/PlanTest";
 import BuscadorTabla from "../components/BuscadorTabla";
 
-import { getToken, removeToken } from "../utils/auth";
+import { getToken, removeToken, syncTokenWithBrowserState } from "../utils/auth";
 import { jwtDecode } from "jwt-decode";
 import usePlaylists from "../utils/usePlaylists";
 import CelularPage from "./CelularPage";
@@ -49,6 +49,12 @@ const SECCIONES_PUBLICAS = new Set([
   "password",
   "suscribir",
   "user",
+]);
+const SECCIONES_AUTH = new Set([
+  "ingresar",
+  "registrar",
+  "password",
+  "suscribir",
 ]);
 const SECCIONES_PREMIUM = new Set([
   "video",
@@ -102,7 +108,7 @@ export default function Home() {
   const [modoConcurso, setModoConcurso] = useState(false);
   const [auth, setAuth] = useState(false);
   const [colaDefault, setColaDefault] = useState([]);
-  const [token, setToken] = useState(getToken());
+  const [token, setToken] = useState(() => syncTokenWithBrowserState());
   const [roomId, setRoomId] = useState(null);
   const [playerResetKey, setPlayerResetKey] = useState(0);
   const [guestPlayCount, setGuestPlayCount] = useState(getGuestPlayCount);
@@ -111,6 +117,10 @@ export default function Home() {
 
   // ✅ NUEVO: evita cambiar la canción directo desde Home
   const [requestedIndex, setRequestedIndex] = useState(null);
+  const [colaActivaEnPlayer, setColaActivaEnPlayer] = useState(false);
+  const [iniciarPrimeraColaPendiente, setIniciarPrimeraColaPendiente] =
+    useState(false);
+  const activandoPrimeraColaRef = useRef(false);
 
   const { background } = useBackground();
   const { connectSocket, disconnectSocket } = useSocketContext();
@@ -142,7 +152,6 @@ export default function Home() {
   const puedeVerVideoPublico =
     tieneAccesoKaraoke || esInvitado || esRegistradoSinSuscripcion;
   const accesoPremiumBloqueado = cargandoSuscripcion || !tieneAccesoKaraoke;
-  const carruselesSoloLectura = !tieneAccesoKaraoke;
   const mostrarSuscripcionSuperior =
     esRegistradoSinSuscripcion &&
     registeredTrialPlayCount < REGISTERED_TRIAL_LIMIT &&
@@ -153,6 +162,20 @@ export default function Home() {
     seccionActiva !== "suscribir";
   const modoMesaEncendido = modoMesa || modoMesaActivo;
   const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
+  const actualizarIndicePlayer = useCallback(
+    (index) => {
+      const requested = Number(index);
+
+      if (!Number.isFinite(requested) || requested < 0) return;
+
+      setCurrentIndex?.(requested);
+
+      if (tieneAccesoKaraoke) {
+        changeSong(requested);
+      }
+    },
+    [changeSong, setCurrentIndex, tieneAccesoKaraoke],
+  );
 
   const irASeccion = useCallback(
     (seccion) => {
@@ -206,14 +229,13 @@ export default function Home() {
   const MIN_ANTERIORES = 2;
 
   const getColaVisible = () => {
-    if (!tieneAccesoKaraoke) return [];
-
     const esColaDefault = !cola.length;
 
     if (esColaDefault) return [];
 
+    const indiceVisible = colaActivaEnPlayer ? currentIndex : 0;
     const start =
-      currentIndex - MIN_ANTERIORES > 0 ? currentIndex - MIN_ANTERIORES : 0;
+      indiceVisible - MIN_ANTERIORES > 0 ? indiceVisible - MIN_ANTERIORES : 0;
 
     return cola
       .map((c, i) => ({ cancion: c, index: i }))
@@ -221,10 +243,10 @@ export default function Home() {
       .filter((item) => item.cancion && item.cancion._id);
   };
 
-  // ✅ Validar token una sola vez
+  // Validar token activo, incluso al volver desde el historial del navegador.
   useEffect(() => {
     const validarTokenActual = () => {
-      const currentToken = getToken();
+      const currentToken = syncTokenWithBrowserState();
       setToken(currentToken);
 
       if (!currentToken) {
@@ -238,7 +260,7 @@ export default function Home() {
         const decodedToken = jwtDecode(currentToken);
 
         if (decodedToken.exp * 1000 < Date.now()) {
-          removeToken();
+          removeToken({ markLogout: false });
           setAuth(false);
           setUserId(null);
           setUserRole(null);
@@ -249,7 +271,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Error al decodificar el token", error);
-        removeToken();
+        removeToken({ markLogout: false });
         setAuth(false);
         setUserId(null);
         setUserRole(null);
@@ -258,9 +280,24 @@ export default function Home() {
 
     validarTokenActual();
     window.addEventListener("auth-token-changed", validarTokenActual);
+    window.addEventListener("pageshow", validarTokenActual);
+    window.addEventListener("focus", validarTokenActual);
+    window.addEventListener("storage", validarTokenActual);
+
+    const validarAlVolverVisible = () => {
+      if (!document.hidden) {
+        validarTokenActual();
+      }
+    };
+
+    document.addEventListener("visibilitychange", validarAlVolverVisible);
 
     return () => {
       window.removeEventListener("auth-token-changed", validarTokenActual);
+      window.removeEventListener("pageshow", validarTokenActual);
+      window.removeEventListener("focus", validarTokenActual);
+      window.removeEventListener("storage", validarTokenActual);
+      document.removeEventListener("visibilitychange", validarAlVolverVisible);
     };
   }, []);
 
@@ -273,15 +310,13 @@ export default function Home() {
     setShouldFullscreen(true);
   }, [irASeccion, puedeVerVideoPublico]);
 
-  const getUser = async (id) => {
-    if (!id) return null;
-
+  const getUser = async () => {
     try {
       const currentToken = getToken();
 
       if (!currentToken) throw new Error("No hay token disponible");
 
-      const res = await axios.get(`${API_URL}/users/${id}`, {
+      const res = await axios.get(`${API_URL}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${currentToken}`,
         },
@@ -300,7 +335,7 @@ export default function Home() {
 
   useEffect(() => {
     if (userId) {
-      getUser(userId);
+      getUser();
       setRegisteredTrialPlayCount(getRegisteredTrialPlayCount(userId));
     } else {
       setUser(null);
@@ -371,7 +406,7 @@ export default function Home() {
       console.error("Error al crear/conectar sala:", error);
       return null;
     }
-  }, [connectSocket, tieneAccesoKaraoke, userId]);
+  }, [connectSocket, tieneAccesoKaraoke, token, userId]);
 
   useEffect(() => {
     if (cargandoSuscripcion) return;
@@ -393,8 +428,7 @@ export default function Home() {
   ]);
 
   const getColaActual = () => {
-    const esColaVacia = !cola.length;
-    return esColaVacia ? colaDefault : cola;
+    return colaActivaEnPlayer && cola.length ? cola : colaDefault;
   };
 
   const handleLoginSuccess = async () => {
@@ -408,6 +442,9 @@ export default function Home() {
         setUserId(decoded.userId || decoded.id);
         setUserRole(decoded.rol);
         setCola([]);
+        setColaActivaEnPlayer(false);
+        setIniciarPrimeraColaPendiente(false);
+        activandoPrimeraColaRef.current = false;
         setAuth(true);
         setPlayerResetKey((prev) => prev + 1);
         await ensureActiveRoom();
@@ -443,13 +480,20 @@ export default function Home() {
     }
 
     removeToken();
+    disconnectSocket();
     localStorage.removeItem("roomId");
     localStorage.removeItem("roomOwnerId");
+    localStorage.removeItem(MESAS_STORAGE_KEY);
+    localStorage.removeItem(CONCURSO_STORAGE_KEY);
+    sessionStorage.removeItem(FULLSCREEN_REQUEST_KEY);
 
     setToken(null);
     setUserId(null);
     setUserRole(null);
     setCola([]);
+    setColaActivaEnPlayer(false);
+    setIniciarPrimeraColaPendiente(false);
+    activandoPrimeraColaRef.current = false;
     setAuth(false);
     setUser(null);
     setRoomId(null);
@@ -457,21 +501,87 @@ export default function Home() {
     setModoConcurso(false);
     setPlayerResetKey((prev) => prev + 1);
     setRequestedIndex(null);
+    setRegisteredTrialPlayCount(0);
+    setShouldFullscreen(false);
     setSeccionActiva("ingresar");
+    navigate("/", { replace: true, state: { seccion: "ingresar" } });
   };
 
   // ✅ CAMBIO IMPORTANTE:
   // Ya no cambia directo con changeSong(index).
   // Primero manda requestedIndex al VideoPlayer.
   const handleCambiarCancion = (index) => {
-    if (!tieneAccesoKaraoke) return;
-    setRequestedIndex(index);
+    const requested = Number(index);
+
+    if (!Number.isFinite(requested) || requested < 0) return;
+
+    setColaActivaEnPlayer(true);
+    actualizarIndicePlayer(requested);
+    setRequestedIndex(null);
+    setTimeout(() => setRequestedIndex(requested), 0);
   };
 
-  const limpiarCola = () => {
-    if (!tieneAccesoKaraoke) return;
-    clearQueue();
+  const reproducirPrimeraCancionDeCola = useCallback(() => {
+    if (
+      colaActivaEnPlayer ||
+      iniciarPrimeraColaPendiente ||
+      activandoPrimeraColaRef.current
+    ) {
+      return;
+    }
+
+    activandoPrimeraColaRef.current = true;
+    setIniciarPrimeraColaPendiente(true);
+  }, [colaActivaEnPlayer, iniciarPrimeraColaPendiente]);
+
+  useEffect(() => {
+    if (!iniciarPrimeraColaPendiente) return;
+    if (!cola.length) return;
+
+    setColaActivaEnPlayer(true);
+    irASeccion("video");
+    actualizarIndicePlayer(0);
+
     setRequestedIndex(null);
+    setTimeout(() => setRequestedIndex(0), 0);
+    setIniciarPrimeraColaPendiente(false);
+    activandoPrimeraColaRef.current = false;
+  }, [
+    cola.length,
+    actualizarIndicePlayer,
+    iniciarPrimeraColaPendiente,
+    irASeccion,
+  ]);
+
+  const limpiarCola = () => {
+    if (tieneAccesoKaraoke) {
+      clearQueue();
+    } else {
+      setCola([]);
+      setCurrentIndex?.(0);
+    }
+
+    setColaActivaEnPlayer(false);
+    setIniciarPrimeraColaPendiente(false);
+    activandoPrimeraColaRef.current = false;
+    setRequestedIndex(null);
+  };
+
+  const handleColaTerminada = () => {
+    if (modoConcursoEncendido) return;
+
+    if (tieneAccesoKaraoke) {
+      clearQueue();
+    }
+
+    setCola([]);
+    setCurrentIndex?.(0);
+    setColaActivaEnPlayer(false);
+    setIniciarPrimeraColaPendiente(false);
+    activandoPrimeraColaRef.current = false;
+    setRequestedIndex(null);
+    setPlayerResetKey((prev) => prev + 1);
+    setSeccionActiva("video");
   };
 
   const limpiarConcursoDesdePlayer = useCallback(async () => {
@@ -491,6 +601,9 @@ export default function Home() {
       setModoCalificacion(false);
       setRequestedIndex(null);
       setCola([]);
+      setColaActivaEnPlayer(false);
+      setIniciarPrimeraColaPendiente(false);
+      activandoPrimeraColaRef.current = false;
       setCurrentIndex?.(0);
       setModoConcursoActivo?.(false);
       setModoConcursoFinalizado?.(true);
@@ -719,7 +832,7 @@ export default function Home() {
     if (cargandoSuscripcion) return;
 
     if (tieneAccesoKaraoke) {
-      if (auth && seccionActiva === "suscribir") {
+      if (auth && SECCIONES_AUTH.has(seccionActiva)) {
         setSeccionActiva("video");
       }
       return;
@@ -732,7 +845,23 @@ export default function Home() {
       return;
     }
 
+    if (
+      (esInvitado || esRegistradoSinSuscripcion) &&
+      SECCIONES_PUBLICAS.has(seccionActiva)
+    ) {
+      setColaActivaEnPlayer(false);
+      setIniciarPrimeraColaPendiente(false);
+      activandoPrimeraColaRef.current = false;
+      setRequestedIndex(null);
+      setShouldFullscreen(false);
+      document.exitFullscreen?.().catch?.(() => {});
+      return;
+    }
+
     setCola([]);
+    setColaActivaEnPlayer(false);
+    setIniciarPrimeraColaPendiente(false);
+    activandoPrimeraColaRef.current = false;
     setCurrentIndex?.(0);
     setModoMesa(false);
     setModoConcurso(false);
@@ -867,12 +996,12 @@ export default function Home() {
 
       case "video":
       default: {
-        const esColaDefault = !cola.length;
+        const esColaDefault = !(colaActivaEnPlayer && cola.length);
         const colaActual = getColaActual();
 
         return (
           <VideoPlayer
-            key={`${esColaDefault ? "default" : "queue"}-${playerResetKey}`}
+            key={`video-player-${playerResetKey}`}
             cola={colaActual}
             esColaDefault={esColaDefault}
             modoCalificacion={modoCalificacion}
@@ -882,7 +1011,7 @@ export default function Home() {
             concursoItems={concursoItems}
             roomId={roomId}
             currentIndex={currentIndex}
-            setCurrentIndex={changeSong}
+            setCurrentIndex={actualizarIndicePlayer}
             requestedIndex={requestedIndex}
             onRequestedIndexHandled={() => setRequestedIndex(null)}
             fullscreenRequested={shouldFullscreen}
@@ -891,8 +1020,8 @@ export default function Home() {
             modoInvitado={!tieneAccesoKaraoke}
             onLimpiarConcurso={limpiarConcursoDesdePlayer}
             onColaTerminada={() => {
-              if (!esColaDefault && !modoConcursoEncendido) {
-                clearQueue();
+              if (!esColaDefault) {
+                handleColaTerminada();
               }
             }}
           />
@@ -955,7 +1084,7 @@ export default function Home() {
                 </button>
               )}
 
-              {mostrarSuscripcionSuperior && (
+              {mostrarSuscripcionSuperior && !tieneAccesoKaraoke && (
                 <button
                   className="boton8 subscribe-action-top"
                   onClick={() => irASeccion("suscribir")}
@@ -1133,7 +1262,7 @@ export default function Home() {
           </div>
         </div>
 
-        {tieneAccesoKaraoke && (
+        {puedeVerVideoPublico && (
           <div className="m-2 w-100">
             <div className="d-flex flex-column flex-md-row justify-content-center align-items-center gap-3 queue-panel">
               <h2 className="text-white queue-title">Canciones a la cola</h2>
@@ -1156,7 +1285,9 @@ export default function Home() {
                     <FaCompactDisc
                       size={40}
                       className={`mb-1 ${
-                        index === currentIndex ? "song-playing" : "text-primary"
+                        colaActivaEnPlayer && index === currentIndex
+                          ? "song-playing"
+                          : "text-primary"
                       }`}
                     />
 
@@ -1169,15 +1300,17 @@ export default function Home() {
                 ))}
               </div>
 
-              <button className="btn" onClick={limpiarCola}>
-                <img className="m-2" src="/limpiar.png" alt="" width={120} />
-              </button>
+              {tieneAccesoKaraoke && (
+                <button className="btn" onClick={limpiarCola}>
+                  <img className="m-2" src="/limpiar.png" alt="" width={120} />
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {mostrarSuscripcionCentral && (
+      {mostrarSuscripcionCentral && !tieneAccesoKaraoke && (
         <div
           className="registered-subscribe-center"
           role="dialog"
@@ -1244,14 +1377,16 @@ export default function Home() {
 
         <h1 className="p-2 text-white">Recomendados</h1>
         <VideoCarouselVisibles
-          accionesDeshabilitadas={carruselesSoloLectura}
           onPlaySolo={activarPantallaCompletaPlayer}
+          onFirstQueueSongAdded={reproducirPrimeraCancionDeCola}
+          tieneAccesoKaraoke={tieneAccesoKaraoke}
         />
 
         <h1 className="p-2 text-white">Las más populares</h1>
         <VideoCarousel
-          accionesDeshabilitadas={carruselesSoloLectura}
           onPlaySolo={activarPantallaCompletaPlayer}
+          onFirstQueueSongAdded={reproducirPrimeraCancionDeCola}
+          tieneAccesoKaraoke={tieneAccesoKaraoke}
         />
       </div>
 

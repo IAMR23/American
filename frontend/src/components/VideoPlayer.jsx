@@ -760,8 +760,7 @@ export default function VideoPlayer({
     setProgress(0);
     setDuration(0);
     setShowNextMessage(false);
-
-    setIsPlaying((prev) => Boolean(activeUrl) && prev);
+    setIsPlaying(Boolean(activeUrl));
 
     return () => {
       stopReactPlayer(previousPlayer);
@@ -770,28 +769,44 @@ export default function VideoPlayer({
 
   useEffect(() => {
     if (requestedIndex == null) return;
-    if (requestedIndex === effectiveIndex) {
-      onRequestedIndexHandled?.();
-      return;
-    }
-    if (requestedIndex < 0 || requestedIndex >= playlist.length) {
+    if (requestedIndex < 0) {
       onRequestedIndexHandled?.();
       return;
     }
 
-    safeSwitch(() => {
-      setVideoCalificacion(null);
-      setColaCalificaciones([]);
-      setEffectiveIndex(requestedIndex);
+    if (requestedIndex >= playlist.length) return;
+
+    if (requestedIndex === effectiveIndex) {
+      setIsPlaying(true);
       onRequestedIndexHandled?.();
-    });
+      return;
+    }
+
+    clearPlayerTimers();
+    switchingRef.current = false;
+    endedLockRef.current = false;
+
+    claimActivePlayer();
+    stopCurrentPlayer();
+    setVideoCalificacion(null);
+    setColaCalificaciones([]);
+    setProgress(0);
+    setDuration(0);
+    setShowNextMessage(false);
+    setEffectiveIndex(requestedIndex);
+    setPlayerInstanceKey((prev) => prev + 1);
+
+    setIsPlaying(true);
+    onRequestedIndexHandled?.();
   }, [
+    claimActivePlayer,
+    clearPlayerTimers,
     effectiveIndex,
     onRequestedIndexHandled,
     playlist.length,
     requestedIndex,
-    safeSwitch,
     setEffectiveIndex,
+    stopCurrentPlayer,
   ]);
 
   const nextVideo = () => {
@@ -949,7 +964,6 @@ export default function VideoPlayer({
       } else if (esColaDefault) {
         restartDefaultCycle();
       } else {
-        setIsPlaying(false);
         onColaTerminada?.();
       }
     });

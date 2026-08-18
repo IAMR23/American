@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config"
+import { getToken } from "../utils/auth";
 
 const Productos = () => {
 
@@ -18,7 +19,10 @@ const Productos = () => {
 
   const cargarProductos = async () => {
     try {
-      const res = await axios.get(`${API_URL}/paypal/productos`);
+      const token = getToken();
+      const res = await axios.get(`${API_URL}/paypal/productos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setProductos(res.data);
     } catch (err) {
       console.error("Error al cargar productos:", err);
@@ -37,7 +41,10 @@ const Productos = () => {
     e.preventDefault();
     setError("");
     try {
-      await axios.post(`${API_URL}/paypal/crear-producto`, form);
+      const token = getToken();
+      await axios.post(`${API_URL}/paypal/crear-producto`, form, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setForm({
         name: "",
         description: "",

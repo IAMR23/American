@@ -1,10 +1,23 @@
 const SolicitudCancion = require('../models/SolicitudCancion');
 
+const getUserId = (req) => req.user?._id || req.user?.id;
+
+const puedeModificarSolicitud = (req, solicitud) => {
+  if (req.user?.rol === "admin") return true;
+  return String(solicitud.usuario) === String(getUserId(req));
+};
+
 // Crear solicitud
 exports.crearSolicitud = async (req, res) => {
   try {
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({ mensaje: "Usuario no autenticado" });
+    }
+
     const nuevaSolicitud = new SolicitudCancion({
-      usuario: req.body.usuario,
+      usuario: userId,
       cantante: req.body.cantante,
       cancion: req.body.cancion
     });
@@ -104,18 +117,19 @@ exports.obtenerSolicitudPorId = async (req, res) => {
 // Actualizar solicitud
 exports.actualizarSolicitud = async (req, res) => {
   try {
-    const solicitudActualizada = await SolicitudCancion.findByIdAndUpdate(
-      req.params.id,
-      {
-        cantante: req.body.cantante,
-        cancion: req.body.cancion
-      },
-      { new: true }
-    );
+    const solicitud = await SolicitudCancion.findById(req.params.id);
 
-    if (!solicitudActualizada) {
+    if (!solicitud) {
       return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
     }
+
+    if (!puedeModificarSolicitud(req, solicitud)) {
+      return res.status(403).json({ mensaje: "No puedes modificar esta solicitud" });
+    }
+
+    solicitud.cantante = req.body.cantante ?? solicitud.cantante;
+    solicitud.cancion = req.body.cancion ?? solicitud.cancion;
+    const solicitudActualizada = await solicitud.save();
 
     res.status(200).json(solicitudActualizada);
   } catch (error) {
@@ -126,11 +140,17 @@ exports.actualizarSolicitud = async (req, res) => {
 // Eliminar solicitud
 exports.eliminarSolicitud = async (req, res) => {
   try {
-    const solicitudEliminada = await SolicitudCancion.findByIdAndDelete(req.params.id);
+    const solicitud = await SolicitudCancion.findById(req.params.id);
 
-    if (!solicitudEliminada) {
+    if (!solicitud) {
       return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
     }
+
+    if (!puedeModificarSolicitud(req, solicitud)) {
+      return res.status(403).json({ mensaje: "No puedes eliminar esta solicitud" });
+    }
+
+    await SolicitudCancion.deleteOne({ _id: req.params.id });
 
     res.status(200).json({ mensaje: 'Solicitud eliminada correctamente' });
   } catch (error) {
@@ -141,20 +161,25 @@ exports.eliminarSolicitud = async (req, res) => {
 // Votar por una solicitud
 exports.votarPorSolicitud = async (req, res) => {
   try {
-    const solicitud = await SolicitudCancion.findById(req.params.id);
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({ mensaje: "Usuario no autenticado" });
+    }
+
+    const solicitud = await SolicitudCancion.findOneAndUpdate(
+      { _id: req.params.id, votos: { $ne: userId } },
+      { $addToSet: { votos: userId } },
+      { new: true }
+    );
 
     if (!solicitud) {
-      return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
-    }
-
-    const userId = req.body.usuario;
-
-    if (solicitud.votos.includes(userId)) {
+      const existe = await SolicitudCancion.exists({ _id: req.params.id });
+      if (!existe) {
+        return res.status(404).json({ mensaje: 'Solicitud no encontrada' });
+      }
       return res.status(400).json({ mensaje: 'Ya votaste por esta canción' });
     }
-
-    solicitud.votos.push(userId);
-    await solicitud.save();
 
     res.status(200).json({
       mensaje: 'Voto registrado correctamente',

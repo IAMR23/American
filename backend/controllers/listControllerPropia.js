@@ -16,6 +16,22 @@ const ordenarSeleccionEspecialPrimero = (playlists) =>
     return 0;
   });
 
+const getUserId = (req) => req.user?._id || req.user?.id;
+const esAdmin = (req) => req.user?.rol === "admin";
+const seleccionEspecialRegex = () =>
+  new RegExp(`^${escapeRegExp(SELECCION_ESPECIAL_NOMBRE)}$`, "i");
+const playlistsVisiblesParaUsuario = (userId) => ({
+  $or: [{ user: userId }, { nombre: seleccionEspecialRegex() }],
+});
+const puedeLeerPlaylist = (req, playlist) =>
+  esAdmin(req) ||
+  esSeleccionEspecial(playlist?.nombre) ||
+  String(playlist?.user || "") === String(getUserId(req));
+const puedeModificarPlaylist = (req, playlist) =>
+  esAdmin(req) || String(playlist?.user || "") === String(getUserId(req));
+const queryPropia = (req, playlistId) =>
+  esAdmin(req) ? { _id: playlistId } : { _id: playlistId, user: getUserId(req) };
+
 const sincronizarSeleccionEspecial = async () => {
   const cancionesDefault = await Cancion.find({
     videoDefault: true,
@@ -52,7 +68,7 @@ function createListController(Model) {
     async addSong(req, res) {
       try {
         const { songId } = req.body;
-        const userId = req.user.id;
+        const userId = getUserId(req);
 
         if (!songId) {
           return res.status(400).json({ error: "Falta el ID de la canción" });
@@ -90,7 +106,7 @@ function createListController(Model) {
     async removeSong(req, res) {
       const { playlistId, songId } = req.params;
       try {
-        const playlist = await PlaylistPropia.findById(playlistId);
+        const playlist = await PlaylistPropia.findOne(queryPropia(req, playlistId));
         if (!playlist)
           return res
             .status(404)
@@ -108,13 +124,13 @@ function createListController(Model) {
       }
     },
     async getList(req, res) {
-      const userId = req.params.userId;
+      const userId = getUserId(req);
       const list = await Model.findOne({ user: userId }).populate("canciones");
       res.status(200).json(list || { canciones: [] });
     },
 
     async clearList(req, res) {
-      const userId = req.params.userId;
+      const userId = getUserId(req);
       const list = await Model.findOne({ user: userId });
       if (list) {
         list.canciones = [];
@@ -127,7 +143,7 @@ function createListController(Model) {
 
     async createPlaylist(req, res) {
       const { nombre } = req.body;
-      const userId = req.user.id;
+      const userId = getUserId(req);
       if (!nombre) {
         return res.status(400).json({ error: "El nombre es obligatorio" });
       }
@@ -166,13 +182,13 @@ function createListController(Model) {
         if (page && limit) {
           const skip = (page - 1) * limit;
           const [playlists, total] = await Promise.all([
-            PlaylistPropia.find()
+            PlaylistPropia.find(playlistsVisiblesParaUsuario(getUserId(req)))
               .sort({ createdAt: -1, _id: -1 })
               .select("nombre user canciones createdAt")
               .skip(skip)
               .limit(limit)
               .lean(),
-            PlaylistPropia.countDocuments(),
+            PlaylistPropia.countDocuments(playlistsVisiblesParaUsuario(getUserId(req))),
           ]);
           const totalPages = Math.ceil(total / limit);
 
@@ -189,7 +205,9 @@ function createListController(Model) {
           });
         }
 
-        const playlists = await PlaylistPropia.find()
+        const playlists = await PlaylistPropia.find(
+          playlistsVisiblesParaUsuario(getUserId(req))
+        )
           .sort({ createdAt: -1, _id: -1 })
           .populate("canciones");
         res.status(200).json(ordenarSeleccionEspecialPrimero(playlists));
@@ -200,7 +218,7 @@ function createListController(Model) {
     },
 
     async getUserPlaylistsParams(req, res) {
-      const userId = req.params.userId || req.user.id;
+      const userId = getUserId(req);
 
       try {
         const playlists = await PlaylistPropia.find({ user: userId }).populate(
@@ -225,7 +243,7 @@ function createListController(Model) {
 
         if (page && limit) {
           let playlistBase = await PlaylistPropia.findById(playlistId).select(
-            "nombre canciones",
+            "nombre user canciones",
           );
 
           if (!playlistBase) {
@@ -234,10 +252,14 @@ function createListController(Model) {
               .json({ error: "PlaylistPropia no encontrada" });
           }
 
+          if (!puedeLeerPlaylist(req, playlistBase)) {
+            return res.status(403).json({ error: "No puedes leer esta playlist" });
+          }
+
           if (esSeleccionEspecial(playlistBase.nombre)) {
             await sincronizarSeleccionEspecial();
             playlistBase = await PlaylistPropia.findById(playlistId).select(
-              "nombre canciones",
+              "nombre user canciones",
             );
           }
 
@@ -277,6 +299,10 @@ function createListController(Model) {
             .json({ error: "PlaylistPropia no encontrada" });
         }
 
+        if (!puedeLeerPlaylist(req, playlist)) {
+          return res.status(403).json({ error: "No puedes leer esta playlist" });
+        }
+
         if (esSeleccionEspecial(playlist.nombre)) {
           await sincronizarSeleccionEspecial();
           playlist = await PlaylistPropia.findById(playlistId).populate(
@@ -302,7 +328,7 @@ function createListController(Model) {
       }
 
       try {
-        const playlist = await PlaylistPropia.findById(playlistId);
+        const playlist = await PlaylistPropia.findOne(queryPropia(req, playlistId));
         if (!playlist) {
           return res
             .status(404)

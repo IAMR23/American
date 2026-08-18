@@ -93,7 +93,7 @@ const attachAuthInterceptors = (client) => {
 
         return client(originalRequest);
       } catch (refreshError) {
-        removeToken();
+        removeToken({ markLogout: false });
         return Promise.reject(refreshError);
       }
     },

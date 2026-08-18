@@ -1,5 +1,3 @@
-// server/paypal.js
-const fetch = require("node-fetch");
 require("dotenv").config();
 
 async function generateAccessToken() {
@@ -15,6 +13,10 @@ async function generateAccessToken() {
   });
 
   const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || "No se pudo obtener token de PayPal");
+  }
+
   return data.access_token;
 }
 

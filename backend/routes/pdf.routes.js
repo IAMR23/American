@@ -5,10 +5,12 @@ const fs = require("fs");
 const path = require("path");
 const {
   authenticate,
+  isAdmin,
   verificarSuscripcionActiva,
 } = require("../middleware/authMiddleware");
 
 const protegerPremium = [authenticate, verificarSuscripcionActiva];
+const protegerAdmin = [authenticate, isAdmin];
 
 const uploadDir = path.join(__dirname, "..", "uploads");
 
@@ -16,7 +18,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-router.post("/upload-pdf", ...protegerPremium, (req, res) => {
+router.post("/upload-pdf", ...protegerAdmin, (req, res) => {
   uploadPdf.single("archivo")(req, res, function (error) {
     if (error) {
       return res.status(400).json({

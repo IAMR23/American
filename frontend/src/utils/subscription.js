@@ -30,17 +30,12 @@ export function esErrorSuscripcionInactiva(error) {
   if (error?.response?.status !== 403) return false;
 
   const data = error.response?.data || {};
-  const text = [
-    data.code,
-    data.message,
-    data.mensaje,
-    data.error,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const message = String(data.message || data.mensaje || "").toLowerCase();
 
-  return text.includes("subscription") || text.includes("suscrip");
+  return (
+    data.code === SUBSCRIPTION_INACTIVE_CODE ||
+    message === "tu suscripcion no esta vigente"
+  );
 }
 
 export function notificarSuscripcionInactiva(detail = {}) {

@@ -1,6 +1,7 @@
 const  crypto =  require("crypto");
 const  User = require("../models/User");
 const nodemailer = require("nodemailer");
+const { normalizeEmail } = require("../utils/userSecurity");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -15,9 +16,11 @@ const transporter = nodemailer.createTransport({
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body.email);
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select(
+      "+resetToken +resetTokenExpire",
+    );
 
     if (!user) {
       return res.json({

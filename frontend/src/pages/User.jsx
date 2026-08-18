@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
-import { jwtDecode } from "jwt-decode";
 
 export default function UserSubscription({ onGoPasswordReset }) {
   const [user, setUser] = useState(null);
@@ -13,10 +12,7 @@ export default function UserSubscription({ onGoPasswordReset }) {
       if (!token) return;
 
       try {
-        const decoded = jwtDecode(token);
-        const userId = decoded.userId;
-
-        const res = await axios.get(`${API_URL}/users/${userId}`, {
+        const res = await axios.get(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

@@ -46,7 +46,7 @@ const authenticate = async (req, res, next) => {
     }
 
     // Buscar usuario
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).select("+tokenVersion");
 
     if (!user) {
       return res.status(401).json({ message: "Usuario no encontrado" });
@@ -157,6 +157,44 @@ const verificarHostSalaConSuscripcionActiva = async (req, res, next) => {
   }
 };
 
+const verificarHostAutenticadoConSuscripcionActiva = async (req, res, next) => {
+  try {
+    const roomId = req.params?.roomId || req.body?.roomId || req.query?.roomId;
+    const usuarioId = req.user?._id || req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    if (!roomId) {
+      return res.status(400).json({ error: "roomId requerido" });
+    }
+
+    const sala = await Room.findOne({ roomId });
+
+    if (!sala) {
+      return res.status(404).json({ error: "Sala no existe" });
+    }
+
+    if (String(sala.host) !== String(usuarioId)) {
+      return res.status(403).json({
+        error: "Solo el anfitrion de la sala puede realizar esta accion",
+      });
+    }
+
+    if (!tieneAccesoKaraoke(req.user)) {
+      return responderSuscripcionInactiva(res);
+    }
+
+    req.room = sala;
+    req.roomHost = req.user;
+    next();
+  } catch (err) {
+    console.error("Error validando host autenticado de sala:", err);
+    res.status(500).json({ error: "Error validando permisos de sala" });
+  }
+};
+
 module.exports = {
   authenticate,
   isPlayer,
@@ -164,6 +202,7 @@ module.exports = {
   isAdmin,
   verificarSuscripcionActiva,
   verificarHostSalaConSuscripcionActiva,
+  verificarHostAutenticadoConSuscripcionActiva,
   responderSuscripcionInactiva,
   tieneAccesoKaraoke,
   tieneSuscripcionVigente,

@@ -25,6 +25,7 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null);
   const eventBuffer = useRef([]);
   const currentRoomIdRef = useRef(null);
+  const currentTokenRef = useRef(null);
   const isConnectedRef = useRef(false);
 
   const [isConnected, setIsConnected] = useState(false);
@@ -42,15 +43,19 @@ export function SocketProvider({ children }) {
     socketRef.current.removeAllListeners();
     socketRef.current.disconnect();
     socketRef.current = null;
+    currentTokenRef.current = null;
   }, []);
 
   const connectSocket = useCallback(
     ({ roomId, user } = {}) => {
       if (!roomId) return console.warn("No roomId provided");
 
+      const currentToken = getToken();
+
       if (
         socketRef.current &&
         currentRoomIdRef.current === roomId &&
+        currentTokenRef.current === currentToken &&
         socketRef.current.connected
       ) {
         return;
@@ -61,7 +66,7 @@ export function SocketProvider({ children }) {
       const newSocket = io(API_URL, {
         path: "/socket.io",
         auth: {
-          token: getToken(),
+          token: currentToken,
         },
         transports: ["websocket", "polling"],
         withCredentials: true,
@@ -72,6 +77,7 @@ export function SocketProvider({ children }) {
 
       socketRef.current = newSocket;
       currentRoomIdRef.current = roomId;
+      currentTokenRef.current = currentToken;
       setCurrentRoomId(roomId);
       setCurrentUser(user);
 
@@ -123,6 +129,7 @@ export function SocketProvider({ children }) {
     setCurrentRoomId(null);
     setCurrentUser(null);
     currentRoomIdRef.current = null;
+    currentTokenRef.current = null;
     eventBuffer.current = [];
   }, [cleanupSocket, setConnected]);
 
@@ -153,6 +160,7 @@ export function SocketProvider({ children }) {
     return () => {
       cleanupSocket();
       currentRoomIdRef.current = null;
+      currentTokenRef.current = null;
       isConnectedRef.current = false;
       eventBuffer.current = [];
     };

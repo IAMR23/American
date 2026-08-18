@@ -28,7 +28,12 @@ import ListaCancionesUltimas from "./components/ListaCancionesUltimas";
 import EditarMasReproducidas from "./pages/EditarMasReproducidas";
 
 import { AuthProvider } from "./utils/AuthContext";
-import { getToken, removeToken, saveToken } from "./utils/auth";
+import {
+  hasLogoutMarker,
+  removeToken,
+  saveToken,
+  syncTokenWithBrowserState,
+} from "./utils/auth";
 import api from "./services/axiosConfig";
 import { SocketProvider } from "./hooks/SocketContext";
 import { QueueProvider } from "./hooks/QueueProvider";
@@ -38,6 +43,8 @@ import { BackgroundProvider } from "./hooks/BackgroundContext";
 import ResetPassword from "./pages/ResetPassword";
 import SubirPDF from "./pages/SubirPDF";
 import SalaUsuario from "./pages/SalaUsuario";
+import MesaUsuario from "./pages/MesaUsuario";
+import ListadoPDFCanciones from "./components/ListadoPDFCanciones";
 import { SubscriptionProvider } from "./utils/SubscriptionContext";
 function App() {
   const [auth, setAuth] = useState({
@@ -46,7 +53,7 @@ function App() {
     userId: null,
   });
 
-  const [token, setToken] = useState(getToken());
+  const [token, setToken] = useState(() => syncTokenWithBrowserState());
 
 
   useEffect(() => {
@@ -59,7 +66,7 @@ function App() {
       const decoded = jwtDecode(token);
 
       if (decoded.exp * 1000 < Date.now()) {
-        removeToken();
+        removeToken({ markLogout: false });
         setToken(null);
         setAuth({ isAuthenticated: false, rol: null, userId: null });
       } else {
@@ -70,7 +77,7 @@ function App() {
         });
       }
     } catch {
-      removeToken();
+      removeToken({ markLogout: false });
       setToken(null);
       setAuth({ isAuthenticated: false, rol: null, userId: null });
     }
@@ -78,18 +85,53 @@ function App() {
 
   useEffect(() => {
     const syncToken = (event) => {
-      setToken(event.detail || getToken());
+      const currentToken = event.detail || syncTokenWithBrowserState();
+      setToken(currentToken);
+
+      if (!currentToken) {
+        setAuth({ isAuthenticated: false, rol: null, userId: null });
+      }
+    };
+
+    const syncBrowserSession = () => {
+      const currentToken = syncTokenWithBrowserState();
+      setToken(currentToken);
+
+      if (!currentToken) {
+        setAuth({ isAuthenticated: false, rol: null, userId: null });
+      }
+    };
+
+    const syncVisibleSession = () => {
+      if (!document.hidden) {
+        syncBrowserSession();
+      }
     };
 
     window.addEventListener("auth-token-changed", syncToken);
+    window.addEventListener("pageshow", syncBrowserSession);
+    window.addEventListener("focus", syncBrowserSession);
+    window.addEventListener("storage", syncBrowserSession);
+    document.addEventListener("visibilitychange", syncVisibleSession);
 
     return () => {
       window.removeEventListener("auth-token-changed", syncToken);
+      window.removeEventListener("pageshow", syncBrowserSession);
+      window.removeEventListener("focus", syncBrowserSession);
+      window.removeEventListener("storage", syncBrowserSession);
+      document.removeEventListener("visibilitychange", syncVisibleSession);
     };
   }, []);
 
   useEffect(() => {
     const restoreSession = async () => {
+      if (hasLogoutMarker()) {
+        removeToken({ markLogout: false });
+        setToken(null);
+        setAuth({ isAuthenticated: false, rol: null, userId: null });
+        return;
+      }
+
       try {
         const response = await api.post("/api/auth/refresh");
         const refreshedToken = response.data?.accessToken || response.data?.token;
@@ -99,7 +141,7 @@ function App() {
           setToken(refreshedToken);
         }
       } catch {
-        removeToken();
+        removeToken({ markLogout: false });
         setToken(null);
       }
     };
@@ -174,6 +216,11 @@ function App() {
                     {/* Resest password */}
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/sala/:roomId" element={<SalaUsuario />} />
+                    <Route path="/mesa/:roomId" element={<MesaUsuario />} />
+                    <Route
+                      path="/listado-pdf/cancion"
+                      element={<ListadoPDFCanciones autoDownloadOrden="cancion" />}
+                    />
 
 
                   </Routes>

@@ -110,7 +110,9 @@ export function SubscriptionProvider({ auth, token, children }) {
 
   useEffect(() => {
     const handleInactive = (event) => {
-      marcarSuscripcionInactiva(event.detail || null);
+      verificarSuscripcion().catch(() => {
+        marcarSuscripcionInactiva(event.detail || null);
+      });
     };
     const handleUpdated = () => {
       verificarSuscripcion();

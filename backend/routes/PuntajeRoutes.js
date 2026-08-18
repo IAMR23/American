@@ -3,10 +3,12 @@ const router = express.Router();
 const Puntaje = require("../models/Puntaje");
 const {
   authenticate,
+  isAdmin,
   verificarSuscripcionActiva,
 } = require("../middleware/authMiddleware");
 
 const protegerPremium = [authenticate, verificarSuscripcionActiva];
+const protegerAdmin = [authenticate, isAdmin];
 
 const normalizarPuntaje = (puntaje) => {
   const data = puntaje?.toObject ? puntaje.toObject() : puntaje;
@@ -21,7 +23,7 @@ const normalizarPuntaje = (puntaje) => {
 // ---------------------------
 // ✅ Crear puntaje
 // ---------------------------
-router.post("/puntaje/", ...protegerPremium, async (req, res) => {
+router.post("/puntaje/", ...protegerAdmin, async (req, res) => {
   try {
     const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
@@ -98,7 +100,7 @@ router.get("/puntaje/:id", ...protegerPremium, async (req, res) => {
 // ---------------------------
 // ✅ Actualizar puntaje
 // ---------------------------
-router.put("/puntaje/:id", ...protegerPremium, async (req, res) => {
+router.put("/puntaje/:id", ...protegerAdmin, async (req, res) => {
   try {
     const { calificacion, titulo, videoUrl, imagenUrl, weight, key } = req.body;
 
@@ -130,7 +132,7 @@ router.put("/puntaje/:id", ...protegerPremium, async (req, res) => {
 // ---------------------------
 // ✅ Eliminar puntaje
 // ---------------------------
-router.delete("/puntaje/:id", ...protegerPremium, async (req, res) => {
+router.delete("/puntaje/:id", ...protegerAdmin, async (req, res) => {
   try {
     const eliminado = await Puntaje.findByIdAndDelete(req.params.id);
     if (!eliminado) {

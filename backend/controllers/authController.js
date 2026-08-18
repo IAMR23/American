@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.js");
+const { normalizeEmail, serializeUser } = require("../utils/userSecurity");
 
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
 const REFRESH_TOKEN_EXPIRES_IN = "30d";
@@ -15,14 +16,7 @@ const getRefreshCookieOptions = () => ({
   maxAge: THIRTY_DAYS_MS,
 });
 
-const limpiarUsuario = (user) => ({
-  _id: user._id,
-  nombre: user.nombre,
-  email: user.email,
-  rol: user.rol,
-  suscrito: user.suscrito,
-  subscriptionEnd: user.subscriptionEnd,
-});
+const limpiarUsuario = serializeUser;
 
 const generarAccessToken = (user) =>
   jwt.sign(
@@ -59,11 +53,45 @@ const clearRefreshCookie = (res) => {
   });
 };
 
+const getBearerToken = (req) => {
+  const [scheme, token] = req.headers.authorization?.split(" ") || [];
+  return scheme === "Bearer" && token ? token : null;
+};
+
+const getLogoutUserId = (req) => {
+  const candidates = [
+    getBearerToken(req),
+    req.cookies?.[REFRESH_COOKIE_NAME],
+  ].filter(Boolean);
+
+  for (const token of candidates) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      if (decoded.type === "access" || decoded.type === "refresh") {
+        return decoded.userId;
+      }
+    } catch {
+      // Logout must still clear the browser cookie even if a token is stale.
+    }
+  }
+
+  return null;
+};
+
+const invalidateLogoutTokens = async (req) => {
+  const userId = getLogoutUserId(req);
+  if (!userId) return;
+
+  await User.updateOne({ _id: userId }, { $inc: { tokenVersion: 1 } });
+};
+
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password +tokenVersion");
 
     if (!user) {
       return res.status(400).json({ message: "El usuario no existe" });
@@ -105,7 +133,7 @@ const refresh = async (req, res) => {
       return res.status(401).json({ message: "Refresh token invalido" });
     }
 
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).select("+tokenVersion");
 
     if (!user || decoded.tokenVersion !== user.tokenVersion) {
       clearRefreshCookie(res);
@@ -129,7 +157,13 @@ const me = async (req, res) => {
   res.json({ user: limpiarUsuario(req.user) });
 };
 
-const logout = async (_req, res) => {
+const logout = async (req, res) => {
+  try {
+    await invalidateLogoutTokens(req);
+  } catch (error) {
+    console.error("Error al invalidar tokens en logout:", error);
+  }
+
   clearRefreshCookie(res);
   res.json({ message: "Sesion cerrada" });
 };

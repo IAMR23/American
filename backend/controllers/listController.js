@@ -1,40 +1,29 @@
-const Playlist = require("../models/Playlist");
+const getUserId = (req) => req.user?._id || req.user?.id;
+const esAdmin = (req) => req.user?.rol === "admin";
+const queryPropia = (req, playlistId) =>
+  esAdmin(req) ? { _id: playlistId } : { _id: playlistId, user: getUserId(req) };
 
-// controllers/listController.js
 function createListController(Model) {
   return {
     async addSong(req, res) {
       try {
         const { songId } = req.body;
-        const userId = req.user.id;
+        const userId = getUserId(req);
 
         if (!songId) {
           return res.status(400).json({ error: "Falta el ID de la canción" });
         }
 
-        let list = await Model.findOne({ user: userId });
-
-        if (!list) {
-          list = new Model({ user: userId, canciones: [] });
-        }
-
-        // Asegura que 'canciones' sea un array
-        list.canciones = list.canciones || [];
-
-        // Verifica si ya existe la canción (conversión segura a string)
-        const yaExiste = list.canciones.some(
-          (id) => id.toString() === songId.toString()
+        const list = await Model.findOneAndUpdate(
+          { user: userId },
+          {
+            $setOnInsert: { user: userId },
+            $addToSet: { canciones: songId },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true },
         );
 
-        if (!yaExiste) {
-          list.canciones.push(songId);
-          await list.save();
-          return res.status(200).json({ mensaje: "Canción agregada", list });
-        } else {
-          return res
-            .status(200)
-            .json({ mensaje: "La canción ya está en la lista", list });
-        }
+        return res.status(200).json({ mensaje: "Canción agregada", list });
       } catch (error) {
         console.error("Error en addSong:", error);
         return res.status(500).json({ error: "Error al agregar la canción" });
@@ -43,69 +32,74 @@ function createListController(Model) {
 
     async removeSong(req, res) {
       const { playlistId, songId } = req.params;
+
       try {
-        const playlist = await Playlist.findById(playlistId);
-        if (!playlist)
+        const playlist = await Model.findOne(queryPropia(req, playlistId));
+
+        if (!playlist) {
           return res.status(404).json({ message: "Playlist no encontrada" });
+        }
 
         playlist.canciones = playlist.canciones.filter(
-          (id) => id.toString() !== songId
+          (id) => id.toString() !== songId,
         );
         await playlist.save();
 
-        res.status(200).json({ message: "Canción eliminada", playlist });
+        return res.status(200).json({ message: "Canción eliminada", playlist });
       } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error del servidor" });
+        return res.status(500).json({ error: "Error del servidor" });
       }
     },
+
     async getList(req, res) {
-      const userId = req.params.userId;
+      const userId = getUserId(req);
       const list = await Model.findOne({ user: userId }).populate("canciones");
       res.status(200).json(list || { canciones: [] });
     },
 
     async clearList(req, res) {
-      const userId = req.params.userId;
+      const userId = getUserId(req);
       const list = await Model.findOne({ user: userId });
+
       if (list) {
         list.canciones = [];
         await list.save();
       }
+
       res.status(200).json({ message: "Lista vaciada" });
     },
 
-    //Estos son los del playlist
-
     async createPlaylist(req, res) {
       const { nombre } = req.body;
-      const userId = req.user.id;
+      const userId = getUserId(req);
+
       if (!nombre) {
         return res.status(400).json({ error: "El nombre es obligatorio" });
       }
 
       try {
-        const existe = await Playlist.findOne({ user: userId, nombre });
+        const existe = await Model.findOne({ user: userId, nombre });
         if (existe) {
           return res
             .status(400)
             .json({ error: "Ya existe una playlist con ese nombre" });
         }
 
-        const nueva = new Playlist({ user: userId, nombre, canciones: [] });
+        const nueva = new Model({ user: userId, nombre, canciones: [] });
         await nueva.save();
-        res.status(201).json(nueva);
+        return res.status(201).json(nueva);
       } catch (err) {
-        console.error("Error en createPlaylist:", err); // 👈 añade esto
-        res.status(500).json({ error: "Error al crear la playlist" });
+        console.error("Error en createPlaylist:", err);
+        return res.status(500).json({ error: "Error al crear la playlist" });
       }
     },
 
     async getUserPlaylists(req, res) {
       try {
-        const userId = req.user._id; // Aquí obtienes el ID del usuario autenticado
-        const playlists = await Playlist.find({ user: userId }).populate(
-          "canciones"
+        const userId = getUserId(req);
+        const playlists = await Model.find({ user: userId }).populate(
+          "canciones",
         );
         res.status(200).json(playlists);
       } catch (error) {
@@ -115,24 +109,15 @@ function createListController(Model) {
     },
 
     async getUserPlaylistsParams(req, res) {
-      const userId = req.params.userId || req.user.id;
-
-      try {
-        const playlists = await Playlist.find({ user: userId }).populate(
-          "canciones"
-        );
-        res.status(200).json(playlists);
-      } catch (error) {
-        console.error("Error al obtener las playlists del usuario:", error);
-        res.status(500).json({ error: "Error al obtener las playlists" });
-      }
+      return this.getUserPlaylists(req, res);
     },
 
     async getCancionesDePlaylist(req, res) {
       const { playlistId } = req.params;
+
       try {
-        const playlist = await Playlist.findById(playlistId).populate(
-          "canciones"
+        const playlist = await Model.findOne(queryPropia(req, playlistId)).populate(
+          "canciones",
         );
 
         if (!playlist) {
@@ -140,14 +125,15 @@ function createListController(Model) {
         }
 
         res.status(200).json({
-          nombre: playlist.nombre, // Añade el nombre de la playlist
-          canciones: playlist.canciones, // Canciones pobladas
+          nombre: playlist.nombre,
+          canciones: playlist.canciones,
         });
       } catch (error) {
         console.error("Error al obtener canciones del playlist:", error);
         res.status(500).json({ error: "Error del servidor" });
       }
     },
+
     async addCancionAPlaylist(req, res) {
       const { playlistId } = req.params;
       const { songId } = req.body;
@@ -157,14 +143,13 @@ function createListController(Model) {
       }
 
       try {
-        const playlist = await Playlist.findById(playlistId);
+        const playlist = await Model.findOne(queryPropia(req, playlistId));
         if (!playlist) {
           return res.status(404).json({ error: "Playlist no encontrada" });
         }
 
-        // Verificar si la canción ya existe en el playlist
         const yaExiste = playlist.canciones.some(
-          (id) => id.toString() === songId.toString()
+          (id) => id.toString() === songId.toString(),
         );
 
         if (yaExiste) {
@@ -182,23 +167,18 @@ function createListController(Model) {
         res.status(500).json({ error: "Error del servidor" });
       }
     },
+
     async deletePlaylist(req, res) {
       const { playlistId } = req.params;
-      const userId = req.user.id;
 
       try {
-        // Buscar la playlist y asegurarse que pertenece al usuario
-        const playlist = await Playlist.findOne({
-          _id: playlistId,
-          user: userId,
-        });
+        const playlist = await Model.findOne(queryPropia(req, playlistId));
 
         if (!playlist) {
           return res.status(404).json({ error: "Playlist no encontrada" });
         }
 
-        // Eliminar la playlist
-        await Playlist.deleteOne({ _id: playlistId });
+        await Model.deleteOne({ _id: playlistId });
 
         res.status(200).json({ message: "Playlist eliminada correctamente" });
       } catch (error) {

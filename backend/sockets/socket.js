@@ -35,7 +35,6 @@ const initSockets = (io) => {
       };
 
       socket.emit("subscriptionInactive", payload);
-      socket.emit("error", SUBSCRIPTION_INACTIVE_MESSAGE);
     };
 
     const validarAccesoSocket = async () => {

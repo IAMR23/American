@@ -3,31 +3,25 @@ const { createOrder, captureOrder } = require("../paypal");
 const { default: axios } = require("axios");
 const Producto = require("../models/Producto");
 const Plan = require("../models/Plan");
+const { authenticate, isAdmin } = require("../middleware/authMiddleware");
+const {
+  getActivePlansForProduct,
+  getPublicProductsWithActivePlans,
+  serializePlan,
+} = require("../services/paypalSubscriptionService");
+const { generateAccessToken } = require("../paypal");
 const router = express.Router();
 
 const API_PAYPAL = process.env.PAYPAL_API
 
+const INTERVAL_DAYS = {
+  DAY: 1,
+  WEEK: 7,
+  MONTH: 30,
+  YEAR: 365,
+};
 
-async function generateAccessToken() {
-
-  const auth = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
-  ).toString("base64");
-
-  const res = await fetch(`${API_PAYPAL}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  const data = await res.json();
-  return data.access_token;
-}
-
-router.post("/crear-producto", async (req, res) => {
+router.post("/crear-producto", authenticate, isAdmin, async (req, res) => {
   try {
     const { name, description, type = "SERVICE", category = "SOFTWARE" } = req.body;
 
@@ -67,7 +61,17 @@ router.post("/crear-producto", async (req, res) => {
 
     await nuevoProducto.save();
 
-    res.status(201).json({ message: "Producto creado y guardado con éxito", producto: nuevoProducto });
+    res.status(201).json({
+      message: "Producto creado y guardado con exito",
+      producto: {
+        paypalProductId: nuevoProducto.paypalProductId,
+        name: nuevoProducto.name,
+        description: nuevoProducto.description,
+        type: nuevoProducto.type,
+        category: nuevoProducto.category,
+        create_time: nuevoProducto.create_time,
+      },
+    });
   } catch (error) {
     console.error("Error al crear producto:", error?.response?.data || error.message);
     res.status(500).json({ error: " producto en PayPal" });
@@ -76,7 +80,7 @@ router.post("/crear-producto", async (req, res) => {
 
 router.get("/producto-local", async (req, res) => {
   try {
-    const productos = await Producto.find().sort({ create_time: -1 }); // ordena por los más recientes
+    const productos = await getPublicProductsWithActivePlans();
     res.status(200).json(productos);
   } catch (error) {
     console.error("Error al obtener productos:", error.message);
@@ -85,7 +89,7 @@ router.get("/producto-local", async (req, res) => {
 });
 
 
-router.get("/productos", async (req, res) => {
+router.get("/productos", authenticate, isAdmin, async (req, res) => {
   try {
     const token = await generateAccessToken(); // Tu función para obtener el access_token
 
@@ -107,13 +111,28 @@ router.get("/productos", async (req, res) => {
   }
 });
 
-router.post("/producto/:productId/plan", async (req, res) => {
+router.post("/producto/:productId/plan", authenticate, isAdmin, async (req, res) => {
   try {
     const { productId } = req.params;
     const { nombre, descripcion, precio, interval_unit, interval_count } = req.body;
 
-    if (!nombre || !descripcion || !precio || !interval_unit || !interval_count) {
+    const parsedPrice = Number(precio);
+    const parsedIntervalCount = Number(interval_count);
+
+    if (!nombre || !descripcion || !parsedPrice || !interval_unit || !parsedIntervalCount) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
+    }
+
+    if (!INTERVAL_DAYS[interval_unit]) {
+      return res.status(400).json({ error: "Unidad de intervalo invalida" });
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      return res.status(400).json({ error: "Precio invalido" });
+    }
+
+    if (!Number.isInteger(parsedIntervalCount) || parsedIntervalCount < 1) {
+      return res.status(400).json({ error: "Intervalo invalido" });
     }
 
     const accessToken = await generateAccessToken();
@@ -129,14 +148,14 @@ router.post("/producto/:productId/plan", async (req, res) => {
           {
             frequency: {
               interval_unit,       // <-- AHORA VIENE DEL FRONT
-              interval_count,      // <-- AHORA VIENE DEL FRONT
+              interval_count: parsedIntervalCount,
             },
             tenure_type: "REGULAR",
             sequence: 1,
             total_cycles: 0,       // 0 = renovación infinita
             pricing_scheme: {
               fixed_price: {
-                value: precio.toFixed(2),
+                value: parsedPrice.toFixed(2),
                 currency_code: "USD",
               },
             },
@@ -158,8 +177,33 @@ router.post("/producto/:productId/plan", async (req, res) => {
     );
 
     const planData = planResponse.data;
+    const planLocal = await Plan.findOneAndUpdate(
+      { paypalPlanId: planData.id },
+      {
+        $set: {
+          paypalPlanId: planData.id,
+          productId,
+          nombre,
+          descripcion,
+          precio: parsedPrice,
+          duracionDias: INTERVAL_DAYS[interval_unit] * parsedIntervalCount,
+          intervalUnit: interval_unit,
+          intervalCount: parsedIntervalCount,
+          currency: "USD",
+          estado: planData.status || "CREATED",
+          create_time: planData.create_time
+            ? new Date(planData.create_time)
+            : new Date(),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
 
-    res.status(201).json({ message: "Plan creado con éxito", plan: planData });
+    res.status(201).json({
+      message: "Plan creado con exito",
+      plan: serializePlan(planLocal),
+      paypalStatus: planData.status,
+    });
 
   } catch (error) {
     console.error("Error al crear plan:", error?.response?.data || error.message);
@@ -189,34 +233,23 @@ router.get("/planes/:productId", async (req, res) => {
   const { productId } = req.params;
 
   try {
-    const accessToken = await generateAccessToken();
-
-    // Obtener lista básica de planes para el producto
-    const response = await axios.get(`${API_PAYPAL}/v1/billing/plans`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      params: {
-        product_id: productId,
-        page_size: 20
-      }
-    });
-
-    const planesBasicos = response.data.plans || [];
-
-    // Obtener detalles completos de cada plan en paralelo
-    const planesConDetalle = await Promise.all(
-      planesBasicos.map(async (plan) => {
-        const detalle = await getPlanDetalle(plan.id, accessToken);
-        return detalle || plan; // Si falla, devuelve plan básico
-      })
-    );
-
-    res.json(planesConDetalle);
+    const planesActivos = await getActivePlansForProduct(productId);
+    res.json(planesActivos);
   } catch (error) {
     console.error("Error al obtener planes:", error.response?.data || error.message);
     res.status(500).json({ error: "No se pudieron obtener los planes del producto." });
+  }
+});
+
+router.get("/admin/planes/:productId", authenticate, isAdmin, async (req, res) => {
+  try {
+    const planes = await Plan.find({ productId: req.params.productId })
+      .sort({ create_time: -1 })
+      .lean();
+    res.json(planes.map(serializePlan));
+  } catch (error) {
+    console.error("Error al obtener planes admin:", error.response?.data || error.message);
+    res.status(500).json({ error: "No se pudieron obtener los planes." });
   }
 });
 

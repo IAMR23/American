@@ -9,10 +9,15 @@ import { getToken } from "../utils/auth";
 import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/masreproducidas`;
+const LIMITE_COLA_LOCAL = 6;
+const MENSAJE_LIMITE_COLA_LOCAL =
+  "Solo se puede agregar maximo 6 canciones. Suscribete para agregar mas canciones !!!";
 
 export default function VideoCarousel({
   accionesDeshabilitadas = false,
   onPlaySolo,
+  onFirstQueueSongAdded,
+  tieneAccesoKaraoke = false,
 }) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
@@ -25,14 +30,16 @@ export default function VideoCarousel({
   const [toastMsg, setToastMsg] = useState("");
 
   const next = () => {
+    if (!videos.length) return;
     setIndice((prev) => (prev + moveBy) % videos.length);
   };
 
   const prev = () => {
+    if (!videos.length) return;
     setIndice((prev) => (prev - moveBy + videos.length) % videos.length);
   };
 
-  const { addToQueue, playNowQueue, cola, setCola, currentIndex } =
+  const { addToQueue, cola, setCola, setCurrentIndex } =
     useQueueContext();
 
   // Autenticación
@@ -63,15 +70,67 @@ export default function VideoCarousel({
     await axios.post(`${API_URL}/song/${id}/reproducir`);
   };
 
+  const registrarReproduccion = (id) => {
+    masReproducida(id).catch((err) => {
+      console.warn("No se pudo registrar la reproduccion:", err.response?.data || err);
+    });
+  };
+
+  const normalizarCancion = (cancion) => ({
+    _id: cancion._id,
+    titulo: cancion.titulo,
+    artista: cancion.artista,
+    numero: cancion.numero,
+    videoUrl: cancion.videoUrl,
+  });
+
+  const agregarAColaLocal = (cancion, reproducirAhora = false) => {
+    const cancionNormalizada = normalizarCancion(cancion);
+    const colaActual = Array.isArray(cola) ? cola : [];
+    const colaSinDuplicado = colaActual.filter(
+      (item) => String(item?._id) !== String(cancionNormalizada._id),
+    );
+
+    if (
+      !tieneAccesoKaraoke &&
+      !reproducirAhora &&
+      colaSinDuplicado.length >= LIMITE_COLA_LOCAL
+    ) {
+      return null;
+    }
+
+    if (reproducirAhora) {
+      setCurrentIndex?.(0);
+      setCola([cancionNormalizada, ...colaSinDuplicado].slice(0, LIMITE_COLA_LOCAL));
+      return 0;
+    }
+
+    if (!colaSinDuplicado.length) {
+      setCurrentIndex?.(0);
+    }
+
+    setCola([...colaSinDuplicado, cancionNormalizada]);
+    return colaSinDuplicado.length;
+  };
+
   const fetchVideos = async () => {
     try {
       const headers = isAuthenticated
         ? { Authorization: `Bearer ${getToken()}` }
         : {};
       const res = await axios.get(SONG_URL, { headers });
-      setVideos(res.data.canciones || res.data);
+      const payload = res.data;
+      const data = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.canciones)
+          ? payload.canciones
+          : [];
+
+      setVideos(data);
+      setIndice(0);
     } catch (err) {
       console.error("Error al cargar videos", err);
+      setVideos([]);
     }
   };
 
@@ -83,9 +142,27 @@ export default function VideoCarousel({
     const agregarACola = async (songId) => {
     try {
       const roomId = localStorage.getItem("roomId");
+      const cancionLocal = videos.find((v) => v._id === songId);
+      const colaEstabaVacia = !Array.isArray(cola) || cola.length === 0;
 
-      if (!roomId) {
-        setToastMsg("❌ No hay sala activa");
+      if (!tieneAccesoKaraoke || !isAuthenticated || !roomId) {
+        if (cancionLocal) {
+          const indexAgregado = agregarAColaLocal(cancionLocal);
+
+          if (indexAgregado == null) {
+            setToastMsg(MENSAJE_LIMITE_COLA_LOCAL);
+            return;
+          }
+
+          if (colaEstabaVacia) {
+            onFirstQueueSongAdded?.();
+          }
+
+          setToastMsg("✅ Canción agregada a la cola");
+          return;
+        }
+
+        setToastMsg("No se encontró la canción");
         return;
       }
 
@@ -94,7 +171,7 @@ export default function VideoCarousel({
       if (isAuthenticated) {
         res = await axios.post(
           `${API_URL}/t/cola/add`,
-          { userId, songId, roomId }, // 🔥 AQUÍ
+          { songId, roomId },
           { headers: { Authorization: `Bearer ${getToken()}` } },
         );
       } else {
@@ -104,7 +181,7 @@ export default function VideoCarousel({
         );
       }
 
-      const cancion = res.data.cancion || videos.find((v) => v._id === songId);
+      const cancion = res.data.cancion || cancionLocal;
 
       if (!cancion) {
         setToastMsg("No se encontró la canción");
@@ -119,9 +196,29 @@ export default function VideoCarousel({
         videoUrl: cancion.videoUrl,
       });
 
+      if (colaEstabaVacia) {
+        onFirstQueueSongAdded?.();
+      }
+
       setToastMsg("✅ Canción agregada a la cola");
     } catch (err) {
       console.error("Error al agregar a cola:", err.response?.data || err);
+      const cancionLocal = videos.find((v) => v._id === songId);
+      if (cancionLocal && err.response?.status === 403) {
+        const indexAgregado = agregarAColaLocal(cancionLocal);
+
+        if (indexAgregado == null) {
+          setToastMsg(MENSAJE_LIMITE_COLA_LOCAL);
+          return;
+        }
+
+        if (!Array.isArray(cola) || cola.length === 0) {
+          onFirstQueueSongAdded?.();
+        }
+
+        setToastMsg("✅ Canción agregada a la cola");
+        return;
+      }
       setToastMsg("❌ No se pudo agregar la canción");
     }
   };
@@ -144,16 +241,24 @@ export default function VideoCarousel({
         existingMedia.currentTime = 0;
       }
 
-      // Insertar en cola backend en la posición exacta
-      await axios.post(
-        `${API_URL}/t/cola/play-now`,
-        { roomId, songId: video._id },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      if (roomId) {
+        await axios.post(
+          `${API_URL}/t/cola/play-now`,
+          { roomId, songId: video._id },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } else {
+        agregarAColaLocal(video, true);
+      }
 
       setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
     } catch (err) {
       console.error(err);
+      if (err.response?.status === 403) {
+        agregarAColaLocal(video, true);
+        setToastMsg(`▶️ Reproduciendo "${video.titulo}" ahora`);
+        return;
+      }
       setToastMsg("❌ No se pudo reproducir la canción");
     }
   };
@@ -198,22 +303,22 @@ export default function VideoCarousel({
 
                   <button
                     className="btn-list"
-                    onClick={async () => {
-                      await masReproducida(video._id);
+                    onClick={() => {
+                      registrarReproduccion(video._id);
                       agregarACola(video._id);
                     }}
                     title="Agregar a cola"
-                    disabled={accionesDeshabilitadas || !isAuthenticated}
+                    disabled={accionesDeshabilitadas}
                   >
                     <img src="./mas.png" alt="" width={"40px"} />
                   </button>
 
                   <button
                     className="btn-play"
-                    onClick={async () => {
+                    onClick={() => {
                       onPlaySolo?.();
-                      await masReproducida(video._id);
-                      await playNow(video);
+                      registrarReproduccion(video._id);
+                      playNow(video);
                     }}
                     title="Reproducir ahora"
                     disabled={accionesDeshabilitadas || !isAuthenticated}

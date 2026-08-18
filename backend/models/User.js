@@ -1,25 +1,22 @@
 const mongoose = require("mongoose");
 
-const passwordRegex = /^.{6,}$/;
-
 const UsuarioSchema = new mongoose.Schema(
   {
-    nombre: String,
+    nombre: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       unique: true,
       required: true,
+      trim: true,
+      lowercase: true,
     },
     password: {
       type: String,
       required: true,
-      validate: {
-        validator: function (value) {
-          return passwordRegex.test(value);
-        },
-        message:
-          "La contraseña debe tener mínimo 6 caracteres.",
-      },
+      select: false,
     },
 
     rol: {
@@ -44,27 +41,50 @@ const UsuarioSchema = new mongoose.Schema(
       default: null,
     },
 
+    subscriptionStatus: {
+      type: String,
+      default: "INACTIVE",
+    },
+
+    subscriptionPlanId: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
     paypalSubscriptionID: {
       type: String,
       default: null,
+      select: false,
     },
     resetToken: {
       type: String,
       default: null,
+      select: false,
     },
 
     resetTokenExpire: {
       type: Date,
       default: null,
+      select: false,
     },
 
-  tokenVersion: {
-    type: Number,
-    default: 0
-  }
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
   },
 
   { timestamps: true }
+);
+
+UsuarioSchema.index(
+  { paypalSubscriptionID: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { paypalSubscriptionID: { $type: "string" } },
+  },
 );
 
 module.exports = mongoose.model("Usuario", UsuarioSchema);

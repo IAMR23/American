@@ -3,14 +3,16 @@ const router = express.Router();
 const cancionController = require("../controllers/cancionController");
 const {
   authenticate,
+  isAdmin,
   verificarHostSalaConSuscripcionActiva,
   verificarSuscripcionActiva,
 } = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
 
 const protegerPremium = [authenticate, verificarSuscripcionActiva];
+const protegerAdmin = [authenticate, isAdmin];
 
-router.post("/", ...protegerPremium, cancionController.crearCancion);
+router.post("/", ...protegerAdmin, cancionController.crearCancion);
 router.get("/", ...protegerPremium, cancionController.listarCanciones);
 router.get("/numero", ...protegerPremium, cancionController.listarCancionesNumero);
 router.get("/ultsubidas", ...protegerPremium, cancionController.listarCancionesUltimasRecientes);
@@ -38,8 +40,8 @@ router.get("/masreproducidas", async (req, res) => {
 router.get("/default/all", ...protegerPremium, cancionController.getVideosDefaultAll);
 router.get("/default" , cancionController.getVideoDefault)
 router.get("/:id", ...protegerPremium, cancionController.obtenerCancion);
-router.put("/:id", ...protegerPremium, cancionController.actualizarCancion);
-router.delete("/:id", ...protegerPremium, cancionController.eliminarCancion);
+router.put("/:id", ...protegerAdmin, cancionController.actualizarCancion);
+router.delete("/:id", ...protegerAdmin, cancionController.eliminarCancion);
 
 router.post("/:id/reproducir", ...protegerPremium, async (req, res) => {
   try { 
