@@ -88,6 +88,40 @@
   left: 0;
 }
 
+.player-subscribe-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 7;
+  width: clamp(180px, 34vw, 420px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.player-subscribe-prompt img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.58));
+}
+
+.player-subscribe-prompt:hover img {
+  transform: scale(1.03);
+}
+
+.player-subscribe-prompt:active img {
+  transform: scale(0.98);
+}
+
+.player-subscribe-prompt:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+
 .concurso-ranking-overlay {
   position: absolute;
   top: 30%;

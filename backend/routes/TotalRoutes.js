@@ -4,10 +4,11 @@ const router = express.Router();
 const Favorito = require("../models/Favorito");
 const Playlist = require("../models/Playlist");
 const Cola = require("../models/Cola");
+const User = require("../models/User");
 const MesaSala = require("../models/MesaSala");
 const Room = require("../models/Room");
 const createListController = require("../controllers/listController");
-const { authenticate } = require("../middleware/authMiddleware");
+const { authenticate, optionalAuthenticate } = require("../middleware/authMiddleware");
 const Cancion = require("../models/Cancion");
 const Puntaje = require("../models/Puntaje");
 const { generarColaModoMesa } = require("../services/modoMesaService");
@@ -16,6 +17,38 @@ const { generarColaModoConcurso } = require("../services/modoConcursoService");
 const favoritoController = createListController(Favorito);
 const playlistController = createListController(Playlist);
 const colaController = createListController(Cola);
+const FREE_QUEUE_LIMIT = 6;
+
+const isSubscriptionActive = (user) => {
+  if (!user) return false;
+  if (user.rol === "admin") return true;
+
+  const now = new Date();
+  const start = user.subscriptionStart ? new Date(user.subscriptionStart) : null;
+  const end = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+
+  return Boolean(
+    user.suscrito &&
+      start &&
+      end &&
+      !Number.isNaN(start.getTime()) &&
+      !Number.isNaN(end.getTime()) &&
+      now >= start &&
+      now <= end,
+  );
+};
+
+const validateFreeQueueLimit = (user, canciones = []) => {
+  if (!user || isSubscriptionActive(user) || canciones.length <= FREE_QUEUE_LIMIT) {
+    return null;
+  }
+
+  return {
+    error: "Para seguir cantando, elige un plan.",
+    freeLimitReached: true,
+    limit: FREE_QUEUE_LIMIT,
+  };
+};
 
 const emitirColaActualizada = async (req, roomId) => {
   const colaActualizada = await Cola.findOne({ roomId }).populate("canciones");
@@ -1442,6 +1475,11 @@ router.post("/cola/add", authenticate, async (req, res) => {
 
     // 🟢 Crear cola si no existe
     if (!cola) {
+      const limitError = validateFreeQueueLimit(req.user, [songId]);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
+
       cola = await Cola.create({
         roomId,
      //   user: userId, // opcional (host o quien agrega)
@@ -1459,6 +1497,11 @@ router.post("/cola/add", authenticate, async (req, res) => {
           : canciones.length;
 
       canciones.splice(insertPos, 0, songId);
+
+      const limitError = validateFreeQueueLimit(req.user, canciones);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
 
       await Cola.updateOne(
         { roomId },
@@ -1495,7 +1538,8 @@ router.post("/cola/add", authenticate, async (req, res) => {
  
 router.post("/cola/add2", async (req, res) => {
   try {
-    const { songId, roomId, position } = req.body;
+    const { songId, roomId, position, userId } = req.body;
+    const user = userId ? await User.findById(userId) : null;
 
     if (!roomId) {
       return res.status(400).json({ error: "roomId requerido" });
@@ -1507,6 +1551,11 @@ router.post("/cola/add2", async (req, res) => {
 
     // 🟢 Crear cola si no existe
     if (!cola) {
+      const limitError = validateFreeQueueLimit(user, [songId]);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
+
       cola = await Cola.create({
         roomId,
      //   user: userId, // opcional (host o quien agrega)
@@ -1524,6 +1573,11 @@ router.post("/cola/add2", async (req, res) => {
           : canciones.length;
 
       canciones.splice(insertPos, 0, songId);
+
+      const limitError = validateFreeQueueLimit(user, canciones);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
 
       await Cola.updateOne(
         { roomId },
@@ -1558,9 +1612,10 @@ router.post("/cola/add2", async (req, res) => {
 });
 
 
-router.post("/cola/play-now", async (req, res) => {
+router.post("/cola/play-now", optionalAuthenticate, async (req, res) => {
   try {
-    const { songId, roomId } = req.body;
+    const { songId, roomId, userId } = req.body;
+    const user = req.user || (userId ? await User.findById(userId) : null);
 
     if (!roomId) {
       return res.status(400).json({ error: "roomId requerido" });
@@ -1572,6 +1627,11 @@ router.post("/cola/play-now", async (req, res) => {
 
     // Crear cola si no existe
     if (!cola) {
+      const limitError = validateFreeQueueLimit(user, [songId]);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
+
       cola = await Cola.create({
         roomId,
         canciones: [songId],
@@ -1586,6 +1646,11 @@ router.post("/cola/play-now", async (req, res) => {
       const insertPos = cola.currentIndex || 0;
 
       canciones.splice(insertPos, 0, songId);
+
+      const limitError = validateFreeQueueLimit(user, canciones);
+      if (limitError) {
+        return res.status(403).json(limitError);
+      }
 
       await Cola.updateOne(
         { roomId },

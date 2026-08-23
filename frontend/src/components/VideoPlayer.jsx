@@ -98,6 +98,8 @@ export default function VideoPlayer({
   requestedIndex = null,
   onRequestedIndexHandled,
   onLimpiarConcurso,
+  showSubscribePrompt = false,
+  onSubscribePromptClick,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
 
@@ -1115,6 +1117,20 @@ export default function VideoPlayer({
                 : 1,
           }}
         />
+
+        {showSubscribePrompt && (
+          <button
+            type="button"
+            className="player-subscribe-prompt"
+            onClick={onSubscribePromptClick}
+            aria-label="Ver planes para seguir cantando"
+          >
+            <img
+              src="/para_seguir_cantando-Photoroom.png"
+              alt="Para seguir cantando"
+            />
+          </button>
+        )}
 
         {showControls && (
           <div

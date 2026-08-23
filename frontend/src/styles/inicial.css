@@ -110,10 +110,6 @@ body {
 }
 
 .home-user-panel--corner {
-  position: absolute;
-  top: clamp(10px, 2vw, 22px);
-  right: clamp(10px, 2vw, 28px);
-  z-index: 30;
   width: 280px;
   max-width: min(280px, 38vw);
   pointer-events: none;
@@ -132,13 +128,19 @@ body {
 
 .home-main-row {
   width: 100%;
-  align-items: stretch !important;
 }
 
 .home-sidebar {
   min-width: 0;
-  align-self: stretch;
-  justify-content: center !important;
+}
+
+.home-sidebar-actions {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 .home-center-column {
@@ -276,16 +278,16 @@ body {
 
 @media (max-width: 991.98px) {
   .home-sidebar {
-    align-self: auto;
     flex-direction: row !important;
     flex-wrap: wrap;
     justify-content: center !important;
   }
 
-  .home-shell:has(.home-user-panel--corner)
-    .home-main-row
-    > .home-sidebar:last-child {
-    margin-top: clamp(90px, 15vw, 145px);
+  .home-user-panel--corner {
+    position: static;
+    max-width: min(280px, 92vw);
+    margin-left: auto;
+    margin-right: 0;
   }
 
   .home-content {
@@ -299,12 +301,44 @@ body {
 }
 
 @media (min-width: 992px) {
+  .home-main-row {
+    align-items: stretch;
+  }
+
+  .home-sidebar {
+    position: relative;
+    align-self: stretch;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .home-sidebar-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
   .home-user-panel {
     max-width: 260px;
   }
 
   .home-user-panel--corner {
+    position: absolute;
+    top: clamp(10px, 2vw, 22px);
+    right: clamp(10px, 2vw, 28px);
+    z-index: 30;
     max-width: 280px;
+  }
+
+  .home-user-panel-desktop {
+    width: 280px;
   }
 }
 

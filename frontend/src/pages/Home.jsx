@@ -78,9 +78,18 @@ export default function Home() {
     clearQueue,
   } = useQueueContext();
 
-  const { playlistsPropia, suscrito } = usePlaylists(userId);
+  const { playlistsPropia } = usePlaylists(userId);
   const modoMesaEncendido = modoMesa || modoMesaActivo;
   const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
+  const canUseSystem = Boolean(auth && token);
+  const isFreeUser = Boolean(canUseSystem && userRole !== "admin" && !isSubscribed);
+  const shouldShowFreeSubscribePrompt = Boolean(
+    isFreeUser &&
+      cola.length > 0 &&
+      !modoMesaEncendido &&
+      !modoConcursoEncendido &&
+      currentIndex >= 5,
+  );
 
   const handleModoMesaChange = useCallback((activo) => {
     setModoMesa(activo);
@@ -124,6 +133,7 @@ export default function Home() {
         setAuth(false);
         setUserId(null);
         setUserRole(null);
+        setUser(null);
         return;
       }
 
@@ -135,6 +145,7 @@ export default function Home() {
           setAuth(false);
           setUserId(null);
           setUserRole(null);
+          setUser(null);
         } else {
           setAuth(true);
           setUserId(decodedToken.userId);
@@ -146,6 +157,7 @@ export default function Home() {
         setAuth(false);
         setUserId(null);
         setUserRole(null);
+        setUser(null);
       }
     };
 
@@ -239,23 +251,6 @@ export default function Home() {
 
     verificarSuscripcion();
   }, [auth, token]);
-
-  useEffect(() => {
-    if (user === null) return;
-
-    if (user.rol === "admin") return;
-
-    const vigente =
-      user.suscrito &&
-      user.subscriptionEnd &&
-      new Date(user.subscriptionEnd) > new Date();
-
-    if (!vigente) {
-      setSeccionActiva("suscribir");
-    } else {
-      setSeccionActiva("video");
-    }
-  }, [user]);
 
   const ensureActiveRoom = useCallback(async () => {
     try {
@@ -548,8 +543,8 @@ export default function Home() {
     setShouldFullscreen(true);
   };
 
-  const handleRegisterSuccess = () => {
-    setSeccionActiva("suscribir");
+  const handleRegisterSuccess = async () => {
+    await handleLoginSuccess();
   };
 
   const renderContenido = () => {
@@ -653,6 +648,8 @@ export default function Home() {
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onCancionTerminada={handleCancionTerminada}
             onLimpiarConcurso={limpiarConcursoDesdePlayer}
+            showSubscribePrompt={shouldShowFreeSubscribePrompt}
+            onSubscribePromptClick={() => setSeccionActiva("suscribir")}
             onColaTerminada={() => {
               if (!esColaDefault && !modoConcursoEncendido) {
                 clearQueue();
@@ -676,17 +673,19 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        <button
-          type="button"
-          className="home-subscribe-button"
-          onClick={() => setSeccionActiva("suscribir")}
-          aria-label="Ver planes de suscripcion"
-        >
-          <img src="./suscribir-Photoroom.png" alt="Suscribir" />
-        </button>
+        {shouldShowFreeSubscribePrompt && (
+          <button
+            type="button"
+            className="home-subscribe-button"
+            onClick={() => setSeccionActiva("suscribir")}
+            aria-label="Ver planes de suscripcion"
+          >
+            <img src="./suscribir-Photoroom.png" alt="Suscribir" />
+          </button>
+        )}
 
         {user && user.nombre && (
-          <div className="home-user-panel home-user-panel--corner text-center text-white">
+          <div className="home-user-panel home-user-panel--corner home-user-panel-desktop text-center text-white">
             <h3 className="outlined-black home-user-title">Bienvenido:</h3>
 
             <button onClick={() => setSeccionActiva("user")} className="boton0">
@@ -711,8 +710,9 @@ export default function Home() {
         </div>
 
         <div className="container-fluid px-0">
-          <div className="row g-3 align-items-stretch justify-content-center home-main-row">
-            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-center gap-1 home-sidebar">
+          <div className="row g-3 justify-content-center home-main-row">
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center home-sidebar home-sidebar-left">
+              <div className="home-sidebar-actions">
               {getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
@@ -725,7 +725,7 @@ export default function Home() {
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("buscador")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Buscador
               </button>
@@ -733,7 +733,7 @@ export default function Home() {
               <button
                 className="boton2"
                 onClick={() => setSeccionActiva("playlist")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 PlayList
               </button>
@@ -741,7 +741,7 @@ export default function Home() {
               <button
                 className="boton3"
                 onClick={() => navigate("/ultimas-subidas")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Lo último
               </button>
@@ -749,7 +749,7 @@ export default function Home() {
               <button
                 className="boton4"
                 onClick={() => setSeccionActiva("favoritos")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Favoritos
               </button>
@@ -757,7 +757,7 @@ export default function Home() {
               <button
                 onClick={() => navigate("/listaCanciones")}
                 className="boton7"
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Canciones
               </button>
@@ -765,10 +765,11 @@ export default function Home() {
               <button
                 className="boton3"
                 onClick={() => setSeccionActiva("sugerirCanciones")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Sugerir
               </button>
+              </div>
             </div>
 
             <div className="col-12 col-lg-8 home-center-column">
@@ -776,38 +777,10 @@ export default function Home() {
                 {renderContenido()}
               </div>
 
-              <div className="home-bottom-actions">
-                <button
-                  className="boton2"
-                  onClick={() => setSeccionActiva("Celular")}
-                  disabled={!suscrito}
-                >
-                  Celular
-                </button>
-
-                <button
-                  className={`boto home-mode-button ${
-                    modoMesaEncendido ? "boto-activo" : ""
-                  }`}
-                  onClick={() => setSeccionActiva("mesas")}
-                  disabled={!suscrito}
-                >
-                  <img src="./Botonmesas22.png" alt="Mesas" />
-                </button>
-
-                <button
-                  className={`boto home-mode-button ${
-                    modoConcursoEncendido ? "boto-activo" : ""
-                  }`}
-                  onClick={() => setSeccionActiva("concurso")}
-                  disabled={!suscrito || modoCalificacion}
-                >
-                  <img src="./BotonConcurso22.png" alt="Concurso" />
-                </button>
-              </div>
             </div>
 
-            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-center gap-1 home-sidebar">
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center home-sidebar home-sidebar-right">
+              <div className="home-sidebar-actions">
               {!getToken() && (
                 <>
                   <button
@@ -829,13 +802,13 @@ export default function Home() {
               <button
                 className="boton9"
                 onClick={() => setSeccionActiva("listadoPdf")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Listado PDF
               </button>
 
               <button
-                disabled={!suscrito || modoConcursoEncendido}
+                disabled={!canUseSystem || modoConcursoEncendido}
                 onClick={() => {
                   if (modoConcursoEncendido) return;
                   setModoCalificacion((prev) => !prev);
@@ -848,7 +821,7 @@ export default function Home() {
               <button
                 className="boton1"
                 onClick={() => setSeccionActiva("ayuda")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Ayuda
               </button>
@@ -856,7 +829,7 @@ export default function Home() {
               <button
                 className="boton2"
                 onClick={() => navigate("/publicaciones")}
-                disabled={!suscrito}
+                disabled={!canUseSystem}
               >
                 Galería Otros
               </button>
@@ -866,7 +839,38 @@ export default function Home() {
                   Cerrar Sesión
                 </button>
               )}
+              </div>
             </div>
+          </div>
+
+          <div className="home-bottom-actions">
+            <button
+              className="boton2"
+              onClick={() => setSeccionActiva("Celular")}
+              disabled={!canUseSystem}
+            >
+              Celular
+            </button>
+
+            <button
+              className={`boto home-mode-button ${
+                modoMesaEncendido ? "boto-activo" : ""
+              }`}
+              onClick={() => setSeccionActiva("mesas")}
+              disabled={!canUseSystem}
+            >
+              <img src="./Botonmesas22.png" alt="Mesas" />
+            </button>
+
+            <button
+              className={`boto home-mode-button ${
+                modoConcursoEncendido ? "boto-activo" : ""
+              }`}
+              onClick={() => setSeccionActiva("concurso")}
+              disabled={!canUseSystem || modoCalificacion}
+            >
+              <img src="./BotonConcurso22.png" alt="Concurso" />
+            </button>
           </div>
         </div>
 
