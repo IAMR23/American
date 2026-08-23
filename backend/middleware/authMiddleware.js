@@ -42,6 +42,39 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+const optionalAuthenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.type && decoded.type !== "access") {
+      return res.status(401).json({ message: "Token de acceso invalido" });
+    }
+
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(401).json({ message: "Usuario no encontrado" });
+    }
+
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({
+        message: "Sesion expirada. Inicie sesion nuevamente.",
+      });
+    }
+
+    req.user = user;
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: "Token invalido o expirado" });
+  }
+};
+
 // Middleware para verificar que el usuario sea un arrendador (cantante)
 const isPlayer = (req, res, next) => {
   if (req.user && req.user.rol === "cantante") {
@@ -80,9 +113,16 @@ const verificarSuscripcionActiva = async (req, res, next) => {
     }
 
     const ahora = new Date();
+    const inicio = new Date(usuario.subscriptionStart);
     const fin = new Date(usuario.subscriptionEnd);
 
-    if (!usuario.suscrito || ahora > fin) {
+    if (
+      !usuario.suscrito ||
+      Number.isNaN(inicio.getTime()) ||
+      Number.isNaN(fin.getTime()) ||
+      ahora < inicio ||
+      ahora > fin
+    ) {
       return res.status(403).json({ mensaje: "Tu suscripción ha expirado" });
     }
 
@@ -95,6 +135,7 @@ const verificarSuscripcionActiva = async (req, res, next) => {
 
 module.exports = {
   authenticate,
+  optionalAuthenticate,
   isPlayer,
   isAprobado,
   isAdmin,

@@ -676,6 +676,25 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
+        <button
+          type="button"
+          className="home-subscribe-button"
+          onClick={() => setSeccionActiva("suscribir")}
+          aria-label="Ver planes de suscripcion"
+        >
+          <img src="./suscribir-Photoroom.png" alt="Suscribir" />
+        </button>
+
+        {user && user.nombre && (
+          <div className="home-user-panel home-user-panel--corner text-center text-white">
+            <h3 className="outlined-black home-user-title">Bienvenido:</h3>
+
+            <button onClick={() => setSeccionActiva("user")} className="boton0">
+              {user.nombre}
+            </button>
+          </div>
+        )}
+
         <div className="row align-items-center justify-content-center g-2 g-md-3 w-100 home-header">
           <div className="col-3 col-sm-2 col-md-1 d-flex justify-content-center">
             <img src="./icono.png" alt="icono" className="home-icon" />
@@ -689,26 +708,11 @@ export default function Home() {
               className="img-fluid home-logo"
             />
           </div>
-
-          {user && user.nombre && (
-            <div className="col-12 d-flex d-lg-none justify-content-center">
-              <div className="home-user-panel text-center text-white">
-                <h3 className="outlined-black home-user-title">Bienvenido:</h3>
-
-                <button
-                  onClick={() => setSeccionActiva("user")}
-                  className="boton0"
-                >
-                  {user.nombre}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="container-fluid px-0">
-          <div className="row g-3 align-items-start justify-content-center home-main-row">
-            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-start gap-1 home-sidebar">
+          <div className="row g-3 align-items-stretch justify-content-center home-main-row">
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-center gap-1 home-sidebar">
               {getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
@@ -803,24 +807,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-start gap-1 home-sidebar">
-              {user && user.nombre && (
-                <div className="d-none d-lg-flex justify-content-center w-100">
-                  <div className="home-user-panel text-center text-white">
-                    <h3 className="outlined-black home-user-title">
-                      Bienvenido:
-                    </h3>
-
-                    <button
-                      onClick={() => setSeccionActiva("user")}
-                      className="boton0"
-                    >
-                      {user.nombre}
-                    </button>
-                  </div>
-                </div>
-              )}
-
+            <div className="col-12 col-lg-2 d-flex flex-column align-items-center justify-content-center gap-1 home-sidebar">
               {!getToken() && (
                 <>
                   <button

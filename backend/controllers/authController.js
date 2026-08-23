@@ -7,6 +7,8 @@ const REFRESH_TOKEN_EXPIRES_IN = "30d";
 const REFRESH_COOKIE_NAME = "refreshToken";
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const getRefreshCookieOptions = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -63,7 +65,10 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email || "").trim();
+    const user = await User.findOne({
+      email: new RegExp(`^${escapeRegExp(normalizedEmail)}$`, "i"),
+    });
 
     if (!user) {
       return res.status(400).json({ message: "El usuario no existe" });

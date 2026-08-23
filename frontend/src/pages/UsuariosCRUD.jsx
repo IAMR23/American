@@ -4,6 +4,9 @@ import { API_URL } from "../config";
 import { FiSave, FiTrash } from "react-icons/fi";
 import { confirmAction, showError, showSuccess } from "../utils/swalAlerts";
 
+const DEFAULT_PASSWORD = "123456";
+const PASSWORD_MIN_LENGTH = 6;
+
 const UsuariosCrud = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -11,7 +14,7 @@ const UsuariosCrud = () => {
   const [nuevoUsuario, setNuevoUsuario] = useState({
     nombre: "",
     email: "",
-    password: "AmericanKaraoke100.",
+    password: DEFAULT_PASSWORD,
     rol: "cantante",
   });
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
@@ -98,7 +101,7 @@ const UsuariosCrud = () => {
       setNuevoUsuario({
         nombre: "",
         email: "",
-        password: "AmericanKaraoke100.",
+        password: DEFAULT_PASSWORD,
         rol: "cantante",
       });
       fetchUsuarios();
@@ -309,10 +312,11 @@ const UsuariosCrud = () => {
                     <div className="mb-3">
                       <label className="form-label">Nueva Contraseña</label>
                       <input
-                        type="password"
+                        type="text"
                         className="form-control"
-                        placeholder="Dejar vacío para no cambiar"
+                        placeholder="Minimo 6 caracteres"
                         value={usuarioSeleccionado.newPassword}
+                        minLength={PASSWORD_MIN_LENGTH}
                         onChange={(e) =>
                           setUsuarioSeleccionado((prev) => ({
                             ...prev,
@@ -330,7 +334,10 @@ const UsuariosCrud = () => {
                         type="text"
                         className="form-control"
                         value={nuevoUsuario.password}
-                        readOnly
+                        minLength={PASSWORD_MIN_LENGTH}
+                        name="password"
+                        onChange={handleChangeNuevoUsuario}
+                        required
                       />
                     </div>
                   )}

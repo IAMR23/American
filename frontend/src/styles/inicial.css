@@ -55,7 +55,38 @@ body {
 }
 
 .home-shell {
+  position: relative;
   overflow-x: hidden;
+}
+
+.home-subscribe-button {
+  position: absolute;
+  top: clamp(10px, 2vw, 22px);
+  left: clamp(10px, 2vw, 28px);
+  z-index: 20;
+  width: clamp(110px, 14vw, 180px);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.home-subscribe-button img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.32));
+}
+
+.home-subscribe-button:hover img {
+  transform: scale(1.03);
+}
+
+.home-subscribe-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+  border-radius: 12px;
 }
 
 .home-header {
@@ -78,17 +109,36 @@ body {
   max-width: 300px;
 }
 
+.home-user-panel--corner {
+  position: absolute;
+  top: clamp(10px, 2vw, 22px);
+  right: clamp(10px, 2vw, 28px);
+  z-index: 30;
+  width: 280px;
+  max-width: min(280px, 38vw);
+  pointer-events: none;
+}
+
+.home-user-panel--corner .boton0 {
+  pointer-events: auto;
+}
+
 .home-user-title {
-  margin-bottom: -18px;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 2px;
   font-size: clamp(1.1rem, 4vw, 1.75rem);
 }
 
 .home-main-row {
   width: 100%;
+  align-items: stretch !important;
 }
 
 .home-sidebar {
   min-width: 0;
+  align-self: stretch;
+  justify-content: center !important;
 }
 
 .home-center-column {
@@ -226,9 +276,16 @@ body {
 
 @media (max-width: 991.98px) {
   .home-sidebar {
+    align-self: auto;
     flex-direction: row !important;
     flex-wrap: wrap;
     justify-content: center !important;
+  }
+
+  .home-shell:has(.home-user-panel--corner)
+    .home-main-row
+    > .home-sidebar:last-child {
+    margin-top: clamp(90px, 15vw, 145px);
   }
 
   .home-content {
@@ -245,9 +302,17 @@ body {
   .home-user-panel {
     max-width: 260px;
   }
+
+  .home-user-panel--corner {
+    max-width: 280px;
+  }
 }
 
 @media (max-width: 575.98px) {
+  .home-subscribe-button {
+    width: 96px;
+  }
+
   .home-shell {
     min-height: auto !important;
     padding-bottom: 5rem !important;
@@ -257,8 +322,14 @@ body {
     margin-bottom: 0.5rem;
   }
 
+  .home-user-panel--corner {
+    width: min(54vw, 220px);
+    max-width: min(54vw, 220px);
+  }
+
   .home-user-title {
-    margin-bottom: -14px;
+    margin-bottom: 2px;
+    font-size: clamp(1rem, 5vw, 1.25rem);
   }
 
   .queue-title {
