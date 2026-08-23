@@ -10,6 +10,18 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+const getPdfInfo = (filename) => {
+  const filePath = path.join(uploadDir, filename);
+  const stats = fs.statSync(filePath);
+
+  return {
+    file: filename,
+    url: `/uploads/${filename}`,
+    size: stats.size,
+    uploadedAt: stats.mtime,
+  };
+};
+
 router.post("/upload-pdf", (req, res) => {
   uploadPdf.single("archivo")(req, res, function (error) {
     if (error) {
@@ -27,8 +39,8 @@ router.post("/upload-pdf", (req, res) => {
 
     return res.json({
       message: "PDF subido correctamente",
-      file: req.file.filename,
-      url: `/uploads/${req.file.filename}`,
+      ...getPdfInfo(req.file.filename),
+      originalName: req.file.originalname,
     });
   });
 });
@@ -50,12 +62,11 @@ router.get("/ultimo-pdf", async (req, res) => {
       });
     }
 
-    const ultimo = files.sort().reverse()[0];
+    const ultimo = files
+      .map((file) => getPdfInfo(file))
+      .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
 
-    return res.json({
-      file: ultimo,
-      url: `/uploads/${ultimo}`,
-    });
+    return res.json(ultimo);
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener el último PDF",

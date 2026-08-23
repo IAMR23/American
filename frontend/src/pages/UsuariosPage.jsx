@@ -2,20 +2,27 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import {
+  FiAlertCircle,
+  FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
   FiEdit2,
   FiEye,
+  FiEyeOff,
+  FiFilter,
   FiRefreshCw,
   FiSearch,
+  FiShield,
+  FiSliders,
   FiTrash,
   FiUserPlus,
+  FiUsers,
+  FiX,
 } from "react-icons/fi";
 import { showError, showSuccess } from "../utils/swalAlerts";
 import { getToken, getUserId } from "../utils/auth";
 import "./UsuariosPage.css";
 
-const DEFAULT_PASSWORD = "123456";
 const PASSWORD_MIN_LENGTH = 6;
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 const SUBSCRIPTION_FILTERS = [
@@ -34,8 +41,8 @@ const ROLE_FILTERS = [
 const emptyCreateForm = {
   nombre: "",
   email: "",
-  password: DEFAULT_PASSWORD,
-  confirmPassword: DEFAULT_PASSWORD,
+  password: "",
+  confirmPassword: "",
   rol: "cantante",
   assignSubscription: false,
   subscriptionStart: "",
@@ -132,6 +139,39 @@ const getPeriodHint = (user) => {
   return "No asignada";
 };
 
+const getInitials = (name = "") =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "US";
+
+const getPeriodClass = (user) => {
+  const status = getSubscriptionStatus(user);
+  if (status.key === "activa") return "is-success";
+  if (status.key === "vencida") return "is-danger";
+  if (status.key === "programada") return "is-info";
+  return "is-muted";
+};
+
+const getSubscriptionBadgeClass = (key) => {
+  if (key === "activa") return "is-success";
+  if (key === "vencida") return "is-danger";
+  if (key === "programada") return "is-info";
+  return "is-muted";
+};
+
+const SortIndicator = ({ field, sortBy, sortOrder }) => {
+  if (sortBy !== field) return <span className="users-sort-indicator">--</span>;
+  return <span className="users-sort-indicator is-active">{sortOrder === "asc" ? "ASC" : "DESC"}</span>;
+};
+
+const getAriaSort = (field, sortBy, sortOrder) => {
+  if (sortBy !== field) return "none";
+  return sortOrder === "asc" ? "ascending" : "descending";
+};
+
 const getPageItems = (currentPage, totalPages) => {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -185,35 +225,60 @@ const validateBaseUser = (form, { creating = false } = {}) => {
   return errors;
 };
 
-function Modal({ title, subtitle, children, footer, onClose, size = "lg" }) {
+function Modal({ title, subtitle, children, footer, onClose, size = "lg", saving = false }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !saving) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, saving]);
+
+  const requestClose = () => {
+    if (!saving) onClose();
+  };
+
   return (
     <>
-      <div className="modal-backdrop fade show" />
+      <div className="users-modal-backdrop" />
       <div
-        className="modal fade show d-block"
+        className="users-modal-shell"
         tabIndex="-1"
         role="dialog"
         aria-modal="true"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onClose();
+          if (event.target === event.currentTarget) requestClose();
         }}
       >
-        <div className={`modal-dialog modal-dialog-centered modal-${size}`}>
-          <div className="modal-content shadow">
-            <div className="modal-header">
+        <div className={`users-modal users-modal-${size}`}>
+          <div className="users-modal-content">
+            <div className="users-modal-header">
               <div>
-                {subtitle && <div className="text-muted small text-uppercase">{subtitle}</div>}
-                <h5 className="modal-title">{title}</h5>
+                {subtitle && <div className="users-modal-kicker">{subtitle}</div>}
+                <h5 className="users-modal-title">{title}</h5>
               </div>
               <button
                 type="button"
-                className="btn-close"
+                className="users-modal-close"
                 aria-label="Cerrar"
-                onClick={onClose}
-              />
+                onClick={requestClose}
+                disabled={saving}
+              >
+                <FiX aria-hidden="true" />
+              </button>
             </div>
-            <div className="modal-body">{children}</div>
-            {footer && <div className="modal-footer">{footer}</div>}
+            <div className="users-modal-body">{children}</div>
+            {footer && <div className="users-modal-footer">{footer}</div>}
           </div>
         </div>
       </div>
@@ -552,87 +617,112 @@ export default function UsuariosPage() {
   };
 
   const statCards = [
-    { key: "todos", label: "Total de usuarios", value: stats.total },
-    { key: "activa", label: "Suscripciones activas", value: stats.activos },
-    { key: "vencida", label: "Suscripciones vencidas", value: stats.vencidos },
-    { key: "admin", label: "Administradores", value: stats.admins, role: "admin" },
+    {
+      key: "todos",
+      label: "Total de usuarios",
+      value: stats.total,
+      description: `${stats.sinSuscripcion} sin suscripcion`,
+      icon: FiUsers,
+    },
+    {
+      key: "activa",
+      label: "Suscripciones activas",
+      value: stats.activos,
+      description: `${stats.programadas} programadas`,
+      icon: FiCheckCircle,
+    },
+    {
+      key: "vencida",
+      label: "Suscripciones vencidas",
+      value: stats.vencidos,
+      description: "Requieren seguimiento",
+      icon: FiAlertCircle,
+    },
+    {
+      key: "admin",
+      label: "Administradores",
+      value: stats.admins,
+      description: "Acceso al panel",
+      icon: FiShield,
+      role: "admin",
+    },
   ];
 
   return (
-    <div className="users-admin bg-light">
-      <div className="container-xxl py-4">
-        <div className="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+    <div className="users-admin">
+      <div className="users-admin-container">
+        <div className="users-header">
           <div>
-            <p className="text-uppercase text-muted fw-bold small mb-1">Dashboard</p>
-            <h2 className="mb-1">Usuarios</h2>
-            <p className="text-muted mb-0">
+            <p className="users-breadcrumb">Administracion / Usuarios</p>
+            <h1>Usuarios</h1>
+            <p>
               Gestiona cuentas, roles y suscripciones desde un solo modulo.
             </p>
           </div>
-          <button className="btn btn-primary align-self-lg-start" onClick={openCreateModal}>
-            <FiUserPlus className="me-2" />
+          <button className="users-primary-button" onClick={openCreateModal}>
+            <FiUserPlus aria-hidden="true" />
             Crear usuario
           </button>
         </div>
 
-        <div className="row g-3 mb-4">
+        <div className="users-stats-grid">
           {statCards.map((card) => {
+            const Icon = card.icon;
             const selected = card.role
               ? roleFilter === card.role
               : card.key === "todos"
                 ? roleFilter === "todos" && subscriptionFilter === "todos"
                 : subscriptionFilter === card.key;
             return (
-              <div className="col-6 col-xl-3" key={card.label}>
-                <button
-                  type="button"
-                  className={`card users-stat-card w-100 text-start ${selected ? "active" : ""}`}
-                  onClick={() => {
-                    if (card.role) {
-                      changeRoleFilter(card.role);
-                      changeSubscriptionFilter("todos");
-                    } else {
-                      changeRoleFilter("todos");
-                      changeSubscriptionFilter(card.key);
-                    }
-                  }}
-                >
-                  <span className="text-muted small text-uppercase fw-bold">{card.label}</span>
-                  <strong className="display-6">{card.value}</strong>
-                </button>
-              </div>
+              <button
+                type="button"
+                className={`users-stat-card ${selected ? "is-active" : ""}`}
+                aria-pressed={selected}
+                key={card.label}
+                onClick={() => {
+                  if (card.role) {
+                    changeRoleFilter(card.role);
+                    changeSubscriptionFilter("todos");
+                  } else {
+                    changeRoleFilter("todos");
+                    changeSubscriptionFilter(card.key);
+                  }
+                }}
+              >
+                <span className="users-stat-icon">
+                  <Icon aria-hidden="true" />
+                </span>
+                <span className="users-stat-copy">
+                  <span className="users-stat-label">{card.label}</span>
+                  <strong className="users-stat-value">{card.value}</strong>
+                  <span className="users-stat-description">{card.description}</span>
+                </span>
+              </button>
             );
           })}
         </div>
 
-        <div className="card shadow-sm mb-3">
-          <div className="card-body">
-            <div className="row g-3 align-items-end">
-              <div className="col-12 col-xl-4">
-                <label className="form-label" htmlFor="user-search">
-                  Buscar por nombre o correo
-                </label>
-                <div className="input-group">
-                  <span className="input-group-text">
-                    <FiSearch aria-hidden="true" />
-                  </span>
-                  <input
-                    id="user-search"
-                    className="form-control"
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Nombre o correo"
-                  />
-                </div>
+        <section className="users-toolbar" aria-label="Filtros de usuarios">
+          <div className="users-toolbar-grid">
+            <div className="users-control users-control-search">
+              <label htmlFor="user-search">Buscar</label>
+              <div className="users-input-icon">
+                <FiSearch aria-hidden="true" />
+                <input
+                  id="user-search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Nombre o correo"
+                />
               </div>
+            </div>
 
-              <div className="col-6 col-xl-2">
-                <label className="form-label" htmlFor="role-filter">
-                  Rol
-                </label>
+            <div className="users-control">
+              <label htmlFor="role-filter">Rol</label>
+              <div className="users-select-icon">
+                <FiUsers aria-hidden="true" />
                 <select
                   id="role-filter"
-                  className="form-select"
                   value={roleFilter}
                   onChange={(event) => changeRoleFilter(event.target.value)}
                 >
@@ -643,14 +733,14 @@ export default function UsuariosPage() {
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div className="col-6 col-xl-2">
-                <label className="form-label" htmlFor="subscription-filter">
-                  Suscripcion
-                </label>
+            <div className="users-control">
+              <label htmlFor="subscription-filter">Suscripcion</label>
+              <div className="users-select-icon">
+                <FiFilter aria-hidden="true" />
                 <select
                   id="subscription-filter"
-                  className="form-select"
                   value={subscriptionFilter}
                   onChange={(event) => changeSubscriptionFilter(event.target.value)}
                 >
@@ -661,14 +751,14 @@ export default function UsuariosPage() {
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div className="col-6 col-xl-2">
-                <label className="form-label" htmlFor="page-size">
-                  Por pagina
-                </label>
+            <div className="users-control">
+              <label htmlFor="page-size">Por pagina</label>
+              <div className="users-select-icon">
+                <FiSliders aria-hidden="true" />
                 <select
                   id="page-size"
-                  className="form-select"
                   value={limit}
                   onChange={(event) => changeLimit(event.target.value)}
                 >
@@ -679,58 +769,81 @@ export default function UsuariosPage() {
                   ))}
                 </select>
               </div>
-
-              <div className="col-6 col-xl-2 d-grid gap-2 d-sm-flex">
-                <button
-                  className="btn btn-outline-secondary flex-fill"
-                  type="button"
-                  onClick={resetFilters}
-                  disabled={!hasFilters && sortBy === "createdAt"}
-                >
-                  Limpiar
-                </button>
-                <button
-                  className="btn btn-outline-primary flex-fill"
-                  type="button"
-                  onClick={fetchUsuarios}
-                  disabled={loading}
-                >
-                  <FiRefreshCw className={loading ? "users-spin me-1" : "me-1"} />
-                  Actualizar
-                </button>
-              </div>
             </div>
+
+            <button
+              className="users-refresh-button"
+              type="button"
+              onClick={fetchUsuarios}
+              disabled={loading}
+            >
+              <FiRefreshCw className={loading ? "users-spin" : ""} aria-hidden="true" />
+              Actualizar
+            </button>
           </div>
-        </div>
 
-        {error && <div className="alert alert-danger">{error}</div>}
+          {(hasFilters || sortBy !== "createdAt") && (
+            <div className="users-active-filters" aria-label="Filtros activos">
+              {searchInput && <span className="users-filter-chip">Busqueda: {searchInput}</span>}
+              {roleFilter !== "todos" && (
+                <span className="users-filter-chip">
+                  Rol: {ROLE_FILTERS.find((option) => option.value === roleFilter)?.label}
+                </span>
+              )}
+              {subscriptionFilter !== "todos" && (
+                <span className="users-filter-chip">
+                  Suscripcion:{" "}
+                  {SUBSCRIPTION_FILTERS.find((option) => option.value === subscriptionFilter)?.label}
+                </span>
+              )}
+              {sortBy !== "createdAt" && <span className="users-filter-chip">Orden: {sortBy}</span>}
+              <button className="users-clear-button" type="button" onClick={resetFilters}>
+                Limpiar filtros
+              </button>
+            </div>
+          )}
+        </section>
 
-        <div className="card shadow-sm users-table-card">
+        {error && (
+          <div className="users-alert" role="alert">
+            <FiAlertCircle aria-hidden="true" />
+            <span>{error}</span>
+            <button type="button" onClick={fetchUsuarios}>
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        <section className="users-table-card" aria-label="Listado de usuarios">
           <div className="table-responsive d-none d-lg-block">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+            <table className="users-table">
+              <thead>
                 <tr>
-                  <th>
-                    <button className="btn btn-link p-0" onClick={() => toggleSort("nombre")}>
+                  <th aria-sort={getAriaSort("nombre", sortBy, sortOrder)}>
+                    <button className="users-sort-button" onClick={() => toggleSort("nombre")}>
                       Usuario
+                      <SortIndicator field="nombre" sortBy={sortBy} sortOrder={sortOrder} />
                     </button>
                   </th>
-                  <th>
-                    <button className="btn btn-link p-0" onClick={() => toggleSort("rol")}>
+                  <th aria-sort={getAriaSort("rol", sortBy, sortOrder)}>
+                    <button className="users-sort-button" onClick={() => toggleSort("rol")}>
                       Rol
+                      <SortIndicator field="rol" sortBy={sortBy} sortOrder={sortOrder} />
                     </button>
                   </th>
-                  <th>
-                    <button className="btn btn-link p-0" onClick={() => toggleSort("estado")}>
+                  <th aria-sort={getAriaSort("estado", sortBy, sortOrder)}>
+                    <button className="users-sort-button" onClick={() => toggleSort("estado")}>
                       Suscripcion
+                      <SortIndicator field="estado" sortBy={sortBy} sortOrder={sortOrder} />
                     </button>
                   </th>
-                  <th>
+                  <th aria-sort={getAriaSort("vencimiento", sortBy, sortOrder)}>
                     <button
-                      className="btn btn-link p-0"
+                      className="users-sort-button"
                       onClick={() => toggleSort("vencimiento")}
                     >
                       Periodo
+                      <SortIndicator field="vencimiento" sortBy={sortBy} sortOrder={sortOrder} />
                     </button>
                   </th>
                   <th className="text-end">Acciones</th>
@@ -738,11 +851,7 @@ export default function UsuariosPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="5" className="text-center py-5 text-muted">
-                      Cargando informacion...
-                    </td>
-                  </tr>
+                  <TableSkeletonRows />
                 ) : usuarios.length ? (
                   usuarios.map((user) => {
                     const status = getSubscriptionStatus(user);
@@ -752,58 +861,68 @@ export default function UsuariosPage() {
                     return (
                       <tr key={user._id}>
                         <td>
-                          <strong>{user.nombre}</strong>
-                          <div className="text-muted small">{user.email}</div>
+                          <div className="users-person">
+                            <span className="users-avatar" aria-hidden="true">
+                              {getInitials(user.nombre)}
+                            </span>
+                            <span className="users-person-copy">
+                              <strong>{user.nombre}</strong>
+                              <span title={user.email}>{user.email}</span>
+                            </span>
+                          </div>
                         </td>
                         <td>
-                          <span
-                            className={`badge ${user.rol === "admin" ? "bg-dark" : "bg-primary"}`}
-                          >
+                          <span className={`users-role-badge ${user.rol === "admin" ? "is-admin" : "is-singer"}`}>
                             {user.rol === "admin" ? "Admin" : "Cantante"}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge bg-${status.className}`}>
+                          <span className={`users-status-badge ${getSubscriptionBadgeClass(status.key)}`}>
+                            <span aria-hidden="true" />
                             {status.label}
                           </span>
                         </td>
                         <td>
-                          <div className="small">
-                            <strong>Inicio:</strong> {formatDate(user.subscriptionStart)}
+                          <div className="users-period">
+                            <span>
+                              <strong>Inicio</strong>
+                              {formatDate(user.subscriptionStart)}
+                            </span>
+                            <span>
+                              <strong>Fin</strong>
+                              {formatDate(user.subscriptionEnd)}
+                            </span>
+                            <em className={getPeriodClass(user)}>{getPeriodHint(user)}</em>
                           </div>
-                          <div className="small">
-                            <strong>Fin:</strong> {formatDate(user.subscriptionEnd)}
-                          </div>
-                          <div className="text-muted small">{getPeriodHint(user)}</div>
                         </td>
                         <td>
-                          <div className="d-flex justify-content-end gap-2">
+                          <div className="users-actions">
                             <button
-                              className="btn btn-sm btn-outline-secondary"
+                              className="users-action-button is-neutral"
                               title="Ver detalles"
                               aria-label={`Ver detalles de ${user.nombre}`}
                               onClick={() => setModal({ type: "details", user })}
                             >
-                              <FiEye />
+                              <FiEye aria-hidden="true" />
                             </button>
                             <button
-                              className="btn btn-sm btn-outline-primary"
+                              className="users-action-button is-primary"
                               title="Editar usuario"
                               aria-label={`Editar usuario ${user.nombre}`}
                               onClick={() => openEditModal(user)}
                             >
-                              <FiEdit2 />
+                              <FiEdit2 aria-hidden="true" />
                             </button>
                             <button
-                              className="btn btn-sm btn-outline-info"
+                              className="users-action-button is-subscription"
                               title="Administrar suscripcion"
                               aria-label={`Administrar suscripcion de ${user.nombre}`}
                               onClick={() => openSubscriptionModal(user)}
                             >
-                              <FiRefreshCw />
+                              <FiRefreshCw aria-hidden="true" />
                             </button>
                             <button
-                              className="btn btn-sm btn-outline-danger"
+                              className="users-action-button is-danger"
                               title={
                                 isOwnUser
                                   ? "No puedes eliminar tu propia cuenta"
@@ -815,7 +934,7 @@ export default function UsuariosPage() {
                               disabled={isOwnUser || isLastAdmin}
                               onClick={() => setModal({ type: "delete", user })}
                             >
-                              <FiTrash />
+                              <FiTrash aria-hidden="true" />
                             </button>
                           </div>
                         </td>
@@ -833,62 +952,84 @@ export default function UsuariosPage() {
             </table>
           </div>
 
-          <div className="d-lg-none p-3">
+          <div className="users-mobile-list d-lg-none">
             {loading ? (
-              <div className="text-center py-5 text-muted">Cargando informacion...</div>
+              <MobileSkeletonCards />
             ) : usuarios.length ? (
-              <div className="d-grid gap-3">
+              <div className="users-mobile-grid">
                 {usuarios.map((user) => {
                   const status = getSubscriptionStatus(user);
                   const isOwnUser = currentUserId === user._id;
                   const isLastAdmin = user.rol === "admin" && stats.admins <= 1;
 
                   return (
-                    <div className="card users-mobile-card" key={user._id}>
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between gap-3">
-                          <div>
+                    <article className="users-mobile-card" key={user._id}>
+                      <div className="users-mobile-head">
+                        <div className="users-person">
+                          <span className="users-avatar" aria-hidden="true">
+                            {getInitials(user.nombre)}
+                          </span>
+                          <span className="users-person-copy">
                             <strong>{user.nombre}</strong>
-                            <div className="text-muted small">{user.email}</div>
-                          </div>
-                          <span className={`badge bg-${status.className} align-self-start`}>
-                            {status.label}
+                            <span title={user.email}>{user.email}</span>
                           </span>
                         </div>
-                        <div className="mt-3 d-flex flex-wrap gap-2">
-                          <span className={`badge ${user.rol === "admin" ? "bg-dark" : "bg-primary"}`}>
-                            {user.rol === "admin" ? "Admin" : "Cantante"}
-                          </span>
-                          <span className="badge bg-light text-dark">{getPeriodHint(user)}</span>
-                        </div>
-                        <div className="mt-3 small">
-                          <div>Inicio: {formatDate(user.subscriptionStart)}</div>
-                          <div>Fin: {formatDate(user.subscriptionEnd)}</div>
-                        </div>
-                        <div className="d-flex flex-wrap gap-2 mt-3">
-                          <button className="btn btn-sm btn-outline-secondary" onClick={() => setModal({ type: "details", user })}>
-                            <FiEye className="me-1" />
-                            Ver
-                          </button>
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
-                            <FiEdit2 className="me-1" />
-                            Editar
-                          </button>
-                          <button className="btn btn-sm btn-outline-info" onClick={() => openSubscriptionModal(user)}>
-                            <FiRefreshCw className="me-1" />
-                            Suscripcion
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            disabled={isOwnUser || isLastAdmin}
-                            onClick={() => setModal({ type: "delete", user })}
-                          >
-                            <FiTrash className="me-1" />
-                            Eliminar
-                          </button>
-                        </div>
+                        <span className={`users-status-badge ${getSubscriptionBadgeClass(status.key)}`}>
+                          <span aria-hidden="true" />
+                          {status.label}
+                        </span>
                       </div>
-                    </div>
+
+                      <div className="users-mobile-meta">
+                        <span className={`users-role-badge ${user.rol === "admin" ? "is-admin" : "is-singer"}`}>
+                          {user.rol === "admin" ? "Admin" : "Cantante"}
+                        </span>
+                        <span className={`users-period-hint ${getPeriodClass(user)}`}>
+                          {getPeriodHint(user)}
+                        </span>
+                      </div>
+
+                      <div className="users-period">
+                        <span>
+                          <strong>Inicio</strong>
+                          {formatDate(user.subscriptionStart)}
+                        </span>
+                        <span>
+                          <strong>Fin</strong>
+                          {formatDate(user.subscriptionEnd)}
+                        </span>
+                      </div>
+
+                      <div className="users-mobile-actions">
+                        <button className="users-mobile-action is-neutral" onClick={() => setModal({ type: "details", user })}>
+                          <FiEye aria-hidden="true" />
+                          Ver
+                        </button>
+                        <button className="users-mobile-action is-primary" onClick={() => openEditModal(user)}>
+                          <FiEdit2 aria-hidden="true" />
+                          Editar
+                        </button>
+                        <button className="users-mobile-action is-subscription" onClick={() => openSubscriptionModal(user)}>
+                          <FiRefreshCw aria-hidden="true" />
+                          Suscripcion
+                        </button>
+                        <button
+                          className="users-mobile-action is-danger"
+                          title={
+                            isOwnUser
+                              ? "No puedes eliminar tu propia cuenta"
+                              : isLastAdmin
+                                ? "No puedes eliminar el ultimo administrador"
+                                : "Eliminar usuario"
+                          }
+                          disabled={isOwnUser || isLastAdmin}
+                          onClick={() => setModal({ type: "delete", user })}
+                        >
+                          <FiTrash aria-hidden="true" />
+                          Eliminar
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
               </div>
@@ -896,65 +1037,59 @@ export default function UsuariosPage() {
               <EmptyState hasFilters={hasFilters} onClear={resetFilters} onCreate={openCreateModal} />
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mt-3">
-          <span className="text-muted small">
+        <div className="users-pagination-footer">
+          <span>
             {pagination.total
               ? `Mostrando ${firstVisibleItem}-${lastVisibleItem} de ${pagination.total} usuarios`
               : "Sin resultados"}
           </span>
 
           <nav aria-label="Paginacion de usuarios">
-            <ul className="pagination mb-0 flex-wrap">
-              <li className={`page-item ${pagination.page <= 1 || loading ? "disabled" : ""}`}>
+            <ul className="users-pagination">
+              <li>
                 <button
-                  className="page-link"
+                  className="users-page-button"
                   disabled={pagination.page <= 1 || loading}
                   onClick={() => setPage(pagination.page - 1)}
+                  aria-label="Pagina anterior"
                 >
-                  <FiChevronLeft />
-                  <span className="visually-hidden">Pagina anterior</span>
+                  <FiChevronLeft aria-hidden="true" />
                 </button>
               </li>
               {pageItems.map((item) =>
                 typeof item === "number" ? (
-                  <li
-                    className={`page-item ${item === pagination.page ? "active" : ""}`}
-                    key={item}
-                  >
+                  <li key={item}>
                     <button
-                      className="page-link"
+                      className={`users-page-button ${item === pagination.page ? "is-active" : ""}`}
                       disabled={loading}
                       onClick={() => setPage(item)}
+                      aria-current={item === pagination.page ? "page" : undefined}
                     >
                       {item}
                     </button>
                   </li>
                 ) : (
-                  <li className="page-item disabled" key={item}>
-                    <span className="page-link">...</span>
+                  <li key={item}>
+                    <span className="users-page-ellipsis">...</span>
                   </li>
                 ),
               )}
-              <li
-                className={`page-item ${
-                  pagination.page >= pagination.totalPages || loading ? "disabled" : ""
-                }`}
-              >
+              <li>
                 <button
-                  className="page-link"
+                  className="users-page-button"
                   disabled={pagination.page >= pagination.totalPages || loading}
                   onClick={() => setPage(pagination.page + 1)}
+                  aria-label="Pagina siguiente"
                 >
-                  <FiChevronRight />
-                  <span className="visually-hidden">Pagina siguiente</span>
+                  <FiChevronRight aria-hidden="true" />
                 </button>
               </li>
             </ul>
           </nav>
 
-          <strong className="small">
+          <strong>
             Pagina {pagination.totalPages ? pagination.page : 0} de {pagination.totalPages}
           </strong>
         </div>
@@ -965,9 +1100,10 @@ export default function UsuariosPage() {
           title="Crear usuario"
           subtitle="Nuevo registro"
           onClose={closeModal}
+          saving={saving}
           footer={
             <>
-              <button className="btn btn-outline-secondary" type="button" onClick={closeModal}>
+              <button className="btn btn-outline-secondary" type="button" onClick={closeModal} disabled={saving}>
                 Cancelar
               </button>
               <button className="btn btn-primary" form="create-user-form" disabled={saving}>
@@ -992,9 +1128,10 @@ export default function UsuariosPage() {
           title="Editar usuario"
           subtitle={modal.user?.email}
           onClose={closeModal}
+          saving={saving}
           footer={
             <>
-              <button className="btn btn-outline-secondary" type="button" onClick={closeModal}>
+              <button className="btn btn-outline-secondary" type="button" onClick={closeModal} disabled={saving}>
                 Cancelar
               </button>
               <button className="btn btn-primary" form="edit-user-form" disabled={saving}>
@@ -1019,9 +1156,10 @@ export default function UsuariosPage() {
           title="Administrar suscripcion"
           subtitle={modal.user?.email}
           onClose={closeModal}
+          saving={saving}
           footer={
             <>
-              <button className="btn btn-outline-secondary" type="button" onClick={closeModal}>
+              <button className="btn btn-outline-secondary" type="button" onClick={closeModal} disabled={saving}>
                 Cancelar
               </button>
               <button className="btn btn-primary" form="subscription-form" disabled={saving}>
@@ -1043,7 +1181,7 @@ export default function UsuariosPage() {
       )}
 
       {modal.type === "details" && modal.user && (
-        <Modal title="Detalles del usuario" subtitle={modal.user.email} onClose={closeModal}>
+        <Modal title="Detalles del usuario" subtitle={modal.user.email} onClose={closeModal} saving={saving}>
           <UserDetails user={modal.user} />
         </Modal>
       )}
@@ -1054,9 +1192,10 @@ export default function UsuariosPage() {
           subtitle="Confirmacion"
           onClose={closeModal}
           size="md"
+          saving={saving}
           footer={
             <>
-              <button className="btn btn-outline-secondary" type="button" onClick={closeModal}>
+              <button className="btn btn-outline-secondary" type="button" onClick={closeModal} disabled={saving}>
                 Cancelar
               </button>
               <button className="btn btn-danger" type="button" onClick={submitDelete} disabled={saving}>
@@ -1092,15 +1231,19 @@ function FieldError({ children }) {
 
 function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
   const creating = mode === "create";
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
-    <form id={id} onSubmit={onSubmit} noValidate>
+    <form id={id} className="users-form" onSubmit={onSubmit} noValidate>
       {errors.general && <div className="alert alert-danger">{errors.general}</div>}
 
-      <div className="row g-3">
+      <div className="users-form-section">
+        <h6>Datos de cuenta</h6>
+        <div className="row g-3">
         <div className="col-md-6">
           <label className="form-label" htmlFor={`${id}-nombre`}>
-            Nombre
+            Nombre <span aria-hidden="true">*</span>
           </label>
           <input
             id={`${id}-nombre`}
@@ -1114,7 +1257,7 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
 
         <div className="col-md-6">
           <label className="form-label" htmlFor={`${id}-email`}>
-            Correo electronico
+            Correo electronico <span aria-hidden="true">*</span>
           </label>
           <input
             id={`${id}-email`}
@@ -1131,32 +1274,50 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
           <>
             <div className="col-md-6">
               <label className="form-label" htmlFor={`${id}-password`}>
-                Contrasena
+                Contrasena <span aria-hidden="true">*</span>
               </label>
-              <input
-                id={`${id}-password`}
-                type="text"
-                className={`form-control ${errors.password ? "is-invalid" : ""}`}
-                value={form.password}
-                minLength={PASSWORD_MIN_LENGTH}
-                onChange={(event) => onChange("password", event.target.value)}
-                required
-              />
+              <div className="users-password-field">
+                <input
+                  id={`${id}-password`}
+                  type={showPassword ? "text" : "password"}
+                  className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                  value={form.password}
+                  minLength={PASSWORD_MIN_LENGTH}
+                  onChange={(event) => onChange("password", event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                >
+                  {showPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+                </button>
+              </div>
               <FieldError>{errors.password}</FieldError>
             </div>
 
             <div className="col-md-6">
               <label className="form-label" htmlFor={`${id}-confirm-password`}>
-                Confirmar contrasena
+                Confirmar contrasena <span aria-hidden="true">*</span>
               </label>
-              <input
-                id={`${id}-confirm-password`}
-                type="text"
-                className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
-                value={form.confirmPassword}
-                onChange={(event) => onChange("confirmPassword", event.target.value)}
-                required
-              />
+              <div className="users-password-field">
+                <input
+                  id={`${id}-confirm-password`}
+                  type={showConfirmPassword ? "text" : "password"}
+                  className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
+                  value={form.confirmPassword}
+                  onChange={(event) => onChange("confirmPassword", event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  aria-label={showConfirmPassword ? "Ocultar confirmacion" : "Mostrar confirmacion"}
+                >
+                  {showConfirmPassword ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+                </button>
+              </div>
               <FieldError>{errors.confirmPassword}</FieldError>
             </div>
           </>
@@ -1164,7 +1325,7 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
 
         <div className="col-md-6">
           <label className="form-label" htmlFor={`${id}-rol`}>
-            Rol
+            Rol <span aria-hidden="true">*</span>
           </label>
           <select
             id={`${id}-rol`}
@@ -1178,9 +1339,13 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
           </select>
           <FieldError>{errors.rol}</FieldError>
         </div>
+        </div>
+      </div>
 
         {creating && (
-          <>
+          <div className="users-form-section">
+            <h6>Suscripcion inicial</h6>
+            <div className="row g-3">
             <div className="col-md-6 d-flex align-items-end">
               <div className="form-check form-switch mb-2">
                 <input
@@ -1201,7 +1366,7 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
               <>
                 <div className="col-md-6">
                   <label className="form-label" htmlFor={`${id}-start`}>
-                    Fecha de inicio
+                    Fecha de inicio <span aria-hidden="true">*</span>
                   </label>
                   <input
                     id={`${id}-start`}
@@ -1216,7 +1381,7 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
 
                 <div className="col-md-6">
                   <label className="form-label" htmlFor={`${id}-end`}>
-                    Fecha de finalizacion
+                    Fecha de finalizacion <span aria-hidden="true">*</span>
                   </label>
                   <input
                     id={`${id}-end`}
@@ -1230,18 +1395,20 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
                 </div>
               </>
             )}
-          </>
+            </div>
+          </div>
         )}
-      </div>
     </form>
   );
 }
 
 function SubscriptionForm({ form, preview, errors, onChange, onSubmit }) {
   return (
-    <form id="subscription-form" onSubmit={onSubmit} noValidate>
+    <form id="subscription-form" className="users-form" onSubmit={onSubmit} noValidate>
       {errors.general && <div className="alert alert-danger">{errors.general}</div>}
 
+      <div className="users-form-section">
+      <h6>Configuracion de suscripcion</h6>
       <div className="row g-3">
         <div className="col-md-6">
           <label className="form-label" htmlFor="subscription-action">
@@ -1344,6 +1511,7 @@ function SubscriptionForm({ form, preview, errors, onChange, onSubmit }) {
           </div>
         )}
       </div>
+      </div>
     </form>
   );
 }
@@ -1352,7 +1520,7 @@ function UserDetails({ user }) {
   const status = getSubscriptionStatus(user);
 
   return (
-    <dl className="row mb-0">
+    <dl className="users-details-list">
       <dt className="col-sm-4">Nombre</dt>
       <dd className="col-sm-8">{user.nombre}</dd>
       <dt className="col-sm-4">Correo</dt>
@@ -1361,7 +1529,10 @@ function UserDetails({ user }) {
       <dd className="col-sm-8">{user.rol === "admin" ? "Admin" : "Cantante"}</dd>
       <dt className="col-sm-4">Suscripcion</dt>
       <dd className="col-sm-8">
-        <span className={`badge bg-${status.className}`}>{status.label}</span>
+        <span className={`users-status-badge ${getSubscriptionBadgeClass(status.key)}`}>
+          <span aria-hidden="true" />
+          {status.label}
+        </span>
       </dd>
       <dt className="col-sm-4">Inicio</dt>
       <dd className="col-sm-8">{formatDate(user.subscriptionStart)}</dd>
@@ -1373,22 +1544,80 @@ function UserDetails({ user }) {
   );
 }
 
+function TableSkeletonRows() {
+  return Array.from({ length: 5 }, (_, index) => (
+    <tr className="users-skeleton-row" key={index}>
+      <td>
+        <div className="users-person">
+          <span className="users-skeleton-avatar" />
+          <span className="users-skeleton-copy">
+            <span />
+            <span />
+          </span>
+        </div>
+      </td>
+      <td><span className="users-skeleton-pill" /></td>
+      <td><span className="users-skeleton-pill" /></td>
+      <td>
+        <div className="users-skeleton-stack">
+          <span />
+          <span />
+          <span />
+        </div>
+      </td>
+      <td>
+        <div className="users-actions">
+          <span className="users-skeleton-action" />
+          <span className="users-skeleton-action" />
+          <span className="users-skeleton-action" />
+          <span className="users-skeleton-action" />
+        </div>
+      </td>
+    </tr>
+  ));
+}
+
+function MobileSkeletonCards() {
+  return (
+    <div className="users-mobile-grid">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div className="users-mobile-card users-skeleton-card" key={index}>
+          <div className="users-person">
+            <span className="users-skeleton-avatar" />
+            <span className="users-skeleton-copy">
+              <span />
+              <span />
+            </span>
+          </div>
+          <div className="users-skeleton-stack">
+            <span />
+            <span />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyState({ hasFilters, onClear, onCreate }) {
   return (
-    <div className="text-center py-5">
+    <div className="users-empty-state">
+      <div className="users-empty-icon">
+        {hasFilters ? <FiSearch aria-hidden="true" /> : <FiUsers aria-hidden="true" />}
+      </div>
       <h5>{hasFilters ? "No hay resultados" : "Todavia no hay usuarios"}</h5>
-      <p className="text-muted mb-3">
+      <p>
         {hasFilters
           ? "Prueba limpiar los filtros o ajustar la busqueda."
           : "Crea el primer usuario para comenzar."}
       </p>
       {hasFilters ? (
-        <button className="btn btn-outline-secondary" onClick={onClear}>
+        <button className="users-clear-button" onClick={onClear}>
           Limpiar filtros
         </button>
       ) : (
-        <button className="btn btn-primary" onClick={onCreate}>
-          <FiUserPlus className="me-2" />
+        <button className="users-primary-button" onClick={onCreate}>
+          <FiUserPlus aria-hidden="true" />
           Crear usuario
         </button>
       )}

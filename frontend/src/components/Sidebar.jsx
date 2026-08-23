@@ -38,8 +38,12 @@ const menuItems = [
 
 export default function Sidebar() {
   return (
-    <div className="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-primary text-light admin-sidebar">
-      <div className="d-flex flex-column align-items-center align-items-sm-start px-2 px-sm-3 pt-2 text-white min-vh-100">
+    <div className="col-auto col-md-3 col-xl-2 px-sm-2 px-0 text-light admin-sidebar">
+      <div className="admin-sidebar-inner d-flex flex-column align-items-center align-items-sm-start px-2 px-sm-3 pt-2 text-white">
+        <div className="admin-sidebar-brand">
+          <span className="admin-sidebar-brand-mark">AK</span>
+          <span className="d-none d-sm-inline">American Karaoke</span>
+        </div>
         <ul
           className="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start w-100"
           id="menu"
