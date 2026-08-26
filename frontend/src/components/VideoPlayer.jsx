@@ -99,6 +99,7 @@ export default function VideoPlayer({
   onRequestedIndexHandled,
   onLimpiarConcurso,
   showSubscribePrompt = false,
+  subscribePromptStartIndex = null,
   onSubscribePromptClick,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
@@ -228,6 +229,14 @@ export default function VideoPlayer({
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
+  const promptStartIndex =
+    subscribePromptStartIndex == null ? null : Number(subscribePromptStartIndex);
+  const shouldShowIndexedSubscribePrompt =
+    promptStartIndex !== null &&
+    Number.isFinite(promptStartIndex) &&
+    effectiveIndex >= promptStartIndex;
+  const shouldRenderSubscribePrompt =
+    showSubscribePrompt || shouldShowIndexedSubscribePrompt;
 
   const playerKey = videoCalificacion
     ? `calificacion-${activeVideo?._id || activeVideo?.id || activeUrl}-${playerInstanceKey}`
@@ -1118,7 +1127,7 @@ export default function VideoPlayer({
           }}
         />
 
-        {showSubscribePrompt && (
+        {shouldRenderSubscribePrompt && (
           <button
             type="button"
             className="player-subscribe-prompt"
@@ -1126,7 +1135,7 @@ export default function VideoPlayer({
             aria-label="Ver planes para seguir cantando"
           >
             <img
-              src="/para_seguir_cantando-Photoroom.png"
+              src="/para_seguir_cantando1-Photoroom.png"
               alt="Para seguir cantando"
             />
           </button>

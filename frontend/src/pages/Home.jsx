@@ -37,6 +37,7 @@ import { useSocketContext } from "../hooks/SocketContext";
 const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 const MESAS_STORAGE_KEY = "karaokeMesas";
 const CONCURSO_STORAGE_KEY = "karaokeConcurso";
+const GUEST_PROMPT_START_INDEX = 5;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -81,14 +82,15 @@ export default function Home() {
   const { playlistsPropia } = usePlaylists(userId);
   const modoMesaEncendido = modoMesa || modoMesaActivo;
   const modoConcursoEncendido = modoConcurso || modoConcursoActivo;
-  const canUseSystem = Boolean(auth && token);
-  const isFreeUser = Boolean(canUseSystem && userRole !== "admin" && !isSubscribed);
-  const shouldShowFreeSubscribePrompt = Boolean(
-    isFreeUser &&
-      cola.length > 0 &&
+  const isGuest = !auth || !token;
+  const canUseSystem = Boolean(auth && token && (userRole === "admin" || isSubscribed));
+  const isFreeUser = Boolean(auth && token && userRole !== "admin" && !isSubscribed);
+  const shouldShowSubscribeOption = isFreeUser;
+  const shouldLimitDefaultVideos = Boolean(
+    isGuest &&
+      !cola.length &&
       !modoMesaEncendido &&
-      !modoConcursoEncendido &&
-      currentIndex >= 5,
+      !modoConcursoEncendido,
   );
 
   const handleModoMesaChange = useCallback((activo) => {
@@ -648,8 +650,13 @@ export default function Home() {
             onFullscreenHandled={() => setShouldFullscreen(false)}
             onCancionTerminada={handleCancionTerminada}
             onLimpiarConcurso={limpiarConcursoDesdePlayer}
-            showSubscribePrompt={shouldShowFreeSubscribePrompt}
-            onSubscribePromptClick={() => setSeccionActiva("suscribir")}
+            showSubscribePrompt={false}
+            subscribePromptStartIndex={
+              shouldLimitDefaultVideos ? GUEST_PROMPT_START_INDEX : null
+            }
+            onSubscribePromptClick={() =>
+              setSeccionActiva(auth && token ? "suscribir" : "registrar")
+            }
             onColaTerminada={() => {
               if (!esColaDefault && !modoConcursoEncendido) {
                 clearQueue();
@@ -673,7 +680,7 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        {shouldShowFreeSubscribePrompt && (
+        {shouldShowSubscribeOption && (
           <button
             type="button"
             className="home-subscribe-button"
@@ -713,7 +720,7 @@ export default function Home() {
           <div className="row g-3 justify-content-center home-main-row">
             <div className="col-12 col-lg-2 d-flex flex-column align-items-center home-sidebar home-sidebar-left">
               <div className="home-sidebar-actions">
-              {getToken() && userRole === "admin" && (
+              {canUseSystem && getToken() && userRole === "admin" && (
                 <button
                   className="boton2"
                   onClick={() => navigate("/dashboard")}
@@ -781,7 +788,7 @@ export default function Home() {
 
             <div className="col-12 col-lg-2 d-flex flex-column align-items-center home-sidebar home-sidebar-right">
               <div className="home-sidebar-actions">
-              {!getToken() && (
+              {isGuest && (
                 <>
                   <button
                     className="boton8"
@@ -797,6 +804,17 @@ export default function Home() {
                     Registrar
                   </button>
                 </>
+              )}
+
+              {shouldShowSubscribeOption && (
+                <button
+                  type="button"
+                  className="home-sidebar-subscribe-button"
+                  onClick={() => setSeccionActiva("suscribir")}
+                  aria-label="Ver planes de suscripcion"
+                >
+                  <img src="./suscribir-Photoroom.png" alt="Suscribir" />
+                </button>
               )}
 
               <button
@@ -887,11 +905,12 @@ export default function Home() {
                 <div
                   key={`${cancion._id}-${index}`}
                   onClick={() => {
+                    if (!canUseSystem) return;
                     handleCambiarCancion(index);
                     setSeccionActiva("video");
                   }}
                   className="song-icon position-relative"
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: canUseSystem ? "pointer" : "not-allowed" }}
                 >
                   <FaCompactDisc
                     size={40}
@@ -909,7 +928,7 @@ export default function Home() {
               ))}
             </div>
 
-            <button className="btn" onClick={limpiarCola}>
+            <button className="btn" onClick={limpiarCola} disabled={!canUseSystem}>
               <img className="m-2" src="/limpiar.png" alt="" width={120} />
             </button>
           </div>
@@ -920,10 +939,16 @@ export default function Home() {
         <AnunciosVisibles />
 
         <h1 className="p-2 text-white">Recomendados</h1>
-        <VideoCarouselVisibles onPlaySolo={activarPantallaCompletaPlayer} />
+        <VideoCarouselVisibles
+          canUseActions={canUseSystem}
+          onPlaySolo={activarPantallaCompletaPlayer}
+        />
 
         <h1 className="p-2 text-white">Las más populares</h1>
-        <VideoCarousel onPlaySolo={activarPantallaCompletaPlayer} />
+        <VideoCarousel
+          canUseActions={canUseSystem}
+          onPlaySolo={activarPantallaCompletaPlayer}
+        />
       </div>
 
       {!isSubscribed && <WhatsAppButton />}

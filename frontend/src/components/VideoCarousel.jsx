@@ -10,7 +10,7 @@ import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/masreproducidas`;
 
-export default function VideoCarousel({ onPlaySolo }) {
+export default function VideoCarousel({ canUseActions = true, onPlaySolo }) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
   const [selectedSongId, setSelectedSongId] = useState(null);
@@ -46,10 +46,12 @@ export default function VideoCarousel({ onPlaySolo }) {
     console.warn("Usuario no autenticado");
   }
 
+  const canInteract = Boolean(isAuthenticated && canUseActions);
+
   // Funciones
   const handleOpenModal = (songId) => {
-    if (!isAuthenticated) {
-      setToastMsg("Inicia sesión para agregar a una playlist");
+    if (!canInteract) {
+      setToastMsg("Debes ingresar y estar suscrito para usar esta función");
       return;
     }
     setSelectedSongId(songId);
@@ -78,6 +80,11 @@ export default function VideoCarousel({ onPlaySolo }) {
 
 
     const agregarACola = async (songId) => {
+    if (!canInteract) {
+      setToastMsg("Debes ingresar y estar suscrito para agregar canciones");
+      return;
+    }
+
     try {
       const roomId = localStorage.getItem("roomId");
 
@@ -88,18 +95,11 @@ export default function VideoCarousel({ onPlaySolo }) {
 
       let res;
 
-      if (isAuthenticated) {
-        res = await axios.post(
-          `${API_URL}/t/cola/add`,
-          { userId, songId, roomId }, // 🔥 AQUÍ
-          { headers: { Authorization: `Bearer ${getToken()}` } },
-        );
-      } else {
-        res = await axios.post(
-          `${API_URL}/t/cola/without/aut/add`,
-          { songId }, // 🔥 AQUÍ TAMBIÉN
-        );
-      }
+      res = await axios.post(
+        `${API_URL}/t/cola/add`,
+        { userId, songId, roomId },
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
 
       const cancion = res.data.cancion || videos.find((v) => v._id === songId);
 
@@ -124,8 +124,8 @@ export default function VideoCarousel({ onPlaySolo }) {
   };
   
   const playNow = async (video) => {
-    if (!isAuthenticated) {
-      setToastMsg("⚠️ Inicia sesión para reproducir");
+    if (!canInteract) {
+      setToastMsg("Debes ingresar y estar suscrito para reproducir");
       return;
     }
 
@@ -184,7 +184,7 @@ export default function VideoCarousel({ onPlaySolo }) {
                     className="btn-heart"
                     onClick={() => handleOpenModal(video._id)}
                     title="Agregar a playlist"
-                    disabled={!isAuthenticated}
+                    disabled={!canInteract}
                   >
                     <img src="./heart.png" alt="" />
                   </button>
@@ -196,7 +196,7 @@ export default function VideoCarousel({ onPlaySolo }) {
                       agregarACola(video._id);
                     }}
                     title="Agregar a cola"
-                    disabled={!isAuthenticated}
+                    disabled={!canInteract}
                   >
                     <img src="./mas.png" alt="" width={"40px"} />
                   </button>
@@ -209,6 +209,7 @@ export default function VideoCarousel({ onPlaySolo }) {
                       await playNow(video);
                     }}
                     title="Reproducir ahora"
+                    disabled={!canInteract}
                   >
                     <img src="./play.png" alt="" />
                   </button>
