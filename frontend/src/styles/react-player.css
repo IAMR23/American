@@ -89,16 +89,19 @@
 }
 
 .player-subscribe-prompt {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 7;
-  width: clamp(180px, 34vw, 420px);
+  position: fixed;
+  top: var(--subscribe-target-y, 50vh);
+  left: var(--subscribe-target-x, 50vw);
+  z-index: 20020;
+  width: clamp(150px, 30vw, 360px);
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
   transform: translate(-50%, -50%);
+  transform-origin: center;
+  animation: player-subscribe-from-button 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
 }
 
 .player-subscribe-prompt img {
@@ -120,6 +123,32 @@
   outline: 3px solid #fff;
   outline-offset: 6px;
   border-radius: 14px;
+}
+
+@keyframes player-subscribe-from-button {
+  0% {
+    opacity: 0.15;
+    transform:
+      translate(
+        calc(-50% + var(--subscribe-origin-x, 46vw)),
+        calc(-50% + var(--subscribe-origin-y, 0px))
+      )
+      scale(var(--subscribe-origin-scale, 0.22));
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.035);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .concurso-ranking-overlay {

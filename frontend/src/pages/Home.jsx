@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import "../styles/inicial.css";
 import "../styles/button.css";
 import "../styles/disco.css";
@@ -37,7 +37,7 @@ import { useSocketContext } from "../hooks/SocketContext";
 const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 const MESAS_STORAGE_KEY = "karaokeMesas";
 const CONCURSO_STORAGE_KEY = "karaokeConcurso";
-const GUEST_PROMPT_START_INDEX = 5;
+const FREE_USER_SUBSCRIBE_PROMPT_START_INDEX = 6;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -56,6 +56,7 @@ export default function Home() {
   const [token, setToken] = useState(getToken());
   const [roomId, setRoomId] = useState(null);
   const [playerResetKey, setPlayerResetKey] = useState(0);
+  const subscribeButtonRef = useRef(null);
 
   // ✅ NUEVO: evita cambiar la canción directo desde Home
   const [requestedIndex, setRequestedIndex] = useState(null);
@@ -86,11 +87,10 @@ export default function Home() {
   const canUseSystem = Boolean(auth && token && (userRole === "admin" || isSubscribed));
   const isFreeUser = Boolean(auth && token && userRole !== "admin" && !isSubscribed);
   const shouldShowSubscribeOption = isFreeUser;
-  const shouldLimitDefaultVideos = Boolean(
-    isGuest &&
-      !cola.length &&
-      !modoMesaEncendido &&
-      !modoConcursoEncendido,
+
+  const getSubscribePromptOrigin = useCallback(
+    () => subscribeButtonRef.current?.getBoundingClientRect?.() || null,
+    [],
   );
 
   const handleModoMesaChange = useCallback((activo) => {
@@ -652,8 +652,9 @@ export default function Home() {
             onLimpiarConcurso={limpiarConcursoDesdePlayer}
             showSubscribePrompt={false}
             subscribePromptStartIndex={
-              shouldLimitDefaultVideos ? GUEST_PROMPT_START_INDEX : null
+              isFreeUser ? FREE_USER_SUBSCRIBE_PROMPT_START_INDEX : null
             }
+            getSubscribePromptOrigin={getSubscribePromptOrigin}
             onSubscribePromptClick={() =>
               setSeccionActiva(auth && token ? "suscribir" : "registrar")
             }
@@ -797,6 +798,7 @@ export default function Home() {
 
               {shouldShowSubscribeOption && (
                 <button
+                  ref={subscribeButtonRef}
                   type="button"
                   className="boton2"
                   onClick={() => setSeccionActiva("suscribir")}

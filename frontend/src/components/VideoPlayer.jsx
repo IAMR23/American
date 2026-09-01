@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactPlayer from "react-player";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
@@ -100,6 +107,7 @@ export default function VideoPlayer({
   onLimpiarConcurso,
   showSubscribePrompt = false,
   subscribePromptStartIndex = null,
+  getSubscribePromptOrigin,
   onSubscribePromptClick,
 }) {
   const playlist = Array.isArray(cola) ? cola : [];
@@ -120,6 +128,7 @@ export default function VideoPlayer({
   const [videoCalificacion, setVideoCalificacion] = useState(null);
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
   const [playerInstanceKey, setPlayerInstanceKey] = useState(0);
+  const [subscribePromptStyle, setSubscribePromptStyle] = useState({});
 
   const playerRef = useRef(null);
   const containerRef = useRef(null);
@@ -237,6 +246,43 @@ export default function VideoPlayer({
     effectiveIndex >= promptStartIndex;
   const shouldRenderSubscribePrompt =
     showSubscribePrompt || shouldShowIndexedSubscribePrompt;
+
+  const updateSubscribePromptOrigin = useCallback(() => {
+    if (!shouldRenderSubscribePrompt) {
+      setSubscribePromptStyle({});
+      return;
+    }
+
+    const container = containerRef.current;
+    const originRect = getSubscribePromptOrigin?.();
+
+    if (!container || !originRect) {
+      setSubscribePromptStyle({});
+      return;
+    }
+
+    const playerRect = container.getBoundingClientRect();
+    const playerCenterX = playerRect.left + playerRect.width / 2;
+    const playerCenterY = playerRect.top + playerRect.height / 2;
+    const originCenterX = originRect.left + originRect.width / 2;
+    const originCenterY = originRect.top + originRect.height / 2;
+    const targetWidth = Math.min(
+      360,
+      Math.max(150, window.innerWidth * 0.3),
+    );
+    const originScale = Math.min(
+      0.62,
+      Math.max(0.16, originRect.width / Math.max(targetWidth, 1)),
+    );
+
+    setSubscribePromptStyle({
+      "--subscribe-target-x": `${playerCenterX}px`,
+      "--subscribe-target-y": `${playerCenterY}px`,
+      "--subscribe-origin-x": `${originCenterX - playerCenterX}px`,
+      "--subscribe-origin-y": `${originCenterY - playerCenterY}px`,
+      "--subscribe-origin-scale": originScale,
+    });
+  }, [getSubscribePromptOrigin, shouldRenderSubscribePrompt]);
 
   const playerKey = videoCalificacion
     ? `calificacion-${activeVideo?._id || activeVideo?.id || activeUrl}-${playerInstanceKey}`
@@ -675,6 +721,27 @@ export default function VideoPlayer({
       onFullscreenHandled?.();
     }
   }, [fullscreenRequested, onFullscreenHandled]);
+
+  useLayoutEffect(() => {
+    updateSubscribePromptOrigin();
+
+    if (!shouldRenderSubscribePrompt) return undefined;
+
+    const handleLayoutChange = () => updateSubscribePromptOrigin();
+
+    window.addEventListener("resize", handleLayoutChange);
+    window.addEventListener("scroll", handleLayoutChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleLayoutChange);
+      window.removeEventListener("scroll", handleLayoutChange, true);
+    };
+  }, [
+    activeUrl,
+    effectiveIndex,
+    shouldRenderSubscribePrompt,
+    updateSubscribePromptOrigin,
+  ]);
 
   useEffect(() => {
     autoplayInitiatedRef.current = false;
@@ -1131,12 +1198,13 @@ export default function VideoPlayer({
           <button
             type="button"
             className="player-subscribe-prompt"
+            style={subscribePromptStyle}
             onClick={onSubscribePromptClick}
             aria-label="Ver planes para seguir cantando"
           >
             <img
-              src="/para_seguir_cantando1-Photoroom.png"
-              alt="Para seguir cantando"
+              src="/suscribir-Photoroom.png"
+              alt="Suscribir"
             />
           </button>
         )}
