@@ -680,18 +680,7 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        {shouldShowSubscribeOption && (
-          <button
-            type="button"
-            className="home-subscribe-button"
-            onClick={() => setSeccionActiva("suscribir")}
-            aria-label="Ver planes de suscripcion"
-          >
-            <img src="./suscribir-Photoroom.png" alt="Suscribir" />
-          </button>
-        )}
-
-        {user && user.nombre && (
+        {canUseSystem && user && user.nombre && (
           <div className="home-user-panel home-user-panel--corner home-user-panel-desktop text-center text-white">
             <h3 className="outlined-black home-user-title">Bienvenido:</h3>
 
@@ -809,11 +798,11 @@ export default function Home() {
               {shouldShowSubscribeOption && (
                 <button
                   type="button"
-                  className="home-sidebar-subscribe-button"
+                  className="boton2"
                   onClick={() => setSeccionActiva("suscribir")}
                   aria-label="Ver planes de suscripcion"
                 >
-                  <img src="./suscribir-Photoroom.png" alt="Suscribir" />
+                  Suscribir
                 </button>
               )}
 
