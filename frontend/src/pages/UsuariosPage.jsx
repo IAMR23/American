@@ -206,6 +206,18 @@ const validateBaseUser = (form, { creating = false } = {}) => {
     }
   }
 
+  if (!creating && (form.password || form.confirmPassword)) {
+    if (form.password && form.password.length < PASSWORD_MIN_LENGTH) {
+      errors.password = "Debe tener minimo 6 caracteres.";
+    }
+    if (!form.password) {
+      errors.password = "Ingresa la nueva contrasena.";
+    }
+    if (form.password !== form.confirmPassword) {
+      errors.confirmPassword = "Las contrasenas no coinciden.";
+    }
+  }
+
   if (!["admin", "cantante"].includes(form.rol)) {
     errors.rol = "Selecciona un rol valido.";
   }
@@ -422,6 +434,8 @@ export default function UsuariosPage() {
       nombre: user.nombre || "",
       email: user.email || "",
       rol: user.rol || "cantante",
+      password: "",
+      confirmPassword: "",
     });
     setFormErrors({});
     setModal({ type: "edit", user });
@@ -545,6 +559,9 @@ export default function UsuariosPage() {
     ["nombre", "email", "rol"].forEach((field) => {
       if (editForm[field] !== (modal.user[field] || "")) payload[field] = editForm[field];
     });
+    if (editForm.password) {
+      payload.password = editForm.password;
+    }
 
     if (!Object.keys(payload).length) {
       closeModal();
@@ -1231,6 +1248,11 @@ function FieldError({ children }) {
 
 function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
   const creating = mode === "create";
+  const canEditPassword = creating || mode === "edit";
+  const passwordLabel = creating ? "Contrasena" : "Nueva contrasena";
+  const confirmPasswordLabel = creating
+    ? "Confirmar contrasena"
+    : "Confirmar nueva contrasena";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -1270,11 +1292,11 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
           <FieldError>{errors.email}</FieldError>
         </div>
 
-        {creating && (
+        {canEditPassword && (
           <>
             <div className="col-md-6">
               <label className="form-label" htmlFor={`${id}-password`}>
-                Contrasena <span aria-hidden="true">*</span>
+                {passwordLabel} {creating && <span aria-hidden="true">*</span>}
               </label>
               <div className="users-password-field">
                 <input
@@ -1284,7 +1306,8 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
                   value={form.password}
                   minLength={PASSWORD_MIN_LENGTH}
                   onChange={(event) => onChange("password", event.target.value)}
-                  required
+                  placeholder={creating ? "" : "Dejar vacia para mantener la actual"}
+                  required={creating}
                 />
                 <button
                   type="button"
@@ -1295,11 +1318,14 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
                 </button>
               </div>
               <FieldError>{errors.password}</FieldError>
+              {!creating && (
+                <div className="form-text">Solo se cambia si escribes una nueva.</div>
+              )}
             </div>
 
             <div className="col-md-6">
               <label className="form-label" htmlFor={`${id}-confirm-password`}>
-                Confirmar contrasena <span aria-hidden="true">*</span>
+                {confirmPasswordLabel} {creating && <span aria-hidden="true">*</span>}
               </label>
               <div className="users-password-field">
                 <input
@@ -1308,7 +1334,8 @@ function UserForm({ id, mode, form, errors, onChange, onSubmit }) {
                   className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
                   value={form.confirmPassword}
                   onChange={(event) => onChange("confirmPassword", event.target.value)}
-                  required
+                  placeholder={creating ? "" : "Repite la nueva contrasena"}
+                  required={creating}
                 />
                 <button
                   type="button"

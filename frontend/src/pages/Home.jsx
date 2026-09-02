@@ -38,6 +38,7 @@ const FULLSCREEN_REQUEST_KEY = "openPlayerFullscreen";
 const MESAS_STORAGE_KEY = "karaokeMesas";
 const CONCURSO_STORAGE_KEY = "karaokeConcurso";
 const FREE_USER_SUBSCRIBE_PROMPT_START_INDEX = 6;
+const GUEST_CONTINUE_PROMPT_START_INDEX = 6;
 
 export default function Home() {
   const navigate = useNavigate();
@@ -653,6 +654,9 @@ export default function Home() {
             showSubscribePrompt={false}
             subscribePromptStartIndex={
               isFreeUser ? FREE_USER_SUBSCRIBE_PROMPT_START_INDEX : null
+            }
+            guestPromptStartIndex={
+              isGuest ? GUEST_CONTINUE_PROMPT_START_INDEX : null
             }
             getSubscribePromptOrigin={getSubscribePromptOrigin}
             onSubscribePromptClick={() =>

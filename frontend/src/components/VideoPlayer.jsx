@@ -107,6 +107,7 @@ export default function VideoPlayer({
   onLimpiarConcurso,
   showSubscribePrompt = false,
   subscribePromptStartIndex = null,
+  guestPromptStartIndex = null,
   getSubscribePromptOrigin,
   onSubscribePromptClick,
 }) {
@@ -240,12 +241,19 @@ export default function VideoPlayer({
   const activeUrl = activeVideo?.videoUrl || "";
   const promptStartIndex =
     subscribePromptStartIndex == null ? null : Number(subscribePromptStartIndex);
+  const guestStartIndex =
+    guestPromptStartIndex == null ? null : Number(guestPromptStartIndex);
   const shouldShowIndexedSubscribePrompt =
     promptStartIndex !== null &&
     Number.isFinite(promptStartIndex) &&
     effectiveIndex >= promptStartIndex;
   const shouldRenderSubscribePrompt =
     showSubscribePrompt || shouldShowIndexedSubscribePrompt;
+  const shouldRenderGuestPrompt =
+    !shouldRenderSubscribePrompt &&
+    guestStartIndex !== null &&
+    Number.isFinite(guestStartIndex) &&
+    effectiveIndex >= guestStartIndex;
 
   const updateSubscribePromptOrigin = useCallback(() => {
     if (!shouldRenderSubscribePrompt) {
@@ -1205,6 +1213,20 @@ export default function VideoPlayer({
             <img
               src="/suscribir-Photoroom.png"
               alt="Suscribir"
+            />
+          </button>
+        )}
+
+        {shouldRenderGuestPrompt && (
+          <button
+            type="button"
+            className="player-guest-prompt"
+            onClick={onSubscribePromptClick}
+            aria-label="Registrarse para seguir cantando"
+          >
+            <img
+              src="/para_seguir_cantando-Photoroom.png"
+              alt="Para seguir cantando"
             />
           </button>
         )}
