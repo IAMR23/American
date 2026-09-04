@@ -22,7 +22,7 @@
 }
 
 .video-card {
-  flex: 0 0 calc(25% - 16px);
+  flex: 0 0 calc((100% / var(--carousel-items-per-page, 4)) - 16px);
   margin-right: 16px;
   background-color: #202020;
   border-radius: 8px;
@@ -95,26 +95,36 @@
   margin-left: 8px;
 }
 
-/* 📱 RESPONSIVE: en móviles se apilan verticalmente */
 @media (max-width: 768px) {
   .carousel-content {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
   }
 
   .arrow-btn {
     display: none;
   }
 
+  .video-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
   .video-track {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     transform: none !important;
-    justify-content: center;
+    justify-content: flex-start;
+    min-width: 100%;
   }
 
   .video-card {
-    flex: 0 0 90%;
-    margin: 10px auto;
+    flex: 0 0 calc(50% - 10px);
+    margin: 6px 5px;
+    scroll-snap-align: start;
+  }
+
+  .video-thumbnail img {
+    height: clamp(150px, 32vw, 210px);
   }
 }
 

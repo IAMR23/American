@@ -1225,7 +1225,7 @@ export default function VideoPlayer({
             aria-label="Registrarse para seguir cantando"
           >
             <img
-              src="/para_seguir_cantando-Photoroom.png"
+              src="/para_seguir_cantando1-Photoroom.png"
               alt="Para seguir cantando"
             />
           </button>

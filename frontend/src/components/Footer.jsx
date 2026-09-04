@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Footer() {
   return (
-    <div className="m-10 p-10">
+    <div className="m-10 p-10 site-footer-shell">
     <footer className="bg-primary ">
       <a
         target="_blank"

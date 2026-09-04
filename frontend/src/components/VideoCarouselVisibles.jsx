@@ -10,14 +10,17 @@ import ToastModal from "./modal/ToastModal";
 import PlaylistSelectorModal from "./PlaylistSelectorModal";
 const SONG_URL = `${API_URL}/song/visibles`;
 
-export default function VideoCarouselVisibles({ canUseActions = true, onPlaySolo }) {
+export default function VideoCarouselVisibles({
+  canUseActions = true,
+  onPlaySolo,
+  itemsPerPage = 4,
+}) {
   const [indice, setIndice] = useState(0);
   const [videos, setVideos] = useState([]);
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
 
-  const itemsPerPage = 4;
   const moveBy = 3;
 
   const { addToQueue, playNowQueue, cola, setCola, currentIndex } =
@@ -169,7 +172,10 @@ export default function VideoCarouselVisibles({ canUseActions = true, onPlaySolo
   };
 
   return (
-    <div className="carousel-container">
+    <div
+      className="carousel-container"
+      style={{ "--carousel-items-per-page": itemsPerPage }}
+    >
       <div className="carousel-content">
         <button className="arrow-btn left" onClick={prev}>
           <FaChevronLeft />

@@ -1,0 +1,369 @@
+.home-mobile-shell {
+  min-height: 100svh;
+  width: 100%;
+  overflow-x: hidden;
+  padding: 8px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-mobile-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(104px, auto);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.home-mobile-icon {
+  width: 40px;
+  height: auto;
+}
+
+.home-mobile-logo-button {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.home-mobile-logo {
+  display: block;
+  width: min(100%, 320px);
+  max-height: 54px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.home-mobile-user-panel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+}
+
+.home-mobile-user-title {
+  flex: 0 0 auto;
+  font-size: clamp(0.76rem, 2.8vw, 1rem);
+  line-height: 1;
+}
+
+.home-mobile-user-button {
+  min-height: 34px;
+  max-width: min(24vw, 128px);
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-mobile-top-actions,
+.home-mobile-bottom-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.home-mobile-shell .home-mobile-control {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 8px;
+  font-size: clamp(14px, 3.8vw, 18px);
+  line-height: 1;
+  background-size: 100% 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-mobile-shell .home-mobile-control:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 1;
+}
+
+.home-mobile-shell .home-mobile-image-button,
+.home-mobile-shell .home-mobile-mode-button {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+}
+
+.home-mobile-shell .home-mobile-image-button:disabled,
+.home-mobile-shell .home-mobile-mode-button:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 1;
+}
+
+.home-mobile-shell .home-mobile-image-button img,
+.home-mobile-shell .home-mobile-mode-button img {
+  width: 100%;
+  max-width: 132px;
+  height: 100%;
+  max-height: 46px;
+  object-fit: contain;
+  border-radius: 24px;
+}
+
+.home-mobile-control-active {
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.95));
+  transform: translateY(-1px);
+}
+
+.home-mobile-content {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-mobile-content > * {
+  width: 100%;
+  max-width: 100%;
+}
+
+.home-mobile-queue {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.46);
+  color: #fff;
+}
+
+.home-mobile-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.home-mobile-clear-queue {
+  width: 92px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-mobile-clear-queue img {
+  display: block;
+  width: 100%;
+  max-width: 92px;
+  height: auto;
+  object-fit: contain;
+}
+
+.home-mobile-clear-queue:disabled {
+  opacity: 1;
+}
+
+.home-mobile-queue-list {
+  display: flex;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.home-mobile-song-button {
+  flex: 0 0 88px;
+  min-height: 48px;
+  max-width: 88px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.58);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+
+.home-mobile-song-button span {
+  width: 100%;
+  font-size: 0.68rem;
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .site-footer-shell {
+    display: none;
+  }
+
+  .fondo {
+    overflow-x: hidden;
+  }
+
+  .fondo h1 {
+    font-size: clamp(1.25rem, 6vw, 1.75rem);
+  }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .home-mobile-shell {
+    min-height: 100svh;
+    overflow-y: auto;
+  }
+
+  .home-mobile-top-actions,
+  .home-mobile-bottom-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-mobile-content {
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 430px) and (max-width: 768px) and (orientation: portrait) {
+  .home-mobile-top-actions,
+  .home-mobile-bottom-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) and (orientation: landscape) {
+  .home-mobile-shell {
+    min-height: 100svh;
+    overflow-y: auto;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .home-mobile-header {
+    grid-template-columns: 38px minmax(0, 1fr) minmax(94px, auto);
+  }
+
+  .home-mobile-icon {
+    width: 34px;
+  }
+
+  .home-mobile-logo {
+    max-height: 38px;
+    max-width: 290px;
+  }
+
+  .home-mobile-user-panel {
+    gap: 4px;
+  }
+
+  .home-mobile-user-title {
+    font-size: 0.72rem;
+  }
+
+  .home-mobile-user-button {
+    min-height: 30px;
+    max-width: min(22vw, 112px);
+    font-size: 0.76rem;
+  }
+
+  .home-mobile-top-actions,
+  .home-mobile-bottom-actions {
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    gap: 5px;
+  }
+
+  .home-mobile-shell .home-mobile-control {
+    min-height: 42px;
+    height: 42px;
+    font-size: clamp(13px, 2vw, 16px);
+  }
+
+  .home-mobile-shell .home-mobile-image-button,
+  .home-mobile-shell .home-mobile-mode-button {
+    min-height: 42px;
+    height: 42px;
+  }
+
+  .home-mobile-shell .home-mobile-image-button img,
+  .home-mobile-shell .home-mobile-mode-button img {
+    max-height: 40px;
+  }
+
+  .home-mobile-content {
+    width: min(100%, calc((100svh - 150px) * 16 / 9));
+    min-width: 420px;
+  }
+
+  .home-mobile-queue {
+    padding: 4px 6px;
+  }
+
+  .home-mobile-queue-header {
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+  }
+
+  .home-mobile-clear-queue {
+    width: 78px;
+    min-height: 30px;
+  }
+
+  .home-mobile-clear-queue img {
+    max-width: 78px;
+  }
+
+  .home-mobile-song-button {
+    flex-basis: 78px;
+    max-width: 78px;
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-mobile-header {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(88px, auto);
+    gap: 5px;
+  }
+
+  .home-mobile-user-panel {
+    gap: 3px;
+  }
+
+  .home-mobile-user-button {
+    max-width: 74px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+  }
+
+  .home-mobile-user-title {
+    font-size: 0.66rem;
+  }
+}
