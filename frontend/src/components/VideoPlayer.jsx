@@ -1470,7 +1470,7 @@ const emptyStyle = {
 const navButtonStyle = (side, disabled) => ({
   position: "absolute",
   top: "50%",
-  [side]: "10px",
+  [side]: `var(--player-nav-${side}, 10px)`,
   transform: "translateY(-50%)",
   width: "50px",
   height: "50px",

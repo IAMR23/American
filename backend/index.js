@@ -36,7 +36,7 @@ const allowedOrigins = [
   "https://www.american-karaoke.com",
   "http://localhost:5173",
   "http://192.168.1.34:5173",
-  "http://192.168.0.8:5173",
+  "http://192.168.0.15:5173",
   "http://192.168.1.116:5173",
 ];
 

@@ -146,6 +146,35 @@
   max-width: 100%;
 }
 
+.home-mobile-shell .player-wrapper {
+  --player-nav-left: max(12px, env(safe-area-inset-left, 0px));
+  --player-nav-right: max(12px, env(safe-area-inset-right, 0px));
+}
+
+.home-mobile-shell .player-wrapper-full {
+  /* In fullscreen only, place the arrows at the centered 16:9 image edges. */
+  --player-nav-left: max(
+    12px,
+    env(safe-area-inset-left, 0px),
+    calc((100vw - (100vh * 16 / 9)) / 2 + 12px)
+  );
+  --player-nav-right: max(
+    12px,
+    env(safe-area-inset-right, 0px),
+    calc((100vw - (100vh * 16 / 9)) / 2 + 12px)
+  );
+  --player-nav-left: max(
+    12px,
+    env(safe-area-inset-left, 0px),
+    calc((100dvw - (100dvh * 16 / 9)) / 2 + 12px)
+  );
+  --player-nav-right: max(
+    12px,
+    env(safe-area-inset-right, 0px),
+    calc((100dvw - (100dvh * 16 / 9)) / 2 + 12px)
+  );
+}
+
 .home-mobile-queue {
   width: 100%;
   max-width: 760px;
