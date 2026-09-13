@@ -729,7 +729,7 @@ export default function Home() {
         />
       </div>
 
-      {!isSubscribed && <WhatsAppButton />}
+      {isFreeUser && <WhatsAppButton />}
     </>
   );
 }
