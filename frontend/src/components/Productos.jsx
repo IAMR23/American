@@ -15,6 +15,7 @@ const Productos = () => {
     category: "SOFTWARE",
   });
   const [error, setError] = useState("");
+  const [actionProductId, setActionProductId] = useState(null);
 
   const cargarProductos = async () => {
     try {
@@ -22,6 +23,7 @@ const Productos = () => {
       setProductos(res.data);
     } catch (err) {
       console.error("Error al cargar productos:", err);
+      setError(err.response?.data?.error || "Error al cargar productos");
     }
   };
 
@@ -52,9 +54,40 @@ const Productos = () => {
   };
 
   const handleCardClick = (id) => {
-
     navigate(`/producto/${id}`);
-    // Aquí luego puedes hacer navigate(`/producto/${id}`)
+  };
+
+  const seleccionarProducto = async (event, productId) => {
+    event.stopPropagation();
+    setError("");
+    setActionProductId(productId);
+    try {
+      await axios.patch(
+        `${API_URL}/paypal/productos/${productId}/seleccionar`,
+      );
+      await cargarProductos();
+    } catch (err) {
+      setError(err.response?.data?.error || "No se pudo seleccionar el producto");
+    } finally {
+      setActionProductId(null);
+    }
+  };
+
+  const cambiarVisibilidad = async (event, product) => {
+    event.stopPropagation();
+    setError("");
+    setActionProductId(product.id);
+    try {
+      await axios.patch(
+        `${API_URL}/paypal/productos/${product.id}/visibilidad`,
+        { visible: !product.visibleInKaraoke },
+      );
+      await cargarProductos();
+    } catch (err) {
+      setError(err.response?.data?.error || "No se pudo cambiar la visibilidad");
+    } finally {
+      setActionProductId(null);
+    }
   };
 
   return (
@@ -65,6 +98,8 @@ const Productos = () => {
           + Crear Producto
         </button>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
 
       {/* Modal */}
       {showModal && (
@@ -138,7 +173,6 @@ const Productos = () => {
                       <option value="OTHER">Otro</option>
                     </select>
                   </div>
-                  {error && <div className="text-danger">{error}</div>}
                 </div>
                 <div className="modal-footer">
                   <button
@@ -168,8 +202,51 @@ const Productos = () => {
               onClick={() => handleCardClick(prod.id)}
             >
               <div className="card-body">
-                <h5 className="card-title">{prod.name}</h5>
+                <div className="d-flex justify-content-between gap-2">
+                  <h5 className="card-title">{prod.name}</h5>
+                  <div>
+                    {prod.isActive && (
+                      <span className="badge bg-success me-1">Activo</span>
+                    )}
+                    {!prod.visibleInKaraoke && (
+                      <span className="badge bg-secondary">Oculto</span>
+                    )}
+                  </div>
+                </div>
                 <p className="card-text">{prod.description}</p>
+                <div className="d-flex flex-wrap gap-2 mt-3">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    disabled={
+                      prod.isActive ||
+                      !prod.visibleInKaraoke ||
+                      actionProductId === prod.id
+                    }
+                    onClick={(event) => seleccionarProducto(event, prod.id)}
+                  >
+                    {prod.isActive
+                      ? "Seleccionado"
+                      : "Seleccionar para American Karaoke"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${
+                      prod.visibleInKaraoke
+                        ? "btn-outline-secondary"
+                        : "btn-outline-success"
+                    }`}
+                    disabled={prod.isActive || actionProductId === prod.id}
+                    title={
+                      prod.isActive
+                        ? "Selecciona otro producto antes de ocultar este"
+                        : undefined
+                    }
+                    onClick={(event) => cambiarVisibilidad(event, prod)}
+                  >
+                    {prod.visibleInKaraoke ? "Ocultar" : "Mostrar"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

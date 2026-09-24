@@ -1,7 +1,7 @@
 .Mboton1 {
   width: 320px;
   height:100px;
-  background-image: url("Mboton1.png");
+  background-image: url("/Mboton1.png");
   background-size: cover;
   background-color: transparent;
   background-position: center;
@@ -33,7 +33,7 @@
 .Mboton2 {
   width: 320px;
   height:100px;
-  background-image: url("Mboton2.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton2.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -63,7 +63,7 @@
 .Mboton3 {
    width: 320px;
   height:100px;
-  background-image: url("Mboton3.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton3.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -94,7 +94,7 @@
 .Mboton4 {
   width: 320px;
   height:100px;
-  background-image: url("Mboton4.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton4.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -125,7 +125,7 @@
 .Mboton5 {
   width: 320px;
   height:100px;
-  background-image: url("Mboton5.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton5.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -156,7 +156,7 @@
 .Mboton6 {
   width: 320px;
   height:100px;
-  background-image: url("Mboton6.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton6.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -187,7 +187,7 @@
 .Mboton7 {
  width: 320px;
   height:100px;
-  background-image: url("Mboton7.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton7.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -218,7 +218,7 @@
 .Mboton8 {
  width: 320px;
   height:100px;
-  background-image: url("Mboton8.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton8.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -249,7 +249,7 @@
 .Mboton9 {
  width: 320px;
   height:100px;
-  background-image: url("Mboton9.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton9.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;
@@ -280,7 +280,7 @@
 .Mboton10 {
  width: 320px;
   height:100px;
-  background-image: url("Mboton10.png"); /* Cambia a la ruta de tu imagen */
+  background-image: url("/Mboton10.png"); /* Cambia a la ruta de tu imagen */
   background-size: cover;
   background-color: transparent;
   font-family: "Arial Black", "Impact", sans-serif;

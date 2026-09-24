@@ -4,73 +4,33 @@ import axios from "axios";
 import { API_URL } from "../config";
 
 const PlantTest = () => {
-  const [productos, setProductos] = useState([]);
-  const [loadingProductos, setLoadingProductos] = useState(true);
-  const [errorProductos, setErrorProductos] = useState(null);
-
-  const [paypalProductId, setPaypalProductId] = useState(null);
-
+  const [productoActivo, setProductoActivo] = useState(null);
   const [planesActivos, setPlanesActivos] = useState([]);
-  const [loadingPlanes, setLoadingPlanes] = useState(false);
+  const [loadingPlanes, setLoadingPlanes] = useState(true);
   const [errorPlanes, setErrorPlanes] = useState(null);
+  const [emptyMessage, setEmptyMessage] = useState("");
 
-  // Fetch productos
   useEffect(() => {
-    const fetchProductos = async () => {
-      try {
-        setLoadingProductos(true);
-        setErrorProductos(null);
-
-        const res = await axios.get(`${API_URL}/paypal/producto-local`);
-        setProductos(res.data);
-
-        if (res.data.length > 0) {
-          setPaypalProductId(res.data[0].paypalProductId);
-        }
-      } catch (err) {
-        setErrorProductos("Error al cargar productos");
-        console.error(err);
-      } finally {
-        setLoadingProductos(false);
-      }
-    };
-
-    fetchProductos();
-  }, []);
-
-  // Fetch planes activos cuando paypalProductId cambia
-  useEffect(() => {
-    if (!paypalProductId) return;
-
-    const fetchPlanesActivos = async (id) => {
+    const fetchOfertaActiva = async () => {
       try {
         setLoadingPlanes(true);
         setErrorPlanes(null);
-
-        const response = await axios.get(`${API_URL}/paypal/planes/${id}`);
-        const todosLosPlanes = response.data || [];
-
-        const activos = todosLosPlanes.filter(
-          (plan) => plan.status === "ACTIVE",
-        );
-        setPlanesActivos(activos);
+        const response = await axios.get(`${API_URL}/paypal/oferta-activa`);
+        setProductoActivo(response.data.product || null);
+        setPlanesActivos(response.data.plans || []);
+        setEmptyMessage(response.data.message || "");
       } catch (err) {
-        setErrorPlanes("No se pudieron obtener los planes activos.");
+        setErrorPlanes("No se pudo obtener la oferta de suscripción.");
+        setProductoActivo(null);
         setPlanesActivos([]);
-        console.error("Error al obtener planes activos:", err);
+        console.error(err);
       } finally {
         setLoadingPlanes(false);
       }
     };
 
-    fetchPlanesActivos(paypalProductId);
-  }, [paypalProductId]);
-
-  // Render
-
-  if (loadingProductos)
-    return <p className="text-light">Cargando productos...</p>;
-  if (errorProductos) return <p className="text-danger">{errorProductos}</p>;
+    fetchOfertaActiva();
+  }, []);
 
   const mapIntervalUnit = (unit) => {
     switch (unit) {
@@ -98,8 +58,13 @@ const PlantTest = () => {
       <div className="spinner-border text-primary" role="status"></div>
       <p className="mt-2">Cargando planes...</p>
     </div>
-  ) : planesActivos.length === 0 ? (
-    <div className="text-light">No hay planes</div>
+  ) : errorPlanes ? null : planesActivos.length === 0 ? (
+    <div className="alert alert-info text-center" role="status">
+      {emptyMessage ||
+        (productoActivo
+          ? "El producto seleccionado no tiene planes activos disponibles."
+          : "No hay un producto de suscripción seleccionado.")}
+    </div>
   ) : (
     <div className="container">
       <div className="row g-4 justify-content-center align-items-center">
