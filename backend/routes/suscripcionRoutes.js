@@ -6,6 +6,13 @@ const { generateAccessToken } = require("../paypal");
 const {
   createPaypalWebhookService,
 } = require("../services/paypalWebhookService");
+const {
+  PaypalSubscriptionError,
+  createPaypalSubscriptionService,
+} = require("../services/paypalSubscriptionService");
+const {
+  createPaypalProductSelectionService,
+} = require("../services/paypalProductSelectionService");
 
 const API_PAYPAL = process.env.PAYPAL_API;
 const paypalSubscriptions = createPaypalWebhookService({
@@ -14,12 +21,59 @@ const paypalSubscriptions = createPaypalWebhookService({
   generateAccessToken,
   UserModel: Usuario,
 });
+const paypalCheckout = createPaypalSubscriptionService({
+  apiBaseUrl: API_PAYPAL,
+  generateAccessToken,
+});
+const productSelection = createPaypalProductSelectionService();
 
 function validDate(value) {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+router.post("/crear-suscripcion", authenticate, async (req, res) => {
+  try {
+    const activeProduct = await productSelection.getActiveProduct();
+    if (!activeProduct) {
+      return res.status(409).json({
+        message: "No hay una oferta de suscripción activa.",
+      });
+    }
+
+    const subscription = await paypalCheckout.createSubscription({
+      planId: req.body?.planId,
+      userId: req.user._id,
+      productId: activeProduct.paypalProductId,
+    });
+
+    return res.status(201).json({
+      subscriptionID: subscription.id,
+      status: subscription.status,
+    });
+  } catch (error) {
+    const paypalError = error.response?.data;
+    const detail = paypalError?.details?.[0]?.description;
+    const statusCode =
+      error instanceof PaypalSubscriptionError
+        ? error.statusCode
+        : error.response?.status || 500;
+
+    console.error(
+      "Error creando suscripción:",
+      paypalError || error.message,
+    );
+
+    return res.status(statusCode).json({
+      message:
+        detail ||
+        paypalError?.message ||
+        error.message ||
+        "No se pudo crear la suscripción.",
+    });
+  }
+});
 
 router.post("/activar-suscripcion", authenticate, async (req, res) => {
   const { subscriptionID } = req.body;

@@ -53,12 +53,34 @@ function PaypalSuscripcion({ planId }) {
             color: "gold",
             label: "subscribe",
           }}
-          createSubscription={(data, actions) => {
+          createSubscription={async () => {
             setMessage("");
-            return actions.subscription.create({
-              plan_id: planId,
-              custom_id: userId,
-            });
+            const token = getToken();
+
+            if (!token) {
+              throw new Error("Debes iniciar sesión para suscribirte.");
+            }
+
+            const response = await fetch(
+              `${API_URL}/suscripcion/crear-suscripcion`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ planId }),
+              },
+            );
+            const result = await response.json();
+
+            if (!response.ok || !result.subscriptionID) {
+              throw new Error(
+                result.message || "No se pudo crear la suscripción en PayPal.",
+              );
+            }
+
+            return result.subscriptionID;
           }}
           onApprove={async (data) => {
             setMessage(
@@ -116,7 +138,8 @@ function PaypalSuscripcion({ planId }) {
           }}
           onError={(err) => {
             setMessage(
-              "PayPal no pudo abrir el proceso de pago. Cierra la ventana e inténtalo nuevamente."
+              err?.message ||
+                "PayPal no pudo abrir el proceso de pago. Cierra la ventana e inténtalo nuevamente.",
             );
             console.error("Error del botón PayPal:", err);
           }}
