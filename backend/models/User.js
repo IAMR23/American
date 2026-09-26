@@ -48,6 +48,26 @@ const UsuarioSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    paypalSubscriptionStatus: {
+      type: String,
+      default: null,
+    },
+    paypalLastPaymentStatus: {
+      type: String,
+      default: null,
+    },
+    paypalLastPaymentAt: {
+      type: Date,
+      default: null,
+    },
+    lastPaypalWebhookEventId: {
+      type: String,
+      default: null,
+    },
+    lastPaypalWebhookEventAt: {
+      type: Date,
+      default: null,
+    },
     resetToken: {
       type: String,
       default: null,

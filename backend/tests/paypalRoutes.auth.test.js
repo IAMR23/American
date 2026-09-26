@@ -14,6 +14,8 @@ describe("protección de acciones administrativas PayPal", () => {
     ["patch", "/paypal/productos/PROD-A/seleccionar"],
     ["patch", "/paypal/productos/PROD-A/visibilidad"],
     ["post", "/paypal/producto/PROD-A/plan"],
+    ["patch", "/paypal/planes/P-PLAN-A"],
+    ["post", "/paypal/planes/P-PLAN-A/desactivar"],
   ])("%s %s requiere autenticación", async (method, path) => {
     const response = await request(app)[method](path).send({});
 

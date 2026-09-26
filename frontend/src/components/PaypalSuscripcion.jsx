@@ -1,30 +1,47 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { jwtDecode } from "jwt-decode";
-import { API_URL } from "../config"
+import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
 
 function Message({ content }) {
   return <p>{content}</p>;
 }
 
-function PaypalSuscripcion({ planId }) {
+const wait = (milliseconds) =>
+  new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
+async function waitForPaymentConfirmation(token) {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    await wait(2000);
+
+    try {
+      const response = await fetch(`${API_URL}/user/suscripcion`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) return true;
+    } catch {
+      // El webhook puede tardar; se vuelve a consultar en el siguiente intento.
+    }
+  }
+
+  return false;
+}
+
+function PaypalSuscripcion({ planId }) {
   let userId = null;
-  let isAuthenticated = false;
   try {
     const token = getToken();
     if (token && typeof token === "string") {
       const decoded = jwtDecode(token);
       userId = decoded.userId;
-      isAuthenticated = true;
     }
-  } catch (error) {
+  } catch {
     console.warn("Usuario no autenticado");
   }
   const initialOptions = {
-    "client-id":
-      import.meta.env.VITE_CLIENT_ID,
+    "client-id": import.meta.env.VITE_CLIENT_ID,
     vault: true,
     intent: "subscription",
     currency: "USD",
@@ -53,7 +70,7 @@ function PaypalSuscripcion({ planId }) {
           //   console.log("Datos de la suscripción:", data);
           //   // Puedes hacer un fetch aquí para notificar a tu backend si deseas
           // }}
-          onApprove={async (data, actions) => {
+          onApprove={async (data) => {
             setMessage(
               `Suscripción creada con éxito. ID: ${data.subscriptionID}`
             );
@@ -72,7 +89,6 @@ function PaypalSuscripcion({ planId }) {
                   },
                   body: JSON.stringify({
                     subscriptionID: data.subscriptionID,
-                    userId: userId,
                   }),
                 }
               );
@@ -81,12 +97,26 @@ function PaypalSuscripcion({ planId }) {
               console.log("Respuesta del backend:", resultado);
 
               if (res.ok) {
-                setMessage("✅ Suscripción activada en tu cuenta.");
-                // Opcional: recargar la página para ver funciones premium
-                // window.location.reload();
+                setMessage(
+                  "✅ Suscripción registrada. Confirmando el pago con PayPal..."
+                );
+
+                const paymentConfirmed =
+                  await waitForPaymentConfirmation(token);
+
+                if (paymentConfirmed) {
+                  setMessage("✅ Pago confirmado. Activando tu cuenta...");
+                  window.setTimeout(() => window.location.reload(), 1200);
+                } else {
+                  setMessage(
+                    "La suscripción fue registrada. PayPal aún está procesando la confirmación del pago."
+                  );
+                }
               } else {
                 setMessage(
-                  `⚠️ Error al activar suscripción: ${resultado.mensaje}`
+                  `⚠️ Error al registrar suscripción: ${
+                    resultado.message || "Intenta nuevamente"
+                  }`
                 );
               }
             } catch (err) {

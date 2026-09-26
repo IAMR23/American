@@ -348,5 +348,131 @@ router.get("/planes/:productId", authenticate, isAdmin, async (req, res) => {
   }
 });
 
+router.patch("/planes/:planId", authenticate, isAdmin, async (req, res) => {
+  const { planId } = req.params;
+  const nombre = String(req.body.nombre || "").trim();
+  const descripcion = String(req.body.descripcion || "").trim();
+  const precio = Number(req.body.precio);
+
+  if (!nombre || !descripcion || !Number.isFinite(precio) || precio <= 0) {
+    return res.status(400).json({
+      error: "Nombre, descripción y un precio mayor a cero son obligatorios.",
+    });
+  }
+
+  if (nombre.length > 127 || descripcion.length > 127) {
+    return res.status(400).json({
+      error: "El nombre y la descripción pueden tener máximo 127 caracteres.",
+    });
+  }
+
+  try {
+    const accessToken = await generateAccessToken();
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    };
+    const planUrl = `${API_PAYPAL}/v1/billing/plans/${planId}`;
+    const currentPlanResponse = await axios.get(planUrl, { headers });
+    const currentPlan = currentPlanResponse.data;
+    const regularCycle =
+      currentPlan.billing_cycles?.find(
+        (cycle) => cycle.tenure_type === "REGULAR",
+      ) || currentPlan.billing_cycles?.[0];
+
+    if (!regularCycle?.pricing_scheme?.fixed_price) {
+      return res.status(400).json({
+        error: "El plan no tiene un ciclo de precio fijo editable.",
+      });
+    }
+
+    const currentPrice = Number(
+      regularCycle.pricing_scheme.fixed_price.value,
+    );
+    const textChanged =
+      currentPlan.name !== nombre || currentPlan.description !== descripcion;
+    const priceChanged = currentPrice !== precio;
+
+    if (textChanged) {
+      await axios.patch(
+        planUrl,
+        [
+          { op: "replace", path: "/name", value: nombre },
+          { op: "replace", path: "/description", value: descripcion },
+        ],
+        { headers },
+      );
+    }
+
+    if (priceChanged) {
+      await axios.post(
+        `${planUrl}/update-pricing-schemes`,
+        {
+          pricing_schemes: [
+            {
+              billing_cycle_sequence: regularCycle.sequence || 1,
+              pricing_scheme: {
+                fixed_price: {
+                  value: precio.toFixed(2),
+                  currency_code:
+                    regularCycle.pricing_scheme.fixed_price.currency_code ||
+                    "USD",
+                },
+              },
+            },
+          ],
+        },
+        { headers },
+      );
+    }
+
+    const updatedPlanResponse = await axios.get(planUrl, { headers });
+    return res.status(200).json({
+      message: "Plan actualizado con éxito",
+      plan: updatedPlanResponse.data,
+    });
+  } catch (error) {
+    const paypalError = error.response?.data;
+    const detail = paypalError?.details?.[0]?.description;
+    console.error("Error al actualizar plan:", paypalError || error.message);
+    return res.status(error.response?.status || 500).json({
+      error: detail || paypalError?.message || "No se pudo actualizar el plan.",
+    });
+  }
+});
+
+router.post(
+  "/planes/:planId/desactivar",
+  authenticate,
+  isAdmin,
+  async (req, res) => {
+    const { planId } = req.params;
+
+    try {
+      const accessToken = await generateAccessToken();
+      await axios.post(
+        `${API_PAYPAL}/v1/billing/plans/${planId}/deactivate`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      return res.status(200).json({ message: "Plan desactivado con éxito" });
+    } catch (error) {
+      const paypalError = error.response?.data;
+      const detail = paypalError?.details?.[0]?.description;
+      console.error("Error al desactivar plan:", paypalError || error.message);
+      return res.status(error.response?.status || 500).json({
+        error:
+          detail || paypalError?.message || "No se pudo desactivar el plan.",
+      });
+    }
+  },
+);
+
 
 module.exports = router;

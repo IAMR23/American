@@ -66,8 +66,8 @@ const PlantTest = () => {
           : "No hay un producto de suscripción seleccionado.")}
     </div>
   ) : (
-    <div className="container">
-      <div className="row g-4 justify-content-center align-items-center">
+    <div className="container-fluid px-0">
+      <div className="row g-4 justify-content-center align-items-stretch">
         {planesActivos.map((plan, index) => {
           const ciclo = plan.billing_cycles?.[0];
 
@@ -85,8 +85,8 @@ const PlantTest = () => {
           const borderColor = index % 2 === 0 ? "primary" : "danger";
 
           return (
-            <div className="col-12 col-lg-6 d-flex" key={plan.id} style={{width:"700px"}}>
-              <div className={`card border-${borderColor} bg-dark h-100 `} >
+            <div className="col-12 col-md-6 d-flex" key={plan.id}>
+              <div className={`card border-${borderColor} bg-dark h-100 w-100`}>
                 <div className="card-body d-flex flex-column">
                   <div className="text-light">
                     <h3>{plan.name}</h3>
@@ -148,7 +148,7 @@ const PlantTest = () => {
           );
         })}
 
-        <div className="col-12 d-flex justify-content-center" style={{width:"700px"}}>
+        <div className="col-12 d-flex justify-content-center">
           <div className="bg-secondary rounded-4 p-3 d-flex justify-content-center align-items-center">
             <img
               src="./transferencia.png"

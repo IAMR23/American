@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import CrearPlanModal from "./CrearPlanModal";
-import React from "react";
+import EditarPlanModal from "./EditarPlanModal";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import PlanesActivos from "./PlanesActivos";
-import { API_URL } from "../config"
+import { FaBan, FaEdit } from "react-icons/fa";
+import { API_URL } from "../config";
+import { confirmAction, showError, showSuccess } from "../utils/swalAlerts";
 
 
 export default function ProductoDetalle() {
   const { id } = useParams();
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [planEditando, setPlanEditando] = useState(null);
+  const [desactivandoPlanId, setDesactivandoPlanId] = useState(null);
 
   const [error, setError] = useState("");
   const [loadingPlanes, setLoadingPlanes] = useState(false);
@@ -38,6 +41,31 @@ export default function ProductoDetalle() {
     }
   }, [id]);
 
+  const handleDesactivarPlan = async (plan) => {
+    const confirmed = await confirmAction({
+      title: "Desactivar plan",
+      text: `¿Seguro que deseas desactivar el plan ${plan.name}? Ya no estará disponible para nuevas suscripciones.`,
+      confirmButtonText: "Sí, desactivar",
+    });
+    if (!confirmed) return;
+
+    setDesactivandoPlanId(plan.id);
+
+    try {
+      await axios.post(`${API_URL}/paypal/planes/${plan.id}/desactivar`);
+      await fetchPlanes();
+      showSuccess("Plan desactivado", `${plan.name} ya no acepta suscripciones.`);
+    } catch (err) {
+      console.error("Error al desactivar plan:", err);
+      showError(
+        "No se pudo desactivar el plan",
+        err.response?.data?.error || "Intenta nuevamente.",
+      );
+    } finally {
+      setDesactivandoPlanId(null);
+    }
+  };
+
   return (
     <>
       <h1>Producto: {id}</h1>
@@ -56,6 +84,13 @@ export default function ProductoDetalle() {
         }}
       />
 
+      <EditarPlanModal
+        show={Boolean(planEditando)}
+        plan={planEditando}
+        onClose={() => setPlanEditando(null)}
+        onPlanActualizado={fetchPlanes}
+      />
+
       {error && <div className="alert alert-danger mt-3">{error}</div>}
 
       {loadingPlanes ? (
@@ -69,6 +104,7 @@ export default function ProductoDetalle() {
               <th>Descripción</th>
               <th>Precio</th>
               <th>Frecuencia</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +116,10 @@ export default function ProductoDetalle() {
               </tr>
             ) : (
               planes.map((plan) => {
-                const ciclo = plan.billing_cycles?.[0];
+                const ciclo =
+                  plan.billing_cycles?.find(
+                    (billingCycle) => billingCycle.tenure_type === "REGULAR",
+                  ) || plan.billing_cycles?.[0];
                 const frecuencia = ciclo?.frequency
                   ? `${ciclo.frequency.interval_unit} x${ciclo.frequency.interval_count}`
                   : "—";
@@ -99,6 +138,40 @@ export default function ProductoDetalle() {
                       {precioMoneda} {precioValor}
                     </td>
                     <td>{frecuencia}</td>
+                    <td>
+                      <div className="d-flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => setPlanEditando(plan)}
+                          disabled={
+                            plan.status !== "ACTIVE" &&
+                            plan.status !== "CREATED"
+                          }
+                          title="Editar plan"
+                        >
+                          <FaEdit className="me-1" aria-hidden="true" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDesactivarPlan(plan)}
+                          disabled={
+                            plan.status !== "ACTIVE" ||
+                            desactivandoPlanId === plan.id
+                          }
+                          title="Desactivar plan"
+                        >
+                          <FaBan className="me-1" aria-hidden="true" />
+                          {desactivandoPlanId === plan.id
+                            ? "Desactivando..."
+                            : plan.status === "INACTIVE"
+                              ? "Desactivado"
+                              : "Desactivar"}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })
