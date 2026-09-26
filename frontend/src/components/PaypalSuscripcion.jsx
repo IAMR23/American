@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { PayPalButtons } from "@paypal/react-paypal-js";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config";
 import { getToken } from "../utils/auth";
@@ -40,19 +40,13 @@ function PaypalSuscripcion({ planId }) {
   } catch {
     console.warn("Usuario no autenticado");
   }
-  const initialOptions = {
-    "client-id": import.meta.env.VITE_CLIENT_ID,
-    vault: true,
-    intent: "subscription",
-    currency: "USD",
-  };
-
   const [message, setMessage] = useState("");
 
   return (
     <div className="App">
-      <PayPalScriptProvider options={initialOptions}>
-        <PayPalButtons
+      <PayPalButtons
+          disabled={!planId || !userId}
+          forceReRender={[planId, userId]}
           style={{
             shape: "rect",
             layout: "vertical",
@@ -60,16 +54,12 @@ function PaypalSuscripcion({ planId }) {
             label: "subscribe",
           }}
           createSubscription={(data, actions) => {
+            setMessage("");
             return actions.subscription.create({
               plan_id: planId,
-              custom_id: userId, // ¡Clave para saber quién paga!
+              custom_id: userId,
             });
           }}
-          // onApprove={(data, actions) => {
-          //   setMessage(`Suscripción creada con éxito. ID: ${data.subscriptionID}`);
-          //   console.log("Datos de la suscripción:", data);
-          //   // Puedes hacer un fetch aquí para notificar a tu backend si deseas
-          // }}
           onApprove={async (data) => {
             setMessage(
               `Suscripción creada con éxito. ID: ${data.subscriptionID}`
@@ -125,11 +115,15 @@ function PaypalSuscripcion({ planId }) {
             }
           }}
           onError={(err) => {
-            setMessage(`Error en la suscripción: ${err.message}`);
-            console.error(err);
+            setMessage(
+              "PayPal no pudo abrir el proceso de pago. Cierra la ventana e inténtalo nuevamente."
+            );
+            console.error("Error del botón PayPal:", err);
+          }}
+          onCancel={() => {
+            setMessage("Proceso de pago cancelado.");
           }}
         />
-      </PayPalScriptProvider>
       <Message content={message} />
     </div>
   );

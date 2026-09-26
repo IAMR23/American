@@ -1,7 +1,16 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import PaypalSuscripcion from "./PaypalSuscripcion";
 import axios from "axios";
 import { API_URL } from "../config";
+
+const PAYPAL_OPTIONS = {
+  "client-id": import.meta.env.VITE_CLIENT_ID,
+  components: "buttons",
+  currency: "USD",
+  intent: "subscription",
+  vault: true,
+};
 
 const PlantTest = () => {
   const [productoActivo, setProductoActivo] = useState(null);
@@ -48,9 +57,8 @@ const PlantTest = () => {
   };
 
   return (
-
-
-    <div className="p-2 min-vh-100 d-flex align-items-center justify-content-center">
+    <PayPalScriptProvider options={PAYPAL_OPTIONS}>
+      <div className="p-2 min-vh-100 d-flex align-items-center justify-content-center">
   {errorPlanes && <div className="alert alert-danger">{errorPlanes}</div>}
 
   {loadingPlanes ? (
@@ -138,9 +146,9 @@ const PlantTest = () => {
                       </li>
                     </ul>
 
-                    <button className="btn btn-primary w-100 mt-3 text-light">
+                    <div className="w-100 mt-3">
                       <PaypalSuscripcion planId={plan.id} />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -161,7 +169,8 @@ const PlantTest = () => {
       </div>
     </div>
   )}
-</div>
+      </div>
+    </PayPalScriptProvider>
   );
 };
 
