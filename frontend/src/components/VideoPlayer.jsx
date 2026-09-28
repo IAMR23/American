@@ -7,12 +7,43 @@ import React, {
   useState,
 } from "react";
 import ReactPlayer from "react-player";
+import { SoundTouchNode } from "@soundtouchjs/audio-worklet";
+import soundTouchProcessorUrl from "@soundtouchjs/audio-worklet/processor?url";
 import "../styles/react-player.css";
 import BarraDeslizante from "./BarraDeslizante";
 import { API_URL } from "../config";
+import { dropboxUrlToRaw } from "../utils/getYoutubeThumbnail";
 import axios from "axios";
 
 const API_PUNTAJE = `${API_URL}/p/puntaje`;
+const MIN_PITCH_SEMITONES = -4;
+const MAX_PITCH_SEMITONES = 4;
+
+const getPitchPlaybackUrl = (url) => {
+  if (!url) return "";
+  return dropboxUrlToRaw(url);
+};
+
+const isPitchSourceSupported = (url) => {
+  if (!url) return false;
+  if (/^(blob:|data:)/i.test(url)) return true;
+
+  try {
+    const parsedUrl = new URL(
+      url,
+      typeof window === "undefined" ? "https://local.invalid" : window.location.href,
+    );
+    const isDropboxDirect =
+      parsedUrl.hostname === "dl.dropboxusercontent.com" ||
+      parsedUrl.hostname.endsWith(".dl.dropboxusercontent.com");
+    const isSameOrigin =
+      typeof window !== "undefined" && parsedUrl.origin === window.location.origin;
+
+    return isDropboxDirect || isSameOrigin;
+  } catch {
+    return false;
+  }
+};
 
 const CONCURSO_RANKING_PREMIOS = [
   {
@@ -130,6 +161,10 @@ export default function VideoPlayer({
   const [colaCalificaciones, setColaCalificaciones] = useState([]);
   const [playerInstanceKey, setPlayerInstanceKey] = useState(0);
   const [subscribePromptStyle, setSubscribePromptStyle] = useState({});
+  const [pitchSemitones, setPitchSemitones] = useState(0);
+  const [pitchAvailable, setPitchAvailable] = useState(false);
+  const [pitchInitializing, setPitchInitializing] = useState(false);
+  const [pitchUnavailableReason, setPitchUnavailableReason] = useState("");
 
   const playerRef = useRef(null);
   const containerRef = useRef(null);
@@ -138,6 +173,7 @@ export default function VideoPlayer({
   const switchUnlockTimeoutRef = useRef(null);
   const endedUnlockTimeoutRef = useRef(null);
   const mesaIntroTimeoutRef = useRef(null);
+  const videoClickTimeoutRef = useRef(null);
   const mesaIntroKeyRef = useRef(null);
   const mountedRef = useRef(false);
   const instanceIdRef = useRef(
@@ -147,6 +183,10 @@ export default function VideoPlayer({
   const poolRef = useRef([]);
   const switchingRef = useRef(false);
   const endedLockRef = useRef(false);
+  const pitchMediaElementRef = useRef(null);
+  const pitchAudioGraphRef = useRef(null);
+  const pitchSetupPromiseRef = useRef(null);
+  const pitchGenerationRef = useRef(0);
 
   const requestedCurrentIndex = Number(currentIndex);
   const normalizedCurrentIndex =
@@ -239,6 +279,14 @@ export default function VideoPlayer({
 
   const activeVideo = videoCalificacion || currentVideo;
   const activeUrl = activeVideo?.videoUrl || "";
+  const playbackUrl = useMemo(() => getPitchPlaybackUrl(activeUrl), [activeUrl]);
+  const pitchSourceSupported = useMemo(
+    () => isPitchSourceSupported(playbackUrl),
+    [playbackUrl],
+  );
+  const pitchControlUnavailableReason = !pitchSourceSupported
+    ? "El audio de reproductores embebidos o fuentes sin CORS no es accesible desde esta página."
+    : pitchUnavailableReason;
   const promptStartIndex =
     subscribePromptStartIndex == null ? null : Number(subscribePromptStartIndex);
   const guestStartIndex =
@@ -386,13 +434,244 @@ export default function VideoPlayer({
     ],
   );
 
+  const releasePitchAudioGraph = useCallback(() => {
+    pitchGenerationRef.current += 1;
+    pitchSetupPromiseRef.current = null;
+
+    const graph = pitchAudioGraphRef.current;
+    pitchAudioGraphRef.current = null;
+
+    if (!graph) return;
+
+    try {
+      graph.source.disconnect();
+      graph.soundTouch.disconnect();
+    } catch {
+      // The media element may already have been removed by ReactPlayer.
+    }
+
+    if (graph.context.state !== "closed") {
+      graph.context.close().catch(() => undefined);
+    }
+  }, []);
+
+  const routePitchAudio = useCallback((graph, semitones) => {
+    const nextPitch = Math.min(
+      MAX_PITCH_SEMITONES,
+      Math.max(MIN_PITCH_SEMITONES, semitones),
+    );
+
+    graph.source.disconnect();
+    graph.soundTouch.disconnect();
+
+    graph.soundTouch.pitch.setValueAtTime(1, graph.context.currentTime);
+    graph.soundTouch.playbackRate.setValueAtTime(
+      1,
+      graph.context.currentTime,
+    );
+    graph.soundTouch.pitchSemitones.setValueAtTime(
+      nextPitch,
+      graph.context.currentTime,
+    );
+
+    if (nextPitch === 0) {
+      graph.source.connect(graph.context.destination);
+      graph.route = "direct";
+      return;
+    }
+
+    graph.source.connect(graph.soundTouch);
+    graph.soundTouch.connect(graph.context.destination);
+    graph.route = "processed";
+  }, []);
+
+  const ensurePitchAudioGraph = useCallback(async () => {
+    const mediaElement = pitchMediaElementRef.current;
+    const currentGraph = pitchAudioGraphRef.current;
+
+    if (currentGraph?.mediaElement === mediaElement) {
+      if (currentGraph.context.state === "suspended") {
+        await currentGraph.context.resume();
+      }
+      return currentGraph;
+    }
+
+    if (pitchSetupPromiseRef.current) {
+      return pitchSetupPromiseRef.current;
+    }
+
+    const generation = pitchGenerationRef.current;
+    const setupPromise = (async () => {
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass || !window.AudioWorkletNode) {
+        throw new Error("Este navegador no admite AudioWorklet.");
+      }
+
+      if (!(mediaElement instanceof window.HTMLMediaElement)) {
+        throw new Error("La fuente no expone un elemento de audio o video nativo.");
+      }
+
+      const context = new AudioContextClass();
+
+      try {
+        await context.resume();
+        await SoundTouchNode.register(context, soundTouchProcessorUrl);
+
+        if (
+          generation !== pitchGenerationRef.current ||
+          mediaElement !== pitchMediaElementRef.current
+        ) {
+          await context.close();
+          throw new Error("El video cambió mientras se preparaba el audio.");
+        }
+
+        const soundTouch = new SoundTouchNode({ context });
+        const source = context.createMediaElementSource(mediaElement);
+        const graph = {
+          context,
+          mediaElement,
+          source,
+          soundTouch,
+          route: "direct",
+        };
+
+        // createMediaElementSource toma control del audio del <video>. La conexión
+        // directa evita silencio hasta que se solicite un tono distinto de cero.
+        source.connect(context.destination);
+        pitchAudioGraphRef.current = graph;
+        return graph;
+      } catch (error) {
+        if (context.state !== "closed") {
+          context.close().catch(() => undefined);
+        }
+        throw error;
+      }
+    })();
+
+    pitchSetupPromiseRef.current = setupPromise;
+
+    try {
+      return await setupPromise;
+    } finally {
+      if (pitchSetupPromiseRef.current === setupPromise) {
+        pitchSetupPromiseRef.current = null;
+      }
+    }
+  }, []);
+
+  const handlePlayerReady = useCallback(() => {
+    if (!pitchSourceSupported) {
+      setPitchAvailable(false);
+      setPitchUnavailableReason(
+        "El audio de reproductores embebidos o fuentes sin CORS no es accesible desde esta página.",
+      );
+      return;
+    }
+
+    const mediaElement = playerRef.current?.getInternalPlayer?.();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+    if (
+      !AudioContextClass ||
+      !window.AudioWorkletNode ||
+      !(mediaElement instanceof window.HTMLMediaElement)
+    ) {
+      pitchMediaElementRef.current = null;
+      setPitchAvailable(false);
+      setPitchUnavailableReason(
+        "Este navegador o reproductor no permite procesar el audio con Web Audio.",
+      );
+      return;
+    }
+
+    pitchMediaElementRef.current = mediaElement;
+    setPitchAvailable(true);
+    setPitchUnavailableReason("");
+  }, [pitchSourceSupported]);
+
+  const applyPitchSemitones = useCallback(
+    async (requestedPitch) => {
+      if (!pitchAvailable || pitchInitializing) return;
+
+      const nextPitch = Math.min(
+        MAX_PITCH_SEMITONES,
+        Math.max(MIN_PITCH_SEMITONES, requestedPitch),
+      );
+      if (nextPitch === pitchSemitones) return;
+
+      setPitchInitializing(true);
+
+      try {
+        const graph = await ensurePitchAudioGraph();
+        routePitchAudio(graph, nextPitch);
+        setPitchSemitones(nextPitch);
+      } catch (error) {
+        const graph = pitchAudioGraphRef.current;
+
+        if (graph) {
+          try {
+            routePitchAudio(graph, 0);
+          } catch {
+            // If even the direct Web Audio route fails, disable the control.
+          }
+        }
+
+        setPitchSemitones(0);
+        setPitchAvailable(false);
+        setPitchUnavailableReason(
+          "No se pudo conectar el audio de esta fuente a Web Audio.",
+        );
+        console.error("No se pudo cambiar el tono del karaoke:", error);
+      } finally {
+        setPitchInitializing(false);
+      }
+    },
+    [
+      ensurePitchAudioGraph,
+      pitchAvailable,
+      pitchInitializing,
+      pitchSemitones,
+      routePitchAudio,
+    ],
+  );
+
+  const handlePitchStep = useCallback(
+    (step) => applyPitchSemitones(pitchSemitones + step),
+    [applyPitchSemitones, pitchSemitones],
+  );
+
+  const handlePitchReset = useCallback(
+    () => applyPitchSemitones(0),
+    [applyPitchSemitones],
+  );
+
+  const handlePlayPause = useCallback(() => {
+    const context = pitchAudioGraphRef.current?.context;
+
+    if (!isPlaying && context?.state === "suspended") {
+      context.resume().catch(() => undefined);
+    }
+
+    setIsPlaying((prev) => !prev);
+  }, [isPlaying]);
+
   const stopCurrentPlayer = useCallback(() => {
     setIsPlaying(false);
+    releasePitchAudioGraph();
+    pitchMediaElementRef.current = null;
+
+    if (mountedRef.current) {
+      setPitchSemitones(0);
+      setPitchAvailable(false);
+    }
+
     stopReactPlayer(playerRef.current);
 
     const container = containerRef.current;
     container?.querySelectorAll?.("audio, video").forEach(stopMediaElement);
-  }, []);
+  }, [releasePitchAudioGraph]);
 
   const clearPlayerTimers = useCallback(() => {
     if (hideControlsTimeoutRef.current) {
@@ -418,6 +697,11 @@ export default function VideoPlayer({
     if (mesaIntroTimeoutRef.current) {
       clearTimeout(mesaIntroTimeoutRef.current);
       mesaIntroTimeoutRef.current = null;
+    }
+
+    if (videoClickTimeoutRef.current) {
+      clearTimeout(videoClickTimeoutRef.current);
+      videoClickTimeoutRef.current = null;
     }
   }, []);
 
@@ -494,6 +778,24 @@ export default function VideoPlayer({
       console.error("Error al obtener los puntajes:", error);
     }
   };
+
+  useEffect(() => {
+    releasePitchAudioGraph();
+    pitchMediaElementRef.current = null;
+    setPitchSemitones(0);
+    setPitchAvailable(false);
+    setPitchInitializing(false);
+    setPitchUnavailableReason(
+      pitchSourceSupported
+        ? "El control se habilitará cuando el video esté listo."
+        : "El audio de reproductores embebidos o fuentes sin CORS no es accesible desde esta página.",
+    );
+
+    return () => {
+      pitchMediaElementRef.current = null;
+      releasePitchAudioGraph();
+    };
+  }, [playerKey, pitchSourceSupported, releasePitchAudioGraph]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1108,6 +1410,26 @@ export default function VideoPlayer({
     }
   };
 
+  const handleVideoSurfaceClick = () => {
+    if (videoClickTimeoutRef.current) {
+      clearTimeout(videoClickTimeoutRef.current);
+    }
+
+    videoClickTimeoutRef.current = setTimeout(() => {
+      videoClickTimeoutRef.current = null;
+      handlePlayPause();
+    }, 220);
+  };
+
+  const handleVideoSurfaceDoubleClick = () => {
+    if (videoClickTimeoutRef.current) {
+      clearTimeout(videoClickTimeoutRef.current);
+      videoClickTimeoutRef.current = null;
+    }
+
+    toggleFullscreen();
+  };
+
   if (!playlist.length) {
     return <div style={emptyStyle}>🎧 No hay canciones en la cola.</div>;
   }
@@ -1135,17 +1457,14 @@ export default function VideoPlayer({
         <ReactPlayer
           key={playerKey}
           ref={playerRef}
-          url={activeUrl}
+          url={playbackUrl}
           playing={isPlaying}
           controls={false}
           width="100%"
           height="100%"
           stopOnUnmount={true}
           playsinline
-          onReady={() => {
-            // No forzar setIsPlaying(true) aquí.
-            // Eso podía causar solapamiento entre videos.
-          }}
+          onReady={handlePlayerReady}
           onPlay={claimActivePlayer}
           onProgress={handleProgress}
           onDuration={setDuration}
@@ -1162,9 +1481,18 @@ export default function VideoPlayer({
             file: {
               attributes: {
                 controlsList: "nodownload",
+                ...(pitchSourceSupported ? { crossOrigin: "anonymous" } : {}),
               },
             },
           }}
+        />
+
+        <button
+          type="button"
+          className="player-video-toggle"
+          onClick={handleVideoSurfaceClick}
+          onDoubleClick={handleVideoSurfaceDoubleClick}
+          aria-label={isPlaying ? "Pausar video" : "Reproducir video"}
         />
 
         <img
@@ -1232,24 +1560,11 @@ export default function VideoPlayer({
         )}
 
         {showControls && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: "15px",
-              left: "0",
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "10px",
-              padding: "0 15px",
-              color: "white",
-              transition: "opacity 0.3s",
-              zIndex: 5,
-            }}
-          >
+          <div className="player-controls">
             <button
-              onClick={() => setIsPlaying((prev) => !prev)}
+              type="button"
+              className="player-play-button"
+              onClick={handlePlayPause}
               style={{
                 background: "rgba(0,0,0,0)",
                 color: "white",
@@ -1263,30 +1578,82 @@ export default function VideoPlayer({
               {isPlaying ? "⏸" : "▶"}
             </button>
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+            <span className="player-time player-current-time">
               {formatTime(progress)}
             </span>
 
             <input
+              className="player-seek-control"
               type="range"
               min={0}
               max={duration || 0}
               step="0.1"
               value={progress}
               onChange={handleSeek}
-              style={{
-                flex: 1,
-                height: "6px",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
             />
 
-            <span style={{ fontSize: "14px", minWidth: "45px" }}>
+            <span className="player-time player-duration">
               {formatTime(duration)}
             </span>
 
+            <div
+              className={`player-pitch-control ${
+                pitchAvailable ? "" : "player-pitch-control-disabled"
+              }`}
+              title={
+                pitchControlUnavailableReason ||
+                "Cambia la tonalidad sin modificar el tempo ni la duración."
+              }
+              aria-label={
+                pitchControlUnavailableReason ||
+                `Tono actual: ${pitchSemitones} semitonos`
+              }
+            >
+              <img
+                className="player-pitch-image"
+                src="/tonos.png"
+                alt=""
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                className="player-pitch-hotspot player-pitch-down"
+                onClick={() => handlePitchStep(-1)}
+                disabled={
+                  !pitchAvailable ||
+                  pitchInitializing ||
+                  pitchSemitones <= MIN_PITCH_SEMITONES
+                }
+                aria-label="Bajar un semitono"
+              />
+              <output className="player-pitch-value" aria-live="polite">
+                {pitchSourceSupported ? pitchSemitones : "—"}
+              </output>
+              <button
+                type="button"
+                className="player-pitch-hotspot player-pitch-up"
+                onClick={() => handlePitchStep(1)}
+                disabled={
+                  !pitchAvailable ||
+                  pitchInitializing ||
+                  pitchSemitones >= MAX_PITCH_SEMITONES
+                }
+                aria-label="Subir un semitono"
+              />
+              <button
+                type="button"
+                className="player-pitch-hotspot player-pitch-reset"
+                onClick={handlePitchReset}
+                disabled={
+                  !pitchAvailable || pitchInitializing || pitchSemitones === 0
+                }
+                aria-label="Restablecer el tono original"
+              />
+            </div>
+
             <button
+              type="button"
+              className="player-fullscreen-button"
               onClick={toggleFullscreen}
               style={{
                 background: "rgba(0,0,0,0.6)",
