@@ -138,8 +138,12 @@
   position: relative;
   display: block;
   flex: 0 0 auto;
-  width: clamp(172.5px, 20.25vw, 270px);
+  width: clamp(92px, 10.8vw, 144px);
   aspect-ratio: 2170 / 725;
+}
+
+.player-wrapper-full .player-pitch-control {
+  width: clamp(172.5px, 20.25vw, 270px);
 }
 
 .player-pitch-image {
@@ -192,7 +196,7 @@
   padding: 0;
   margin: 0;
   color: #fff;
-  font-size: clamp(15px, 1.725vw, 25.5px);
+  font-size: clamp(8px, 0.92vw, 13.6px);
   font-weight: 900;
   line-height: 1;
   text-align: center;
@@ -200,6 +204,10 @@
   transform: translate(-50%, -50%);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+
+.player-wrapper-full .player-pitch-value {
+  font-size: clamp(15px, 1.725vw, 25.5px);
 }
 
 .player-pitch-hotspot:hover:not(:disabled) {
