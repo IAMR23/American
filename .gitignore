@@ -1,1 +1,24 @@
+# Variables locales y secretos
 .env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+
+# Compilados y cobertura
+dist/
+build/
+coverage/
+
+# Datos persistentes y archivos generados en ejecución
+uploads/
+mongo-backups/
+*.log
+npm-debug.log*
+
+# Archivos locales del sistema y editores
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
