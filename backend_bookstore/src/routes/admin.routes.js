@@ -25,36 +25,38 @@ router.get('/books', asyncHandler(async (request, response) => {
   if (request.query.status) filter.status = request.query.status;
   if (request.query.q) filter.title = new RegExp(escapeRegex(String(request.query.q)), 'i');
   if (request.query.author) {
-    const authorIds = await Author.find({ name: new RegExp(escapeRegex(String(request.query.author)), 'i') }).distinct('_id');
-    filter.authors = { $in: authorIds };
+    const regex = new RegExp(escapeRegex(String(request.query.author)), 'i');
+    const authorIds = await Author.find({ name: regex }).distinct('_id');
+    filter.$and = [...(filter.$and || []), { $or: [{ author: regex }, { authors: { $in: authorIds } }] }];
   }
-  if (request.query.genre) {
-    const genreIds = await Genre.find({ name: new RegExp(escapeRegex(String(request.query.genre)), 'i') }).distinct('_id');
-    filter.genres = { $in: genreIds };
+  const categoryQuery = request.query.category || request.query.genre;
+  if (categoryQuery) {
+    const regex = new RegExp(escapeRegex(String(categoryQuery)), 'i');
+    const genreIds = await Genre.find({ name: regex }).distinct('_id');
+    filter.$and = [...(filter.$and || []), { $or: [{ category: regex }, { genres: { $in: genreIds } }] }];
   }
-  if (request.query.year !== undefined && String(request.query.year).trim() !== '') {
-    const year = Number(request.query.year);
-    if (!Number.isInteger(year) || year < 0 || year > 3000) throw new ApiError(400, 'El año de publicación no es válido.');
-    filter.publicationYear = year;
-  }
+  if (request.query.classification) filter.classification = request.query.classification;
+  if (request.query.year !== undefined && String(request.query.year).trim() !== '') filter.publicationYear = Number(request.query.year);
   const [items, total] = await Promise.all([Book.find(filter).select('+pdfRef').populate('authors', 'name').populate('genres', 'name').sort({ updatedAt: -1, _id: 1 }).skip(skip).limit(limit).lean(), Book.countDocuments(filter)]);
   response.json({ items, pagination: pageMeta(page, limit, total) });
 }));
 router.get('/books/:id', asyncHandler(async (request, response) => { const book = await Book.findById(request.params.id).select('+pdfRef'); if (!book) throw new ApiError(404, 'Libro no encontrado.'); response.json({ book }); }));
 router.post('/books', upload.single('cover'), asyncHandler(async (request, response) => {
   const body = request.body;
-  const authors = JSON.parse(body.authors ?? '[]'); const genres = JSON.parse(body.genres ?? '[]');
-  if (!body.title || !body.synopsis || !authors.length || !genres.length) throw new ApiError(400, 'Título, sinopsis, autores y géneros son obligatorios.');
-  const data = { title: body.title, slug: makeSlug(body.slug || body.title), synopsis: body.synopsis, authors, genres, pdfRef: body.pdfRef, publicationYear: body.publicationYear || undefined, status: body.status || 'draft' };
+  const classification = String(body.classification ?? '').trim().toLowerCase();
+  if (!body.title || !body.author || !body.category || !body.pdfRef || !['letras', 'imagenes', 'revistas'].includes(classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
+  if (!request.file && !String(body.imageUrl ?? '').trim()) throw new ApiError(400, 'Ingresa un enlace de imagen o sube una imagen.');
+  const data = { title: body.title, slug: makeSlug(body.title), author: body.author, category: body.category, classification, imageUrl: body.imageUrl, pdfRef: body.pdfRef, status: 'published' };
   if (request.file) data.cover = await processImage(request.file, 'cover');
   response.status(201).json({ book: await Book.create(data) });
 }));
 router.patch('/books/:id', upload.single('cover'), asyncHandler(async (request, response) => {
   const book = await Book.findById(request.params.id).select('+pdfRef'); if (!book) throw new ApiError(404, 'Libro no encontrado.');
-  const allowed = ['title', 'synopsis', 'pdfRef', 'publicationYear', 'status'];
+  const allowed = ['title', 'author', 'category', 'classification', 'imageUrl', 'pdfRef'];
   for (const key of allowed) if (request.body[key] !== undefined) book[key] = request.body[key];
-  if (request.body.slug || request.body.title) book.slug = makeSlug(request.body.slug || request.body.title);
-  for (const key of ['authors', 'genres']) if (request.body[key] !== undefined) book[key] = JSON.parse(request.body[key]);
+  if (request.body.title) book.slug = makeSlug(request.body.title);
+  if (!book.title || !book.author || !book.category || !book.pdfRef || !['letras', 'imagenes', 'revistas'].includes(book.classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
+  if (!request.file && !book.cover?.original && !book.imageUrl) throw new ApiError(400, 'Ingresa un enlace de imagen o sube una imagen.');
   if (request.file) { const old = book.cover?.toObject?.() ?? book.cover; book.cover = await processImage(request.file, 'cover'); await removeImage(old); }
   await book.save(); response.json({ book });
 }));
@@ -71,7 +73,7 @@ function crudRoutes(path, Model, hasSlug = false) {
   router.patch(`/${path}/:id`, asyncHandler(async (request, response) => { const data = { ...request.body }; if (hasSlug && (data.slug || data.name)) data.slug = makeSlug(data.slug || data.name); const item = await Model.findByIdAndUpdate(request.params.id, data, { new: true, runValidators: true }); if (!item) throw new ApiError(404, 'Registro no encontrado.'); response.json({ item }); }));
   router.delete(`/${path}/:id`, asyncHandler(async (request, response) => { if (await Book.exists({ [path === 'authors' ? 'authors' : 'genres']: request.params.id })) throw new ApiError(409, 'No se puede eliminar porque tiene libros asociados; desactívalo o reasigna los libros.'); const result = await Model.deleteOne({ _id: request.params.id }); if (!result.deletedCount) throw new ApiError(404, 'Registro no encontrado.'); response.status(204).end(); }));
 }
-crudRoutes('authors', Author); crudRoutes('genres', Genre, true);
+crudRoutes('genres', Genre, true);
 
 router.get('/users', asyncHandler(async (request, response) => { const { page, limit, skip } = pagination(request.query, 20); const filter = request.query.q ? { $or: [{ name: new RegExp(escapeRegex(String(request.query.q)), 'i') }, { username: new RegExp(escapeRegex(String(request.query.q)), 'i') }, { email: new RegExp(escapeRegex(String(request.query.q)), 'i') }] } : {}; const [items, total] = await Promise.all([User.find(filter).sort({ createdAt: -1, _id: 1 }).skip(skip).limit(limit).lean(), User.countDocuments(filter)]); response.json({ items, pagination: pageMeta(page, limit, total) }); }));
 router.post('/users', asyncHandler(async (request, response) => {

@@ -32,7 +32,9 @@ genreSchema.index({ name: 1 }, { unique: true, collation: { locale: 'es', streng
 const imageSchema = new Schema({ original: String, detail: String, thumbnail: String, width: Number, height: Number, size: Number }, { _id: false });
 const bookSchema = new Schema({
   title: { type: String, required: true, trim: true, maxlength: 250 }, slug: { type: String, required: true, unique: true, lowercase: true, index: true },
-  synopsis: { type: String, required: true, trim: true, maxlength: 10000 }, authors: [{ type: Schema.Types.ObjectId, ref: 'Author', required: true }], genres: [{ type: Schema.Types.ObjectId, ref: 'Genre', required: true }],
+  author: { type: String, trim: true, maxlength: 200 }, category: { type: String, trim: true, maxlength: 120, index: true },
+  classification: { type: String, enum: ['letras', 'imagenes', 'revistas'], index: true }, imageUrl: { type: String, trim: true },
+  synopsis: { type: String, trim: true, maxlength: 10000 }, authors: [{ type: Schema.Types.ObjectId, ref: 'Author' }], genres: [{ type: Schema.Types.ObjectId, ref: 'Genre' }],
   cover: imageSchema, pdfRef: { type: String, select: false }, publicationYear: { type: Number, min: 0, max: 3000 }, addedAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft', index: true }, readsCount: { type: Number, default: 0, index: true }, ratingAverage: { type: Number, default: 0, index: true }, ratingsCount: { type: Number, default: 0, index: true },
 }, timestamps);

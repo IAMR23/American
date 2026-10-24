@@ -6,8 +6,8 @@ import { api, assetUrl } from '../lib/api.js';
 function CoverGallery({ books }) {
   if (!books.length) return <div className="empty catalog-empty">No encontramos libros que coincidan con estos filtros.</div>;
   return <div className="cover-gallery">{books.map((book) => <Link className="cover-tile" to={`/libros/${book.slug}`} key={book._id} aria-label={`Ver ${book.title}`}>
-    <img src={assetUrl(book.cover?.thumbnail)} width="320" height="480" loading="lazy" alt={`Portada de ${book.title}`} />
-    <div className="cover-overlay"><p>{book.genres?.map((genre) => genre.name).join(' · ')}</p><h2>{book.title}</h2><span>{book.authors?.map((author) => author.name).join(', ')}</span><small>★ {book.ratingsCount ? book.ratingAverage.toFixed(1) : 'Sin valorar'}</small></div>
+    <img src={assetUrl(book.cover?.thumbnail || book.imageUrl)} width="320" height="480" loading="lazy" alt={`Portada de ${book.title}`} />
+    <div className="cover-overlay"><p>{book.category || book.genres?.map((genre) => genre.name).join(' · ')}</p><h2>{book.title}</h2><span>{book.author || book.authors?.map((author) => author.name).join(', ')}</span><small>★ {book.ratingsCount ? book.ratingAverage.toFixed(1) : 'Sin valorar'}</small></div>
   </Link>)}</div>;
 }
 

@@ -91,12 +91,12 @@ test('búsqueda, filtro y paginación se ejecutan en backend', async () => {
   assert.equal(response.body.items.length, 1); assert.deepEqual(response.body.pagination, { page: 1, limit: 1, total: 1, totalPages: 1 });
 });
 
-test('administración combina filtros por libro, autor, género y año', async () => {
+test('administración filtra libros y ya no expone el CRUD de autores', async () => {
   const response = await adminAgent.get('/api/admin/books?q=aleph&author=borg&genre=fic&year=1949&limit=1&page=1').expect(200);
   assert.equal(response.body.items.length, 1);
   assert.equal(response.body.items[0].title, 'El Aleph');
   assert.deepEqual(response.body.pagination, { page: 1, limit: 1, total: 1, totalPages: 1 });
-  assert.equal((await adminAgent.get('/api/admin/authors?q=borg&limit=10&page=1').expect(200)).body.items[0].name, 'Borges');
+  await adminAgent.get('/api/admin/authors?q=borg&limit=10&page=1').expect(404);
   assert.equal((await adminAgent.get('/api/admin/genres?q=fic&limit=10&page=1').expect(200)).body.items[0].name, 'Ficción');
 });
 

@@ -4,9 +4,9 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import PasswordField from '../components/PasswordField.jsx';
 import { api } from '../lib/api.js';
 
-const sections = ['books', 'authors', 'genres', 'users', 'backgrounds', 'moderation'];
+const sections = ['books', 'genres', 'users', 'backgrounds', 'moderation'];
 const labels = { books: 'Libros', authors: 'Autores', genres: 'Géneros', users: 'Usuarios', backgrounds: 'Fondos', moderation: 'Moderación' };
-const emptyFilters = { q: '', author: '', genre: '', year: '' };
+const emptyFilters = { q: '', author: '', category: '', classification: '' };
 
 function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
   const [selected, setSelected] = useState(() => initialSelected.map((value) => value?._id || value));
@@ -26,7 +26,7 @@ function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
   </div>;
 }
 
-function BookForm({ authors, genres, coverFile, setCoverFile, onSubmit, initial, onCancel }) {
+function BookForm({ coverFile, setCoverFile, onSubmit, initial, onCancel }) {
   const [preview, setPreview] = useState('');
   const coverInputRef = useRef(null);
 
@@ -49,16 +49,14 @@ function BookForm({ authors, genres, coverFile, setCoverFile, onSubmit, initial,
   }, [setCoverFile]);
 
   return <form className="admin-form admin-form-fields" onSubmit={onSubmit}>
-    <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Nuevo libro'}</h3><p>Completa la información editorial y los archivos del libro.</p></div>
+    <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Nuevo libro'}</h3><p>Agrega únicamente la información necesaria para publicar el libro.</p></div>
+    <label>Link de imagen <small>Úsalo o sube una imagen abajo</small><input name="imageUrl" type="url" placeholder="https://ejemplo.com/portada.jpg" defaultValue={initial?.imageUrl || ''} /></label>
     <label>Título<input name="title" required maxLength="250" defaultValue={initial?.title || ''} /></label>
-    <label>Slug <small>Opcional; se genera desde el título</small><input name="slug" defaultValue={initial?.slug || ''} /></label>
-    <label className="wide">Sinopsis<textarea name="synopsis" required rows="5" maxLength="10000" defaultValue={initial?.synopsis || ''} /></label>
-    <MultiSelector name="authors" label="Autores" hint="Selecciona uno o varios autores registrados." options={authors.filter((author) => author.active || initial?.authors?.some((value) => (value?._id || value) === author._id))} initialSelected={initial?.authors} />
-    <MultiSelector name="genres" label="Géneros" hint="Selecciona uno o varios géneros registrados." options={genres.filter((genre) => genre.active || initial?.genres?.some((value) => (value?._id || value) === genre._id))} initialSelected={initial?.genres} />
-    <label>Año de publicación<input name="publicationYear" type="number" min="0" max="3000" defaultValue={initial?.publicationYear || ''} /></label>
-    <label>Estado<select name="status" defaultValue={initial?.status || 'draft'}><option value="draft">Borrador</option><option value="published">Publicado</option><option value="archived">Archivado</option></select></label>
-    <label className="wide">Enlace del PDF en Dropbox<input name="pdfRef" type="url" placeholder="https://www.dropbox.com/..." defaultValue={initial?.pdfRef || ''} /></label>
-    <label className="wide">Portada <small>Selecciona un archivo o copia una imagen y presiona Ctrl+V</small><input ref={coverInputRef} name="cover" type="file" accept="image/png,image/jpeg,image/webp,image/avif" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></label>
+    <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={initial?.pdfRef || ''} /></label>
+    <label>Categoría<input name="category" required maxLength="120" defaultValue={initial?.category || initial?.genres?.[0]?.name || ''} /></label>
+    <label>Autor<input name="author" required maxLength="200" defaultValue={initial?.author || initial?.authors?.map((value) => value.name).join(', ') || ''} /></label>
+    <label>Clasificación<select name="classification" required defaultValue={initial?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
+    <label className="wide">Subir imagen <small>Opcional si ingresaste un link; también puedes pegarla con Ctrl+V</small><input ref={coverInputRef} name="cover" type="file" accept="image/png,image/jpeg,image/webp,image/avif" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></label>
     <div className={`cover-paste-zone wide ${preview ? 'has-image' : ''}`} tabIndex="0" role="button" aria-label="Pega aquí una portada desde el portapapeles">
       {preview ? <><img src={preview} alt="Previsualización de la portada" /><div><strong>Portada lista</strong><span>{coverFile.name || 'Imagen pegada desde el portapapeles'}</span></div><button type="button" onClick={() => { setCoverFile(null); if (coverInputRef.current) coverInputRef.current.value = ''; }} aria-label="Quitar portada"><FiX aria-hidden="true" /></button></> : <><FiClipboard aria-hidden="true" /><div><strong>Pega la portada aquí</strong><span>Copia una imagen y presiona Ctrl+V</span></div></>}
     </div>
@@ -138,7 +136,6 @@ export default function Admin() {
   const [section, setSection] = useState('books');
   const [data, setData] = useState([]);
   const [message, setMessage] = useState('');
-  const [authors, setAuthors] = useState([]);
   const [genres, setGenres] = useState([]);
   const [moderationType, setModerationType] = useState('comments');
   const [loading, setLoading] = useState(true);
@@ -162,8 +159,8 @@ export default function Admin() {
       if (['books', 'authors', 'genres', 'users'].includes(section) && filters.q) params.set('q', filters.q);
       if (section === 'books') {
         if (filters.author) params.set('author', filters.author);
-        if (filters.genre) params.set('genre', filters.genre);
-        if (filters.year) params.set('year', filters.year);
+        if (filters.category) params.set('category', filters.category);
+        if (filters.classification) params.set('classification', filters.classification);
       }
       const endpoint = `/admin/${section === 'moderation' ? 'moderation' : section}?${params}`;
       const result = await api(endpoint);
@@ -173,10 +170,7 @@ export default function Admin() {
       setPagination(nextPagination);
       const lastPage = Math.max(1, nextPagination.totalPages || 1);
       if (page > lastPage) setPage(lastPage);
-      if (section === 'books') {
-        const [authorData, genreData] = await Promise.all([api('/admin/authors?limit=100'), api('/admin/genres?limit=100')]);
-        setAuthors(authorData.items); setGenres(genreData.items);
-      }
+      if (section === 'genres') setGenres(result.items || []);
     } catch (error) { setMessage(error.message); }
     finally { setLoading(false); }
   }
@@ -232,11 +226,7 @@ export default function Admin() {
       if (section === 'books' || section === 'backgrounds') {
         const body = new FormData(form);
         if (section === 'books') {
-          const selectedAuthors = JSON.parse(form.elements.authors.value);
-          const selectedGenres = JSON.parse(form.elements.genres.value);
-          if (!selectedAuthors.length || !selectedGenres.length) throw new Error('Selecciona al menos un autor y un género.');
-          body.set('authors', JSON.stringify(selectedAuthors));
-          body.set('genres', JSON.stringify(selectedGenres));
+          if (!bookCover && !form.elements.imageUrl.value.trim() && !target?.cover?.original) throw new Error('Ingresa un link de imagen o sube una imagen.');
           if (bookCover) body.set('cover', bookCover, bookCover.name || `portada-${Date.now()}.png`);
         }
         if (section === 'backgrounds') {
@@ -285,9 +275,9 @@ export default function Admin() {
 
   function itemDetails(item) {
     if (section === 'books') {
-      const authorNames = item.authors?.map((author) => author.name).join(', ');
-      const genreNames = item.genres?.map((genre) => genre.name).join(', ');
-      return [authorNames, genreNames, item.publicationYear].filter((value) => value !== undefined && value !== '').join(' · ');
+      const authorName = item.author || item.authors?.map((author) => author.name).join(', ');
+      const categoryName = item.category || item.genres?.map((genre) => genre.name).join(', ');
+      return [authorName, categoryName, item.classification].filter(Boolean).join(' · ');
     }
     if (item.email) return `${item.username ? `@${item.username} · ` : ''}${item.email}`;
     return item.book?.title || item.status || item.content || item.review || (item.active ? 'Activo' : 'Inactivo');
@@ -298,8 +288,7 @@ export default function Admin() {
     <section className="admin-content">
       <div className="section-heading"><div><p className="eyebrow">Gestión de contenido</p><h2>{labels[section]}</h2></div><span>{pagination.total} registros</span></div>
       {message && <p className="notice">{message}</p>}
-      {section === 'books' && <BookForm key={`create-${formVersion}`} authors={authors} genres={genres} coverFile={bookCover} setCoverFile={setBookCover} onSubmit={(event) => save(event, null)} />}
-      {section === 'authors' && <AuthorForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
+      {section === 'books' && <BookForm key={`create-${formVersion}`} coverFile={bookCover} setCoverFile={setBookCover} onSubmit={(event) => save(event, null)} />}
       {section === 'genres' && <GenreForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
       {section === 'users' && <UserForm onSubmit={(event) => save(event, null)} />}
       {section === 'backgrounds' && <BackgroundForm key={`background-${formVersion}`} imageFile={backgroundFile} setImageFile={setBackgroundFile} onSubmit={(event) => save(event, null)} />}
@@ -308,14 +297,13 @@ export default function Admin() {
       <div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
       {['books', 'authors', 'genres'].includes(section) && <form className="admin-list-filters" onSubmit={applyFilters}>
         <label>{section === 'books' ? 'Nombre del libro' : `Nombre del ${section === 'authors' ? 'autor' : 'género'}`}<input value={filterDraft.q} onChange={(event) => setFilterDraft((current) => ({ ...current, q: event.target.value }))} placeholder="Escribe un nombre" /></label>
-        {section === 'books' && <><label>Autor<select value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))}><option value="">Todos los autores</option>{authors.map((author) => <option key={author._id} value={author.name}>{author.name}{author.active ? '' : ' (inactivo)'}</option>)}</select></label><label>Género<select value={filterDraft.genre} onChange={(event) => setFilterDraft((current) => ({ ...current, genre: event.target.value }))}><option value="">Todos los géneros</option>{genres.map((genre) => <option key={genre._id} value={genre.name}>{genre.name}{genre.active ? '' : ' (inactivo)'}</option>)}</select></label><label>Año<input type="number" min="0" max="3000" value={filterDraft.year} onChange={(event) => setFilterDraft((current) => ({ ...current, year: event.target.value }))} placeholder="Ej. 1967" /></label></>}
+        {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Categoría<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre de categoría" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label></>}
         <div className="admin-filter-actions"><button type="submit">Buscar</button><button type="button" className="secondary" onClick={clearFilters}>Limpiar</button></div>
       </form>}
       <div className="admin-list">{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article key={item._id}>
         <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? (String(item._id) === activeBackgroundId ? 'Activo · Fondo seleccionado actualmente' : 'Disponible para seleccionar') : itemDetails(item)}</small></div></div>
         <div className="row-actions">
           {['books', 'authors', 'genres'].includes(section) && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
-          {section === 'books' && <label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="draft">Borrador</option><option value="published">Publicado</option><option value="archived">Archivado</option></select></label>}
           {['authors', 'genres'].includes(section) && <button type="button" onClick={() => updateItem(item._id, { active: !item.active })}>{item.active ? 'Desactivar' : 'Activar'}</button>}
           {section === 'users' && <><label>Rol<select value={item.role} onChange={(event) => updateItem(item._id, { role: event.target.value })}><option value="user">Usuario</option><option value="admin">Administrador</option></select></label><label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="active">Activo</option><option value="suspended">Suspendido</option><option value="deleted">Eliminado</option></select></label></>}
           {section === 'moderation' && <button type="button" onClick={() => updateItem(item._id, { status: item.status === 'hidden' ? 'published' : 'hidden' })}>{item.status === 'hidden' ? 'Publicar' : 'Ocultar'}</button>}
@@ -325,7 +313,7 @@ export default function Admin() {
       </article>)}</div>
       {pagination.totalPages > 1 && <nav className="admin-pagination" aria-label="Paginación de registros"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button><span>Página {page} de {pagination.totalPages}</span><button type="button" disabled={page >= pagination.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button></nav>}
     </section>
-    {editing && ['books', 'authors', 'genres'].includes(section) && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelEditing(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-label={`Editar ${editing.title || editing.name}`}><button type="button" className="admin-modal-close" onClick={cancelEditing} aria-label="Cerrar modal" autoFocus><FiX aria-hidden="true" /></button>{section === 'books' && <BookForm key={`edit-${formVersion}`} authors={authors} genres={genres} coverFile={bookCover} setCoverFile={setBookCover} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'authors' && <AuthorForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'genres' && <GenreForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}</section></div>}
+    {editing && ['books', 'genres'].includes(section) && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelEditing(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-label={`Editar ${editing.title || editing.name}`}><button type="button" className="admin-modal-close" onClick={cancelEditing} aria-label="Cerrar modal" autoFocus><FiX aria-hidden="true" /></button>{section === 'books' && <BookForm key={`edit-${formVersion}`} coverFile={bookCover} setCoverFile={setBookCover} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'genres' && <GenreForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}</section></div>}
     <ConfirmDialog open={Boolean(pendingDelete)} itemName={pendingDelete?.title || pendingDelete?.name || pendingDelete?.user?.name || pendingDelete?.content || pendingDelete?.review || 'Registro seleccionado'} busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={confirmRemove} />
   </main>;
 }

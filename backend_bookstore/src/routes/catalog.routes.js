@@ -21,8 +21,18 @@ router.get('/home', asyncHandler(async (_request, response) => {
   response.json({ mostRead, bestRated, recent, byGenre, background });
 }));
 
-router.get('/genres', asyncHandler(async (_request, response) => response.json({ items: await Genre.find({ active: true }).sort({ name: 1 }).lean() })));
-router.get('/authors', asyncHandler(async (_request, response) => response.json({ items: await Author.find({ active: true }).select('name').sort({ name: 1 }).lean() })));
+router.get('/genres', asyncHandler(async (_request, response) => {
+  const [legacy, categories] = await Promise.all([Genre.find({ active: true }).sort({ name: 1 }).lean(), Book.distinct('category', { status: 'published', category: { $nin: [null, ''] } })]);
+  const known = new Set(legacy.map((item) => item.name.toLocaleLowerCase('es')));
+  const items = [...legacy, ...categories.filter((name) => !known.has(name.toLocaleLowerCase('es'))).map((name) => ({ _id: `category:${name}`, name, slug: name }))];
+  response.json({ items });
+}));
+router.get('/authors', asyncHandler(async (_request, response) => {
+  const [legacy, names] = await Promise.all([Author.find({ active: true }).select('name').sort({ name: 1 }).lean(), Book.distinct('author', { status: 'published', author: { $nin: [null, ''] } })]);
+  const known = new Set(legacy.map((item) => item.name.toLocaleLowerCase('es')));
+  const items = [...legacy, ...names.filter((name) => !known.has(name.toLocaleLowerCase('es'))).map((name) => ({ _id: name, name }))];
+  response.json({ items });
+}));
 router.get('/home-config', optionalAuth, asyncHandler(async (request, response) => {
   const setting = await SiteSetting.findOne({ key: 'homepage' }).lean();
   let background = request.user?.preferredBackground ? await Background.findOne({ _id: request.user.preferredBackground, active: true }).lean() : null;
@@ -45,28 +55,27 @@ router.get('/books', asyncHandler(async (request, response) => {
   const filter = { status: 'published' };
   if (request.query.genre) {
     const genre = mongoose.isValidObjectId(request.query.genre) ? await Genre.findById(request.query.genre) : await Genre.findOne({ slug: request.query.genre });
-    if (!genre) return response.json({ items: [], pagination: pageMeta(page, limit, 0) });
-    filter.genres = genre._id;
+    filter.$or = [{ category: new RegExp(`^${escapeRegex(String(request.query.genre))}$`, 'i') }];
+    if (genre) filter.$or.push({ genres: genre._id });
   }
   if (request.query.author) {
-    if (!mongoose.isValidObjectId(request.query.author) || !await Author.exists({ _id: request.query.author, active: true })) return response.json({ items: [], pagination: pageMeta(page, limit, 0) });
-    filter.authors = new mongoose.Types.ObjectId(request.query.author);
+    const authorFilter = [{ author: new RegExp(`^${escapeRegex(String(request.query.author))}$`, 'i') }];
+    if (mongoose.isValidObjectId(request.query.author) && await Author.exists({ _id: request.query.author, active: true })) authorFilter.push({ authors: new mongoose.Types.ObjectId(request.query.author) });
+    filter.$and = [{ $or: authorFilter }];
   }
   const term = String(request.query.q ?? '').trim();
   if (term) {
     const regex = new RegExp(escapeRegex(term), 'i');
     const authorIds = await Author.find({ name: regex }).distinct('_id');
-    filter.$or = [{ title: regex }, { authors: { $in: authorIds } }];
+    const searchFilter = [{ title: regex }, { author: regex }, { category: regex }, { authors: { $in: authorIds } }];
+    if (filter.$or) filter.$and = [...(filter.$and || []), { $or: filter.$or }, { $or: searchFilter }], delete filter.$or;
+    else filter.$and = [...(filter.$and || []), { $or: searchFilter }];
   }
   const sortKey = String(request.query.sort ?? 'recent');
   const sort = sortMap[sortKey] ?? sortMap.recent;
   const totalPromise = Book.countDocuments(filter);
   const itemsPromise = sortKey === 'author'
-    ? Book.aggregate([
-      { $match: filter }, { $lookup: { from: 'authors', localField: 'authors', foreignField: '_id', as: 'authors' } },
-      { $set: { sortAuthor: { $min: '$authors.name' } } }, { $sort: { sortAuthor: 1, title: 1, _id: 1 } }, { $skip: skip }, { $limit: limit },
-      { $lookup: { from: 'genres', localField: 'genres', foreignField: '_id', as: 'genres' } }, { $unset: ['pdfRef', 'sortAuthor'] },
-    ])
+    ? Book.find(filter).select('-pdfRef').populate('authors', 'name').populate('genres', 'name slug').sort({ author: 1, title: 1, _id: 1 }).skip(skip).limit(limit).lean()
     : Book.find(filter).select('-pdfRef').populate('authors', 'name').populate('genres', 'name slug').sort(sort).skip(skip).limit(limit).lean();
   const [items, total] = await Promise.all([itemsPromise, totalPromise]);
   response.json({ items, pagination: pageMeta(page, limit, total) });
