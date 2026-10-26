@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FiSearch, FiSliders, FiX } from 'react-icons/fi';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, assetUrl } from '../lib/api.js';
@@ -20,6 +20,8 @@ export default function Home() {
   const [background, setBackground] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     Promise.all([api('/catalog/authors'), api('/catalog/genres'), api('/catalog/home-config')])
@@ -30,20 +32,31 @@ export default function Home() {
     return () => window.removeEventListener('book-store-background-changed', updateBackground);
   }, []);
 
+  useEffect(() => { setPage(1); setBooks([]); }, [params]);
+
   useEffect(() => {
     const query = new URLSearchParams(params);
     if (!query.has('sort')) query.set('sort', 'title_asc');
-    query.set('limit', '24');
+    query.set('limit', '12');
+    query.set('page', String(page));
     const controller = new AbortController();
     setLoading(true); setError('');
-    api(`/catalog/books?${query}`, { signal: controller.signal }).then((data) => { setBooks(data.items); setPagination(data.pagination); }).catch((loadError) => { if (loadError.name !== 'AbortError') setError(loadError.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    api(`/catalog/books?${query}`, { signal: controller.signal }).then((data) => { setBooks((current) => page === 1 ? data.items : [...current, ...data.items]); setPagination(data.pagination); }).catch((loadError) => { if (loadError.name !== 'AbortError') setError(loadError.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [params]);
+  }, [params, page]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || loading || !pagination || pagination.page >= pagination.totalPages) return undefined;
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setPage((current) => current + 1); }, { rootMargin: '320px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loading, pagination]);
 
   function update(key, value) {
     const next = new URLSearchParams(params);
     value ? next.set(key, value) : next.delete(key);
-    if (key !== 'page') next.set('page', '1');
+    next.delete('page');
     setParams(next, { replace: key === 'q' });
   }
 
@@ -52,7 +65,7 @@ export default function Home() {
   const heroStyle = background?.image?.detail ? { backgroundImage: `linear-gradient(90deg,rgba(13,12,10,.94),rgba(13,12,10,.3)),url(${background.image.detail})` } : undefined;
 
   return <main>
-    <section className="hero catalog-hero" style={heroStyle}><div className="hero-copy"><p className="eyebrow">Biblioteca virtual</p><h1>Encuentra tu próxima historia.</h1><p>Combina búsqueda, autor, género y orden para explorar toda la colección en una sola vista.</p></div></section>
+    <section className="hero catalog-hero" style={heroStyle}><div className="hero-copy"><p className="eyebrow"></p><h1></h1><p></p></div><nav className="book-sections" aria-label="Secciones de Bookstore"><Link to="/">Inicio</Link><Link to="/catalogo?genre=clasicos">Clásicos</Link><Link to="/catalogo?genre=cuentos-clasicos">Cuentos Clásicos</Link><Link to="/catalogo?genre=seccion-romantica">Sección Romántica</Link><details className="sections-dropdown"><summary>Varios <span aria-hidden="true">⌃</span></summary><div>{genres.length ? genres.map((category) => <Link key={category._id} to={`/catalogo?genre=${encodeURIComponent(category.slug)}`}>{category.name}</Link>) : <span className="sections-empty">Sin categorías</span>}</div></details><Link to="/catalogo?genre=condorito">Condorito</Link><Link to="/catalogo?genre=asterix">Asterix</Link><a href="https://corporacionmusical.systeme.io/ventas" target="_blank" rel="noreferrer">Así se toca</a><a href="https://www.american-karaoke.com/" target="_blank" rel="noreferrer">American Karaoke</a></nav></section>
     <section className="container unified-catalog">
       <div className="catalog-heading"><div><p className="eyebrow">Todos los libros</p><h2>Explora la colección</h2></div>{pagination && <span>{pagination.total} coincidencias</span>}</div>
       <div className="catalog-filter-panel">
@@ -62,8 +75,8 @@ export default function Home() {
         <label><span>Autor</span><select value={params.get('author') ?? ''} onChange={(event) => update('author', event.target.value)}><option value="">Todos los autores</option>{authors.map((author) => <option value={author._id} key={author._id}>{author.name}</option>)}</select></label>
         <label><span>Ordenar</span><select value={params.get('sort') ?? 'title_asc'} onChange={(event) => update('sort', event.target.value)}><option value="title_asc">Título A–Z</option><option value="title_desc">Título Z–A</option><option value="author">Autor A–Z</option><option value="recent">Más recientes</option><option value="oldest">Más antiguos</option><option value="rating_desc">Mejor valorados</option><option value="reads">Más leídos</option></select></label>
       </div>
-      {error ? <div className="state error">{error}</div> : loading ? <div className="state catalog-loading">Buscando coincidencias…</div> : <CoverGallery books={books} />}
-      {pagination && pagination.totalPages > 1 && <div className="pager"><button disabled={pagination.page <= 1} onClick={() => update('page', String(pagination.page - 1))}>Anterior</button><span>Página {pagination.page} de {pagination.totalPages}</span><button disabled={pagination.page >= pagination.totalPages} onClick={() => update('page', String(pagination.page + 1))}>Siguiente</button></div>}
+      {error && !books.length ? <div className="state error">{error}</div> : <CoverGallery books={books} />}
+      <div ref={loadMoreRef} className="catalog-scroll-state">{loading ? 'Cargando más libros…' : pagination?.page < pagination?.totalPages ? 'Desliza para ver más' : books.length ? 'Has llegado al final de la colección' : 'No encontramos libros.'}</div>
     </section>
   </main>;
 }

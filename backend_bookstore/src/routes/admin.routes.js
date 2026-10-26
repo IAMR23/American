@@ -3,7 +3,7 @@ import multer from 'multer';
 import slugify from 'slugify';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { Author, Background, Book, Bookmark, Comment, CommentReaction, Favorite, Genre, Rating, ReadingEvent, ReadingProgress, SiteSetting, User } from '../models/index.js';
+import { Author, Background, Book, Bookmark, Comment, CommentReaction, Favorite, Genre, HomeSection, Rating, ReadingEvent, ReadingProgress, SiteSetting, User } from '../models/index.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { processImage, removeImage } from '../services/images.js';
 import { recalculateRating } from '../services/rating.js';
@@ -13,6 +13,23 @@ const router = Router();
 router.use(authenticate, requireAdmin);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: Number(process.env.MAX_IMAGE_MB ?? 10) * 1024 * 1024, files: 1 } });
 const makeSlug = (value) => slugify(String(value), { lower: true, strict: true, locale: 'es' });
+const findActiveCategory = (value) => Genre.findOne({ name: new RegExp(`^${escapeRegex(String(value ?? '').trim())}$`, 'i'), active: true });
+const normalizeBookImages = (value, fallback = '') => {
+  let images = value;
+  if (typeof images === 'string') {
+    try { images = JSON.parse(images); } catch { images = []; }
+  }
+  const normalized = (Array.isArray(images) ? images : [])
+    .map((image) => ({
+      url: String(image?.url ?? '').trim(),
+      fit: image?.fit === 'contain' ? 'contain' : 'cover',
+      positionX: Math.min(100, Math.max(0, Number(image?.positionX ?? 50))),
+      positionY: Math.min(100, Math.max(0, Number(image?.positionY ?? 50))),
+    }))
+    .filter((image) => image.url);
+  if (!normalized.length && String(fallback).trim()) normalized.push({ url: String(fallback).trim(), fit: 'cover', positionX: 50, positionY: 50 });
+  return normalized;
+};
 
 router.get('/dashboard', asyncHandler(async (_request, response) => {
   const [users, books, comments, ratings] = await Promise.all([User.countDocuments({ status: { $ne: 'deleted' } }), Book.countDocuments(), Comment.countDocuments(), Rating.countDocuments()]);
@@ -41,23 +58,33 @@ router.get('/books', asyncHandler(async (request, response) => {
   response.json({ items, pagination: pageMeta(page, limit, total) });
 }));
 router.get('/books/:id', asyncHandler(async (request, response) => { const book = await Book.findById(request.params.id).select('+pdfRef'); if (!book) throw new ApiError(404, 'Libro no encontrado.'); response.json({ book }); }));
-router.post('/books', upload.single('cover'), asyncHandler(async (request, response) => {
+router.post('/books', asyncHandler(async (request, response) => {
   const body = request.body;
   const classification = String(body.classification ?? '').trim().toLowerCase();
   if (!body.title || !body.author || !body.category || !body.pdfRef || !['letras', 'imagenes', 'revistas'].includes(classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
-  if (!request.file && !String(body.imageUrl ?? '').trim()) throw new ApiError(400, 'Ingresa un enlace de imagen o sube una imagen.');
-  const data = { title: body.title, slug: makeSlug(body.title), author: body.author, category: body.category, classification, imageUrl: body.imageUrl, pdfRef: body.pdfRef, status: 'published' };
-  if (request.file) data.cover = await processImage(request.file, 'cover');
+  const category = await findActiveCategory(body.category);
+  if (!category) throw new ApiError(400, 'Selecciona una categoría activa.');
+  const images = normalizeBookImages(body.images, body.imageUrl);
+  if (!images.length) throw new ApiError(400, 'Ingresa al menos un enlace de imagen.');
+  const data = { title: body.title, slug: makeSlug(body.title), author: body.author, category: category.name, classification, imageUrl: images[0].url, images, pdfRef: body.pdfRef, status: 'published' };
   response.status(201).json({ book: await Book.create(data) });
 }));
-router.patch('/books/:id', upload.single('cover'), asyncHandler(async (request, response) => {
+router.patch('/books/:id', asyncHandler(async (request, response) => {
   const book = await Book.findById(request.params.id).select('+pdfRef'); if (!book) throw new ApiError(404, 'Libro no encontrado.');
-  const allowed = ['title', 'author', 'category', 'classification', 'imageUrl', 'pdfRef'];
+  const allowed = ['title', 'author', 'category', 'classification', 'pdfRef'];
   for (const key of allowed) if (request.body[key] !== undefined) book[key] = request.body[key];
+  if (request.body.images !== undefined || request.body.imageUrl !== undefined) {
+    book.images = normalizeBookImages(request.body.images, request.body.imageUrl);
+    book.imageUrl = book.images[0]?.url || '';
+  }
   if (request.body.title) book.slug = makeSlug(request.body.title);
   if (!book.title || !book.author || !book.category || !book.pdfRef || !['letras', 'imagenes', 'revistas'].includes(book.classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
-  if (!request.file && !book.cover?.original && !book.imageUrl) throw new ApiError(400, 'Ingresa un enlace de imagen o sube una imagen.');
-  if (request.file) { const old = book.cover?.toObject?.() ?? book.cover; book.cover = await processImage(request.file, 'cover'); await removeImage(old); }
+  if (request.body.category !== undefined) {
+    const category = await findActiveCategory(request.body.category);
+    if (!category) throw new ApiError(400, 'Selecciona una categoría activa.');
+    book.category = category.name;
+  }
+  if (!book.imageUrl) throw new ApiError(400, 'Ingresa el enlace de la imagen.');
   await book.save(); response.json({ book });
 }));
 router.delete('/books/:id', asyncHandler(async (request, response) => {
@@ -71,9 +98,43 @@ function crudRoutes(path, Model, hasSlug = false) {
   router.get(`/${path}`, asyncHandler(async (request, response) => { const { page, limit, skip } = pagination(request.query, 50); const filter = request.query.q ? { name: new RegExp(escapeRegex(String(request.query.q)), 'i') } : {}; const [items, total] = await Promise.all([Model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean(), Model.countDocuments(filter)]); response.json({ items, pagination: pageMeta(page, limit, total) }); }));
   router.post(`/${path}`, asyncHandler(async (request, response) => { const data = { ...request.body }; if (hasSlug) data.slug = makeSlug(data.slug || data.name); response.status(201).json({ item: await Model.create(data) }); }));
   router.patch(`/${path}/:id`, asyncHandler(async (request, response) => { const data = { ...request.body }; if (hasSlug && (data.slug || data.name)) data.slug = makeSlug(data.slug || data.name); const item = await Model.findByIdAndUpdate(request.params.id, data, { new: true, runValidators: true }); if (!item) throw new ApiError(404, 'Registro no encontrado.'); response.json({ item }); }));
-  router.delete(`/${path}/:id`, asyncHandler(async (request, response) => { if (await Book.exists({ [path === 'authors' ? 'authors' : 'genres']: request.params.id })) throw new ApiError(409, 'No se puede eliminar porque tiene libros asociados; desactívalo o reasigna los libros.'); const result = await Model.deleteOne({ _id: request.params.id }); if (!result.deletedCount) throw new ApiError(404, 'Registro no encontrado.'); response.status(204).end(); }));
+  router.delete(`/${path}/:id`, asyncHandler(async (request, response) => {
+    const item = await Model.findById(request.params.id);
+    if (!item) throw new ApiError(404, 'Registro no encontrado.');
+    const relation = path === 'authors' ? { authors: item._id } : { $or: [{ genres: item._id }, { category: new RegExp(`^${escapeRegex(item.name)}$`, 'i') }] };
+    if (await Book.exists(relation)) throw new ApiError(409, 'No se puede eliminar porque tiene libros asociados; desactívalo o reasigna los libros.');
+    await item.deleteOne(); response.status(204).end();
+  }));
 }
-crudRoutes('genres', Genre, true);
+crudRoutes('categories', Genre, true);
+
+router.get('/home-sections', asyncHandler(async (request, response) => {
+  const { page, limit, skip } = pagination(request.query, 10);
+  const filter = request.query.q ? { name: new RegExp(escapeRegex(String(request.query.q)), 'i') } : {};
+  const [items, total] = await Promise.all([HomeSection.find(filter).sort({ createdAt: -1, _id: 1 }).skip(skip).limit(limit).lean(), HomeSection.countDocuments(filter)]);
+  response.json({ items, pagination: pageMeta(page, limit, total) });
+}));
+router.post('/home-sections', asyncHandler(async (request, response) => {
+  const name = String(request.body.name ?? '').trim();
+  const imageUrl = String(request.body.imageUrl ?? '').trim();
+  if (!name || !imageUrl) throw new ApiError(400, 'El nombre y el link de la imagen son obligatorios.');
+  response.status(201).json({ item: await HomeSection.create({ name, imageUrl, active: true }) });
+}));
+router.patch('/home-sections/:id', asyncHandler(async (request, response) => {
+  const changes = {};
+  if (request.body.name !== undefined) changes.name = String(request.body.name).trim();
+  if (request.body.imageUrl !== undefined) changes.imageUrl = String(request.body.imageUrl).trim();
+  if (request.body.active !== undefined) changes.active = Boolean(request.body.active);
+  if ((changes.name !== undefined && !changes.name) || (changes.imageUrl !== undefined && !changes.imageUrl)) throw new ApiError(400, 'El nombre y el link de la imagen no pueden estar vacíos.');
+  const item = await HomeSection.findByIdAndUpdate(request.params.id, changes, { new: true, runValidators: true });
+  if (!item) throw new ApiError(404, 'Sección de inicio no encontrada.');
+  response.json({ item });
+}));
+router.delete('/home-sections/:id', asyncHandler(async (request, response) => {
+  const result = await HomeSection.deleteOne({ _id: request.params.id });
+  if (!result.deletedCount) throw new ApiError(404, 'Sección de inicio no encontrada.');
+  response.status(204).end();
+}));
 
 router.get('/users', asyncHandler(async (request, response) => { const { page, limit, skip } = pagination(request.query, 20); const filter = request.query.q ? { $or: [{ name: new RegExp(escapeRegex(String(request.query.q)), 'i') }, { username: new RegExp(escapeRegex(String(request.query.q)), 'i') }, { email: new RegExp(escapeRegex(String(request.query.q)), 'i') }] } : {}; const [items, total] = await Promise.all([User.find(filter).sort({ createdAt: -1, _id: 1 }).skip(skip).limit(limit).lean(), User.countDocuments(filter)]); response.json({ items, pagination: pageMeta(page, limit, total) }); }));
 router.post('/users', asyncHandler(async (request, response) => {

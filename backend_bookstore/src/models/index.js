@@ -34,6 +34,12 @@ const bookSchema = new Schema({
   title: { type: String, required: true, trim: true, maxlength: 250 }, slug: { type: String, required: true, unique: true, lowercase: true, index: true },
   author: { type: String, trim: true, maxlength: 200 }, category: { type: String, trim: true, maxlength: 120, index: true },
   classification: { type: String, enum: ['letras', 'imagenes', 'revistas'], index: true }, imageUrl: { type: String, trim: true },
+  images: [{
+    url: { type: String, required: true, trim: true },
+    fit: { type: String, enum: ['cover', 'contain'], default: 'cover' },
+    positionX: { type: Number, min: 0, max: 100, default: 50 },
+    positionY: { type: Number, min: 0, max: 100, default: 50 },
+  }],
   synopsis: { type: String, trim: true, maxlength: 10000 }, authors: [{ type: Schema.Types.ObjectId, ref: 'Author' }], genres: [{ type: Schema.Types.ObjectId, ref: 'Genre' }],
   cover: imageSchema, pdfRef: { type: String, select: false }, publicationYear: { type: Number, min: 0, max: 3000 }, addedAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft', index: true }, readsCount: { type: Number, default: 0, index: true }, ratingAverage: { type: Number, default: 0, index: true }, ratingsCount: { type: Number, default: 0, index: true },
@@ -67,6 +73,11 @@ const readingEventSchema = new Schema({ user: { type: Schema.Types.ObjectId, ref
 readingEventSchema.index({ user: 1, book: 1, windowKey: 1 }, { unique: true });
 
 const backgroundSchema = new Schema({ name: { type: String, required: true, trim: true }, image: { type: imageSchema, required: true }, active: { type: Boolean, default: true, index: true } }, timestamps);
+const homeSectionSchema = new Schema({
+  name: { type: String, required: true, trim: true, maxlength: 150, index: true },
+  imageUrl: { type: String, required: true, trim: true },
+  active: { type: Boolean, default: true, index: true },
+}, timestamps);
 const settingSchema = new Schema({ key: { type: String, required: true, unique: true }, value: Schema.Types.Mixed }, timestamps);
 const passwordResetTokenSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -86,5 +97,6 @@ export const Bookmark = model('Bookmark', bookmarkSchema);
 export const ReadingProgress = model('ReadingProgress', progressSchema);
 export const ReadingEvent = model('ReadingEvent', readingEventSchema);
 export const Background = model('Background', backgroundSchema);
+export const HomeSection = model('HomeSection', homeSectionSchema);
 export const SiteSetting = model('SiteSetting', settingSchema);
 export const PasswordResetToken = model('PasswordResetToken', passwordResetTokenSchema);

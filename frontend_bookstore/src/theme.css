@@ -10,6 +10,19 @@
 }
 
 .theme-toggle > span:first-child { font-size: 17px; line-height: 1; }
+.catalog-hero { position: relative; }
+.book-sections { position: absolute; right: 0; bottom: 0; left: 0; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 2px; min-height: 46px; padding: 0 max(18px, calc((100vw - 1320px) / 2)); overflow: visible; color: #fff; background: transparent; font: 700 15px 'Playfair Display', serif; text-shadow: 0 2px 5px #000, 0 0 12px #000; }
+.book-sections > a, .sections-dropdown > summary { display: flex; align-items: center; min-height: 43px; padding: 0 11px; white-space: nowrap; }
+.book-sections > a:hover, .book-sections > a.active, .sections-dropdown > summary:hover, .sections-dropdown[open] > summary { color: #fff; text-decoration: underline; text-underline-offset: 5px; }
+.sections-dropdown { position: relative; }
+.sections-dropdown > summary { cursor: pointer; list-style: none; }
+.sections-dropdown > summary::-webkit-details-marker { display: none; }
+.sections-dropdown > summary span { margin-left: 6px; color: var(--gold); transition: transform .2s ease; }
+.sections-dropdown[open] > summary span { transform: rotate(180deg); }
+.sections-dropdown > div { position: absolute; top: calc(100% + 1px); left: 0; width: max-content; min-width: 225px; max-height: min(70vh, 620px); padding: 8px 0; overflow-y: auto; border: 1px solid #d5d0c9; border-radius: 0 0 4px 4px; color: #544f49; background: #fff; box-shadow: 0 9px 20px #0004; }
+.sections-dropdown > div a { display: block; padding: 9px 13px; }
+.sections-dropdown > div a:hover { color: #241b11; background: #f0e4d1; }
+.sections-empty { display: block; padding: 12px 14px; color: #817970; }
 .background-picker-trigger { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border: 1px solid #514b42; border-radius: 999px; color: #eee7dc; background: #24211d; }
 .background-picker-trigger svg { color: var(--gold); font-size: 17px; }
 .background-picker-backdrop { position: fixed; inset: 0; z-index: 10001; display: grid; place-items: center; padding: 24px; background: #080706d9; backdrop-filter: blur(5px); }
@@ -132,6 +145,7 @@
 .admin-form-fields > label, .admin-form-fields > .multi-field, .row-actions > label { display: grid; gap: 7px; font-size: 14px; font-weight: 700; }
 .admin-form-fields label small, .admin-form-fields .multi-field > small { color: #91897d; font-weight: 400; }
 .admin-form-fields .wide, .admin-form-fields .form-actions { grid-column: 1 / -1; }
+.standalone-book-upload .admin-form-fields > .book-image-editor { grid-column: 2; grid-row: 1 / span 12; }
 .admin-form-fields textarea { resize: vertical; }
 .admin-form-fields select[multiple] { min-height: 135px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; }
@@ -471,6 +485,16 @@ html[data-theme="light"] .canvas-wrap { background: #cbc6bd; }
   .catalog-filter-panel { grid-template-columns: 1fr; }
   .catalog-filter-panel .filter-title { grid-column: auto; }
   .cover-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+  .book-sections { justify-content: flex-start; min-height: 42px; padding: 0 8px; overflow-x: auto; overflow-y: visible; font-size: 14px; }
+  .book-sections > a, .sections-dropdown > summary { min-height: 42px; padding: 0 9px; }
+  .sections-dropdown > div { position: fixed; top: auto; right: 12px; bottom: 48px; left: 12px; width: auto; max-height: min(60vh, 520px); }
+}
+
+@media (max-width: 620px) {
+  .standalone-book-upload .admin-form-fields > .book-image-editor {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 @media (min-width: 621px) and (max-width: 1050px) {
