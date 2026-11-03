@@ -787,3 +787,41 @@ body:has(.book-reader) #root {
   .book-reader .reader-cover,.book-reader .book-spread{height:calc(100dvh - 10px);max-height:calc(100dvh - 10px)}
   .book-reader .book-spread .paper-page canvas{max-height:calc(100dvh - 60px)}
 }
+
+.book-link-preview {
+  box-sizing: border-box;
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 12px;
+  border: 2px dashed #5b554b;
+  border-radius: 10px;
+  background: #151411;
+}
+.book-link-preview img {
+  display: block;
+  width: 100%;
+  height: 260px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #0e0d0b;
+}
+.book-link-preview > div {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 260px;
+  color: #aaa195;
+  text-align: center;
+}
+.book-link-preview svg { color: var(--gold); font-size: 38px; }
+html[data-theme="light"] .book-link-preview {
+  border-color: #b9ab95;
+  background: #f8f3ea;
+}
+html[data-theme="light"] .book-link-preview img { background: #eee7da; }
+@media(max-width:620px){
+  .book-link-preview{min-height:220px}
+  .book-link-preview img{height:220px}
+}

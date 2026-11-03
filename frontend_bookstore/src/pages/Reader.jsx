@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { FiArrowLeft, FiBookmark, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiGrid, FiMaximize, FiMinimize, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { Link, useParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { api, assetUrl } from '../lib/api.js';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 export default function Reader() {
   const { id } = useParams();

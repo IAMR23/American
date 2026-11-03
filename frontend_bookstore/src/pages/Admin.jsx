@@ -27,11 +27,18 @@ function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
 }
 
 function BookForm({ categories, onSubmit, initial, onCancel }) {
+  const initialImage = initial?.images?.[0]?.url || initial?.imageUrl || '';
+  const [imageUrl, setImageUrl] = useState(initialImage);
+  const [imageError, setImageError] = useState(false);
+
   return <form className="admin-form admin-form-fields book-simple-form" onSubmit={onSubmit}>
     <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Subir libro'}</h3><p>Completa la información principal del libro.</p></div>
     <label>Título<input name="title" required maxLength="250" defaultValue={initial?.title || ''} /></label>
     <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={initial?.pdfRef || ''} /></label>
-    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/portada.jpg" defaultValue={initial?.images?.[0]?.url || initial?.imageUrl || ''} /></label>
+    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/portada.jpg" value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setImageError(false); }} /></label>
+    <div className="book-link-preview" aria-live="polite">
+      {imageUrl.trim() && !imageError ? <img src={imageUrl.trim()} alt="Vista previa de la portada" onError={() => setImageError(true)} /> : <div><FiImage aria-hidden="true" /><span>{imageError ? 'No se pudo cargar esta imagen. Revisa el enlace.' : 'La portada aparecerá aquí.'}</span></div>}
+    </div>
     <label>Género<select name="category" required defaultValue={initial?.category || initial?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona un género</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
     <label>Autor<input name="author" required maxLength="200" defaultValue={initial?.author || initial?.authors?.map((value) => value.name).join(', ') || ''} /></label>
     <label>Clasificación<select name="classification" required defaultValue={initial?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
