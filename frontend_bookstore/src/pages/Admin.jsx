@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiClipboard, FiEdit2, FiImage, FiSave, FiTrash2, FiX } from 'react-icons/fi';
+import { FiClipboard, FiEdit2, FiImage, FiPower, FiSave, FiX } from 'react-icons/fi';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import PasswordField from '../components/PasswordField.jsx';
 import { api } from '../lib/api.js';
 
-const sections = ['books', 'categories', 'home-sections', 'users', 'backgrounds', 'moderation'];
-const labels = { books: 'Libros', 'upload-books': 'Subir Libros', categories: 'Categorías', 'home-sections': 'Subir sección de Inicio', users: 'Usuarios', backgrounds: 'Fondos', moderation: 'Moderación' };
+const sections = ['books', 'genres', 'users', 'backgrounds', 'moderation'];
+const labels = { books: 'Libros', genres: 'Géneros', users: 'Usuarios', backgrounds: 'Fondos', moderation: 'Moderación' };
 const emptyFilters = { q: '', author: '', category: '', classification: '' };
 
 function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
@@ -27,55 +27,15 @@ function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
 }
 
 function BookForm({ categories, onSubmit, initial, onCancel }) {
-  const initialImages = initial?.images?.length ? initial.images : (initial?.imageUrl ? [{ url: initial.imageUrl, fit: 'cover', positionX: 50, positionY: 50 }] : []);
-  const [images, setImages] = useState(initialImages);
-  const [draftUrl, setDraftUrl] = useState('');
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const selectedImage = images[selectedIndex];
-  const imageCount = images.filter(Boolean).length;
-  const slotCount = Math.max(12, Math.ceil((images.length + 1) / 6) * 6);
-  const addImage = () => {
-    const url = draftUrl.trim();
-    if (!url) return;
-    const emptyIndex = images.findIndex((image) => !image);
-    const nextIndex = selectedIndex >= 0 && !images[selectedIndex] ? selectedIndex : emptyIndex >= 0 ? emptyIndex : images.length;
-    setImages((current) => { const next = [...current]; next[nextIndex] = { url, fit: 'cover', positionX: 50, positionY: 50 }; return next; });
-    setSelectedIndex(nextIndex);
-    setDraftUrl('');
-  };
-  const updateSelected = (changes) => setImages((current) => current.map((image, index) => index === selectedIndex ? { ...image, ...changes } : image));
-  const removeImage = (index) => {
-    setImages((current) => current.map((image, imageIndex) => imageIndex === index ? null : image));
-  };
-
-  return <form className={`admin-form admin-form-fields ${selectedIndex >= 0 ? 'image-panel-open' : ''}`} onSubmit={onSubmit}>
-    <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Nuevo libro'}</h3><p>Agrega los datos y las imágenes necesarias. La primera imagen será la portada principal.</p></div>
-    <div className="image-url-row"><label>Link de imagen<input type="url" placeholder="https://ejemplo.com/portada.jpg" value={draftUrl} onChange={(event) => setDraftUrl(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addImage(); } }} /></label><button type="button" onClick={addImage} disabled={!draftUrl.trim()}>Agregar imagen</button></div>
-    <section className="book-image-editor wide">
-      <input type="hidden" name="images" value={JSON.stringify(images)} />
-      <div className="book-image-grid" aria-label="Imágenes del libro">
-        {Array.from({ length: slotCount }, (_, index) => {
-          const image = images[index];
-          return <button type="button" className={`book-image-slot ${selectedIndex === index ? 'selected' : ''} ${image ? 'has-image' : ''}`} key={index} onClick={() => setSelectedIndex(index)} aria-label={image ? `Editar imagen ${index + 1}` : `Espacio de imagen ${index + 1}`}>
-            {image ? <><img src={image.url} alt="" style={{ objectFit: image.fit, objectPosition: `${image.positionX}% ${image.positionY}%` }} onError={(event) => event.currentTarget.classList.add('invalid')} /><span>{index === 0 ? 'Portada' : `Imagen ${index + 1}`}</span></> : <><FiImage aria-hidden="true" /><span>{index + 1}</span></>}
-          </button>;
-        })}
-      </div>
-      {selectedImage && <div className="image-adjustments">
-        <div><strong>Ajustar imagen {selectedIndex + 1}</strong><small>Encuadra la imagen dentro del recuadro.</small></div>
-        <label>Ajuste<select value={selectedImage.fit} onChange={(event) => updateSelected({ fit: event.target.value })}><option value="cover">Llenar recuadro</option><option value="contain">Mostrar completa</option></select></label>
-        <label>Horizontal<input type="range" min="0" max="100" value={selectedImage.positionX} onChange={(event) => updateSelected({ positionX: Number(event.target.value) })} /></label>
-        <label>Vertical<input type="range" min="0" max="100" value={selectedImage.positionY} onChange={(event) => updateSelected({ positionY: Number(event.target.value) })} /></label>
-        <button type="button" className="remove-image" onClick={() => removeImage(selectedIndex)}><FiTrash2 aria-hidden="true" /> Quitar</button>
-      </div>}
-      {!imageCount && <p className="image-help">Selecciona un recuadro para abrir el menú izquierdo y agregar su imagen.</p>}
-    </section>
+  return <form className="admin-form admin-form-fields book-simple-form" onSubmit={onSubmit}>
+    <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Subir libro'}</h3><p>Completa la información principal del libro.</p></div>
     <label>Título<input name="title" required maxLength="250" defaultValue={initial?.title || ''} /></label>
     <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={initial?.pdfRef || ''} /></label>
-    <label>Categoría<select name="category" required defaultValue={initial?.category || initial?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona una categoría</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
+    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/portada.jpg" defaultValue={initial?.images?.[0]?.url || initial?.imageUrl || ''} /></label>
+    <label>Género<select name="category" required defaultValue={initial?.category || initial?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona un género</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
     <label>Autor<input name="author" required maxLength="200" defaultValue={initial?.author || initial?.authors?.map((value) => value.name).join(', ') || ''} /></label>
     <label>Clasificación<select name="classification" required defaultValue={initial?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
-    <div className="form-actions wide"><button type="submit" disabled={!imageCount}><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Crear libro'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
+    <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Subir libro'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
   </form>;
 }
 
@@ -95,7 +55,7 @@ function BookSlotWorkspace({ books, categories, onSubmit }) {
         <label>Link de imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/portada.jpg" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} /></label>
         <label>Título<input name="title" required maxLength="250" defaultValue={selectedBook?.title || ''} /></label>
         <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={selectedBook?.pdfRef || ''} /></label>
-        <label>Categoría<select name="category" required defaultValue={selectedBook?.category || selectedBook?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona una categoría</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
+        <label>Género<select name="category" required defaultValue={selectedBook?.category || selectedBook?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona un género</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
         <label>Autor<input name="author" required maxLength="200" defaultValue={selectedBook?.author || selectedBook?.authors?.map((author) => author.name).join(', ') || ''} /></label>
         <label>Clasificación<select name="classification" required defaultValue={selectedBook?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
         <button type="submit"><FiSave aria-hidden="true" /> {selectedBook ? 'Guardar cambios' : 'Crear libro'}</button>
@@ -127,23 +87,12 @@ function AuthorForm({ onSubmit, initial, onCancel }) {
   </form>;
 }
 
-function CategoryForm({ onSubmit, initial, onCancel }) {
+function GenreForm({ onSubmit, initial, onCancel }) {
   return <form className="admin-form admin-form-fields" onSubmit={onSubmit}>
-    <div className="form-heading"><h3>{initial ? 'Editar categoría' : 'Nueva categoría'}</h3><p>Organiza el catálogo en categorías fáciles de explorar.</p></div>
+    <div className="form-heading"><h3>{initial ? 'Editar género' : 'Nuevo género'}</h3><p>Organiza el catálogo mediante el nombre y estado de cada género.</p></div>
     <label>Nombre<input name="name" required maxLength="120" defaultValue={initial?.name || ''} /></label>
-    <label>Slug <small>Opcional; se genera desde el nombre</small><input name="slug" defaultValue={initial?.slug || ''} /></label>
     <label>Estado<select name="active" defaultValue={String(initial?.active ?? true)}><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
-    <label className="wide">Descripción <small>Opcional</small><textarea name="description" rows="4" maxLength="2000" defaultValue={initial?.description || ''} /></label>
-    <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Crear categoría'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
-  </form>;
-}
-
-function HomeSectionForm({ onSubmit, initial, onCancel }) {
-  return <form className="admin-form admin-form-fields" onSubmit={onSubmit}>
-    <div className="form-heading"><h3>{initial ? 'Editar sección de Inicio' : 'Subir sección de Inicio'}</h3><p>Registra el nombre y el enlace de la imagen que identificará esta sección.</p></div>
-    <label>Nombre<input name="name" required maxLength="150" defaultValue={initial?.name || ''} /></label>
-    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/imagen.jpg" defaultValue={initial?.imageUrl || ''} /></label>
-    <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Guardar sección'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
+    <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Crear género'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
   </form>;
 }
 
@@ -214,14 +163,9 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
   async function load() {
     setLoading(true);
     try {
-      if (section === 'upload-books') {
-        const [categoryData, bookData] = await Promise.all([api('/admin/categories?limit=100'), api('/admin/books?limit=100')]);
-        setCategories(categoryData.items || []); setData(bookData.items || []); setPagination(bookData.pagination || { page: 1, limit: 100, total: bookData.items?.length || 0, totalPages: 1 });
-        return;
-      }
       const params = new URLSearchParams({ page: String(page), limit: '10' });
       if (section === 'moderation') params.set('type', moderationType);
-      if (['books', 'categories', 'home-sections', 'users'].includes(section) && filters.q) params.set('q', filters.q);
+      if (['books', 'genres', 'users'].includes(section) && filters.q) params.set('q', filters.q);
       if (section === 'books') {
         if (filters.author) params.set('author', filters.author);
         if (filters.category) params.set('category', filters.category);
@@ -235,9 +179,9 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
       setPagination(nextPagination);
       const lastPage = Math.max(1, nextPagination.totalPages || 1);
       if (page > lastPage) setPage(lastPage);
-      if (section === 'categories') setCategories(result.items || []);
+      if (section === 'genres') setCategories(result.items || []);
       if (section === 'books') {
-        const categoryData = await api('/admin/categories?limit=100');
+        const categoryData = await api('/admin/genres?limit=100');
         setCategories(categoryData.items || []);
       }
     } catch (error) { setMessage(error.message); }
@@ -289,7 +233,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     const form = event.currentTarget;
     try {
       const method = target ? 'PATCH' : 'POST';
-      const resource = section === 'upload-books' ? 'books' : section;
+      const resource = section;
       const endpoint = target ? `/admin/${resource}/${target._id}` : `/admin/${resource}`;
       if (section === 'backgrounds') {
         const body = new FormData(form);
@@ -352,33 +296,32 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     <section className="admin-content">
       <div className="section-heading"><div><p className="eyebrow">Gestión de contenido</p><h2>{labels[section]}</h2></div><span>{pagination.total} registros</span></div>
       {message && <p className="notice">{message}</p>}
-      {section === 'upload-books' && <BookSlotWorkspace books={data} categories={categories} onSubmit={save} />}
-      {section === 'categories' && <CategoryForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
-      {section === 'home-sections' && <HomeSectionForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
+      {section === 'books' && <BookForm key={`create-${formVersion}`} categories={categories} onSubmit={(event) => save(event, null)} />}
+      {section === 'genres' && <GenreForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
       {section === 'users' && <UserForm onSubmit={(event) => save(event, null)} />}
       {section === 'backgrounds' && <BackgroundForm key={`background-${formVersion}`} imageFile={backgroundFile} setImageFile={setBackgroundFile} onSubmit={(event) => save(event, null)} />}
       {section === 'moderation' && <form className="admin-form admin-form-fields moderation-form" onSubmit={(event) => event.preventDefault()}><div className="form-heading"><h3>Contenido a moderar</h3><p>Selecciona el tipo de contenido que deseas revisar.</p></div><label>Tipo de contenido<select value={moderationType} onChange={(event) => setModerationType(event.target.value)}><option value="comments">Comentarios</option><option value="ratings">Reseñas</option></select></label></form>}
 
-      {section !== 'upload-books' && <><div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
-      {['books', 'categories', 'home-sections'].includes(section) && <form className="admin-list-filters" onSubmit={applyFilters}>
-        <label>{section === 'books' ? 'Nombre del libro' : section === 'categories' ? 'Nombre de la categoría' : 'Nombre de la sección'}<input value={filterDraft.q} onChange={(event) => setFilterDraft((current) => ({ ...current, q: event.target.value }))} placeholder="Escribe un nombre" /></label>
-        {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Categoría<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre de categoría" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label></>}
+      <><div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
+      {['books', 'genres'].includes(section) && <form className="admin-list-filters" onSubmit={applyFilters}>
+        <label>{section === 'books' ? 'Nombre del libro' : 'Nombre del género'}<input value={filterDraft.q} onChange={(event) => setFilterDraft((current) => ({ ...current, q: event.target.value }))} placeholder="Escribe un nombre" /></label>
+        {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Género<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre del género" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label></>}
         <div className="admin-filter-actions"><button type="submit">Buscar</button><button type="button" className="secondary" onClick={clearFilters}>Limpiar</button></div>
       </form>}
-      <div className="admin-list">{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article key={item._id}>
-        <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}{section === 'home-sections' && item.imageUrl && <img className="background-record-preview" src={item.imageUrl} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? (String(item._id) === activeBackgroundId ? 'Activo · Fondo seleccionado actualmente' : 'Disponible para seleccionar') : itemDetails(item)}</small></div></div>
+      <div className={`admin-list ${section === 'genres' ? 'genre-card-grid' : ''}`}>{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article className={section === 'genres' ? `genre-card ${item.active ? 'active' : 'inactive'}` : ''} key={item._id}>
+        <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? (String(item._id) === activeBackgroundId ? 'Activo · Fondo seleccionado actualmente' : 'Disponible para seleccionar') : itemDetails(item)}</small></div></div>
         <div className="row-actions">
-          {['books', 'categories', 'home-sections'].includes(section) && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
-          {['categories', 'home-sections'].includes(section) && <button type="button" onClick={() => updateItem(item._id, { active: !item.active })}>{item.active ? 'Desactivar' : 'Activar'}</button>}
+          {section === 'books' && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
+          {section === 'genres' && <><button type="button" className="icon-action edit" onClick={() => startEditing(item)} aria-label={`Editar ${item.name}`} title="Editar"><FiEdit2 aria-hidden="true" /></button><button type="button" className="icon-action status" onClick={() => updateItem(item._id, { active: !item.active })} aria-label={`${item.active ? 'Desactivar' : 'Activar'} ${item.name}`} title={item.active ? 'Desactivar' : 'Activar'}><FiPower aria-hidden="true" /></button></>}
           {section === 'users' && <><label>Rol<select value={item.role} onChange={(event) => updateItem(item._id, { role: event.target.value })}><option value="user">Usuario</option><option value="admin">Administrador</option></select></label><label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="active">Activo</option><option value="suspended">Suspendido</option><option value="deleted">Eliminado</option></select></label></>}
           {section === 'moderation' && <button type="button" onClick={() => updateItem(item._id, { status: item.status === 'hidden' ? 'published' : 'hidden' })}>{item.status === 'hidden' ? 'Publicar' : 'Ocultar'}</button>}
           {section === 'backgrounds' && <button type="button" className={String(item._id) === activeBackgroundId ? 'active-background' : ''} disabled={String(item._id) === activeBackgroundId} onClick={() => selectBackground(item._id)}>{String(item._id) === activeBackgroundId ? 'Activo' : 'Seleccionar fondo'}</button>}
-          <button type="button" className="danger" onClick={() => setPendingDelete(item)}>Eliminar</button>
+          {section !== 'genres' && <button type="button" className="danger" onClick={() => setPendingDelete(item)}>Eliminar</button>}
         </div>
       </article>)}</div>
-      {pagination.totalPages > 1 && <nav className="admin-pagination" aria-label="Paginación de registros"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button><span>Página {page} de {pagination.totalPages}</span><button type="button" disabled={page >= pagination.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button></nav>}</>}
+      {pagination.totalPages > 1 && <nav className="admin-pagination" aria-label="Paginación de registros"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button><span>Página {page} de {pagination.totalPages}</span><button type="button" disabled={page >= pagination.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button></nav>}</>
     </section>
-    {editing && ['books', 'categories', 'home-sections'].includes(section) && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelEditing(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-label={`Editar ${editing.title || editing.name}`}><button type="button" className="admin-modal-close" onClick={cancelEditing} aria-label="Cerrar modal" autoFocus><FiX aria-hidden="true" /></button>{section === 'books' && <BookForm key={`edit-${formVersion}`} categories={categories} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'categories' && <CategoryForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'home-sections' && <HomeSectionForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}</section></div>}
+    {editing && ['books', 'genres'].includes(section) && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelEditing(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-label={`Editar ${editing.title || editing.name}`}><button type="button" className="admin-modal-close" onClick={cancelEditing} aria-label="Cerrar modal" autoFocus><FiX aria-hidden="true" /></button>{section === 'books' && <BookForm key={`edit-${formVersion}`} categories={categories} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'genres' && <GenreForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}</section></div>}
     <ConfirmDialog open={Boolean(pendingDelete)} itemName={pendingDelete?.title || pendingDelete?.name || pendingDelete?.user?.name || pendingDelete?.content || pendingDelete?.review || 'Registro seleccionado'} busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={confirmRemove} />
   </main>;
 }

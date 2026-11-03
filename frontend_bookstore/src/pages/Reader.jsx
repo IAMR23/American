@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiArrowLeft, FiBookmark, FiChevronLeft, FiChevronRight, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiBookmark, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiGrid, FiMaximize, FiMinimize, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { Link, useParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
-import { api } from '../lib/api.js';
+import { api, assetUrl } from '../lib/api.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -19,7 +19,8 @@ export default function Reader() {
   const turningRef = useRef(false);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
-  const [zoom, setZoom] = useState(1.15);
+  const [zoom, setZoom] = useState(1);
+  const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
   const [bookmarks, setBookmarks] = useState([]);
   const [bookmarkName, setBookmarkName] = useState('');
   const [background, setBackground] = useState(null);
@@ -30,6 +31,9 @@ export default function Reader() {
   const [turnSheet, setTurnSheet] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deletingBookmark, setDeletingBookmark] = useState(false);
+  const [book, setBook] = useState(null);
+  const [showCover, setShowCover] = useState(true);
+  const [coverTurning, setCoverTurning] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 850px)');
@@ -39,18 +43,26 @@ export default function Reader() {
   }, []);
 
   useEffect(() => {
+    const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     Promise.all([
       api(`/me/books/${id}/progress`),
       api(`/me/books/${id}/bookmarks`),
       api('/catalog/home-config').catch(() => ({ background: null })),
+      api(`/catalog/books/id/${id}`),
       pdfjsLib.getDocument({ url: `/api/me/books/${id}/read`, withCredentials: true }).promise,
-    ]).then(([progress, marks, config, pdf]) => {
+    ]).then(([progress, marks, config, bookData, pdf]) => {
       if (cancelled) return;
       documentRef.current = pdf;
       setPages(pdf.numPages);
       setBookmarks(marks.items);
       setBackground(config.background);
+      setBook(bookData.book);
       setPage(Math.min(progress.progress?.lastPage || 1, pdf.numPages));
       setLoading(false);
     }).catch((loadError) => { if (!cancelled) { setError(loadError.message); setLoading(false); } });
@@ -63,7 +75,7 @@ export default function Reader() {
   }, [id]);
 
   useEffect(() => {
-    if (!documentRef.current) return undefined;
+    if (!documentRef.current || showCover) return undefined;
     renderTasks.current.forEach((task) => task.cancel());
     renderTasks.current = [];
     let active = true;
@@ -72,7 +84,7 @@ export default function Reader() {
       if (!canvas || pageNumber > pages) return;
       const pdfPage = await documentRef.current.getPage(pageNumber);
       if (!active) return;
-      const viewport = pdfPage.getViewport({ scale: zoom });
+      const viewport = pdfPage.getViewport({ scale: 1.35 });
       const context = canvas.getContext('2d');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -91,9 +103,20 @@ export default function Reader() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => api(`/me/books/${id}/progress`, { method: 'PUT', body: { lastPage: page } }).catch(() => {}), 700);
     return () => { active = false; renderTasks.current.forEach((task) => task.cancel()); };
-  }, [compact, id, page, pages, zoom]);
+  }, [compact, id, page, pages, showCover]);
 
   const step = compact ? 1 : 2;
+
+  function openBook(targetPage = page) {
+    if (!showCover || coverTurning) return;
+    setCoverTurning(true);
+    const timer = window.setTimeout(() => {
+      setPage(Math.min(pages || 1, Math.max(1, targetPage)));
+      setShowCover(false);
+      setCoverTurning(false);
+    }, 440);
+    turnTimers.current.push(timer);
+  }
 
   function goToPage(nextPage) {
     const safePage = Math.min(pages || 1, Math.max(1, Number(nextPage) || 1));
@@ -112,15 +135,36 @@ export default function Reader() {
     ];
   }
 
+  function seekToPage(nextPage) {
+    const safePage = Math.min(pages || 1, Math.max(1, Number(nextPage) || 1));
+    if (showCover) {
+      openBook(safePage);
+      return;
+    }
+    turnTimers.current.forEach((timer) => clearTimeout(timer));
+    turningRef.current = false;
+    setTurnSheet(null);
+    setPage(safePage);
+  }
+
   useEffect(() => {
     const navigateWithKeyboard = (event) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) return;
-      if (event.key === 'ArrowLeft') goToPage(page - step);
-      if (event.key === 'ArrowRight') goToPage(page + step);
+      if (event.key === 'ArrowLeft') showCover || page <= 1 ? setShowCover(true) : goToPage(page - step);
+      if (event.key === 'ArrowRight') showCover ? openBook() : goToPage(page + step);
     };
     document.addEventListener('keydown', navigateWithKeyboard);
     return () => document.removeEventListener('keydown', navigateWithKeyboard);
-  }, [page, pages, step]);
+  }, [page, pages, showCover, step]);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.querySelector('.book-reader')?.requestFullscreen({ navigationUI: 'hide' });
+    } catch {
+      setFullscreen(Boolean(document.fullscreenElement));
+    }
+  }
 
   async function addBookmark(event) {
     event.preventDefault();
@@ -148,7 +192,7 @@ export default function Reader() {
 
   return <main className="reader book-reader" style={readerStyle}>
     <aside className={sidebarOpen ? 'open' : ''}>
-      <div className="reader-side-heading"><div><p className="eyebrow">Tu lectura</p><h2>Marcadores</h2></div><button type="button" onClick={() => setSidebarOpen(false)} aria-label="Cerrar marcadores">×</button></div>
+      <div className="reader-side-heading"><div><p className="eyebrow">Tu lectura · página {showCover ? 0 : page}</p><h2>Marcadores</h2></div><button type="button" onClick={() => setSidebarOpen(false)} aria-label="Cerrar marcadores">×</button></div>
       <form className="bookmark-form" onSubmit={addBookmark}>
         <label>Nombre del marcador<input required maxLength="200" value={bookmarkName} onChange={(event) => setBookmarkName(event.target.value)} placeholder="Ej. Capítulo favorito" /></label>
         <button type="submit"><FiBookmark aria-hidden="true" /> Guardar página {page}</button>
@@ -157,13 +201,19 @@ export default function Reader() {
     </aside>
     {sidebarOpen && <button className="reader-sidebar-scrim" type="button" aria-label="Cerrar marcadores" onClick={() => setSidebarOpen(false)} />}
     <section className="viewer">
-      <div className="reader-toolbar">
-        <Link to="/biblioteca" aria-label="Volver a mi biblioteca"><FiArrowLeft aria-hidden="true" /></Link>
-        <button type="button" className="bookmark-toggle" onClick={() => setSidebarOpen(true)}><FiBookmark aria-hidden="true" /><span>Marcadores</span></button>
-        <div className="reader-page-controls"><button type="button" disabled={page <= 1} onClick={() => goToPage(page - step)} aria-label="Páginas anteriores"><FiChevronLeft aria-hidden="true" /></button><label>Página <input type="number" min="1" max={pages} value={page} onChange={(event) => goToPage(event.target.value)} /> de {pages || '…'}</label><button type="button" disabled={page + step > pages} onClick={() => goToPage(page + step)} aria-label="Páginas siguientes"><FiChevronRight aria-hidden="true" /></button></div>
-        <div className="reader-zoom"><button type="button" onClick={() => setZoom(Math.max(.6, zoom - .15))} aria-label="Alejar"><FiMinus aria-hidden="true" /></button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom(Math.min(2.4, zoom + .15))} aria-label="Acercar"><FiPlus aria-hidden="true" /></button></div>
+      <div className="reader-toolbar reader-toolbar-floating">
+        <Link to="/" aria-label="Volver a la página de inicio"><FiArrowLeft aria-hidden="true" /></Link>
+        <button type="button" disabled={showCover} onClick={() => { setPage(1); setCoverTurning(false); setShowCover(true); }} aria-label="Ir a la portada"><FiChevronsLeft aria-hidden="true" /></button>
+        <button type="button" disabled={showCover} onClick={() => page <= 1 ? setShowCover(true) : goToPage(page - step)} aria-label="Páginas anteriores"><FiChevronLeft aria-hidden="true" /></button>
+        <button type="button" disabled={!showCover && page + step > pages} onClick={() => showCover ? openBook() : goToPage(page + step)} aria-label="Páginas siguientes"><FiChevronRight aria-hidden="true" /></button>
+        <button type="button" disabled={!showCover && page >= pages} onClick={() => showCover ? openBook(Math.max(1, pages - (compact ? 0 : 1))) : goToPage(Math.max(1, pages - (compact ? 0 : 1)))} aria-label="Ir al final"><FiChevronsRight aria-hidden="true" /></button>
+        <button type="button" className="bookmark-toggle" onClick={() => setSidebarOpen(true)} aria-label="Agregar y ver marcadores"><FiGrid aria-hidden="true" /></button>
+        <button type="button" disabled={zoom <= .4} onClick={() => setZoom((current) => Math.max(.4, Number((current - .2).toFixed(2))))} aria-label="Alejar"><FiMinus aria-hidden="true" /></button>
+        <button type="button" disabled={zoom >= 3} onClick={() => setZoom((current) => Math.min(3, Number((current + .2).toFixed(2))))} aria-label="Acercar"><FiPlus aria-hidden="true" /></button>
+        <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}>{fullscreen ? <FiMinimize aria-hidden="true" /> : <FiMaximize aria-hidden="true" />}</button>
+        {!showCover && <label className="reader-page-jump" aria-label="Página actual"><input type="number" min="1" max={pages} value={page} onChange={(event) => goToPage(event.target.value)} /><span>/ {pages || '…'}</span></label>}
       </div>
-      <div className="canvas-wrap">{loading ? <div className="reader-loading">Preparando las páginas…</div> : <div className={`book-spread ${compact ? 'compact' : ''}`} style={{ '--reader-mobile-width': `${(zoom / 1.15) * 100}%` }}>
+      <div className="canvas-wrap">{loading ? <div className="reader-loading">Preparando las páginas…</div> : showCover ? <button type="button" className={`reader-cover ${coverTurning ? 'turning' : ''}`} onClick={() => openBook()} aria-label={`Abrir ${book?.title || 'libro'}`}><img src={assetUrl(book?.cover?.detail || book?.cover?.thumbnail || book?.images?.[0]?.url || book?.imageUrl)} alt={`Portada de ${book?.title || 'libro'}`} /></button> : <div className={`book-spread ${compact ? 'compact' : ''}`} style={{ '--reader-mobile-width': '100%', '--reader-zoom-factor': zoom }}>
         <section className="paper-page left-page"><canvas ref={leftCanvasRef} /><span>{page}</span></section>
         {!compact && <section className={`paper-page right-page ${page + 1 > pages ? 'blank' : ''}`}>{page + 1 <= pages && <canvas ref={rightCanvasRef} />}{page + 1 <= pages && <span>{page + 1}</span>}</section>}
         {turnSheet && <div className={`page-turn-sheet turn-${turnSheet.direction}`} aria-hidden="true">
@@ -171,6 +221,11 @@ export default function Reader() {
           <div className="page-turn-face page-turn-back" />
         </div>}
       </div>}</div>
+      {!loading && pages > 0 && <div className="reader-progress">
+        <span>{showCover ? 0 : page}</span>
+        <input type="range" min="1" max={pages} step="1" value={showCover ? 1 : page} onChange={(event) => seekToPage(event.target.value)} aria-label={`Ir a una página del libro. Página ${showCover ? 0 : page} de ${pages}`} />
+        <span>{pages}</span>
+      </div>}
     </section>
     <ConfirmDialog open={Boolean(pendingDelete)} title="¿Deseas eliminar este marcador?" itemName={pendingDelete?.name || `Página ${pendingDelete?.page || ''}`} busy={deletingBookmark} onCancel={() => setPendingDelete(null)} onConfirm={() => removeBookmark(pendingDelete)} />
   </main>;

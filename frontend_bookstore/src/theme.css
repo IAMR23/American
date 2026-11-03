@@ -507,3 +507,283 @@ html[data-theme="light"] .canvas-wrap { background: #cbc6bd; }
 @media (hover: none) {
   .cover-overlay { opacity: 1; transform: none; }
 }
+
+/* El visor ocupa el viewport completo; estas reglas deben quedar al final del tema. */
+html:has(.book-reader),
+body:has(.book-reader),
+body:has(.book-reader) #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.book-reader{position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;overflow:hidden}.book-reader .viewer{position:absolute;inset:0;width:100%;height:100%;min-height:0;display:block}.book-reader .canvas-wrap{position:absolute;inset:0;width:100%;height:100%;min-height:0;display:flex;align-items:flex-start;justify-content:center;padding:8px;overflow:auto;background:transparent!important;perspective:1800px}.book-reader .reader-toolbar-floating{position:absolute;top:14px;right:14px;left:auto;z-index:35;width:max-content;max-width:calc(100vw - 28px);min-height:0;height:52px;display:flex;grid-template-columns:none;align-items:center;justify-content:center;gap:4px;padding:5px 9px;border:1px solid #ffffff55;border-radius:10px;background:linear-gradient(135deg,#ffffff70,#d7e0e766);box-shadow:0 8px 28px #0004,inset 0 1px #fff8;transform:none;backdrop-filter:blur(16px) saturate(145%);-webkit-backdrop-filter:blur(16px) saturate(145%)}.book-reader .reader-toolbar-floating>a,.book-reader .reader-toolbar-floating>button{width:38px;min-width:38px;height:38px;min-height:38px;display:grid;place-items:center;padding:0;border:0;border-radius:6px;color:#111;background:transparent;font-size:24px}.book-reader .reader-toolbar-floating>a:hover,.book-reader .reader-toolbar-floating>button:hover{background:#ffffff55}.book-reader .reader-cover{width:auto;height:calc(100dvh - 16px);max-width:calc(100vw - 16px);max-height:none;margin:0;border-radius:0}.book-reader .reader-cover img{width:auto;height:100%;max-width:100%;max-height:100%;border-radius:0;object-fit:contain}.book-reader .book-spread{margin:0 auto;max-height:calc(100dvh - 16px)}.book-reader .paper-page{max-height:calc(100dvh - 24px)}.book-reader .paper-page canvas{max-width:100%;max-height:calc(100dvh - 42px);width:auto;height:auto;object-fit:contain}
+.book-reader .canvas-wrap {
+  box-sizing: border-box;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.book-reader .canvas-wrap::-webkit-scrollbar { display: none; }
+.book-reader .book-spread {
+  zoom: var(--reader-zoom-factor, 1);
+}
+@media(max-width:620px){.book-reader .canvas-wrap{justify-content:center;padding:5px}.book-reader .reader-toolbar-floating{top:8px;right:8px;left:auto;max-width:calc(100vw - 16px);height:46px;padding:4px 6px}.book-reader .reader-toolbar-floating>a,.book-reader .reader-toolbar-floating>button{width:32px;min-width:32px;height:34px;min-height:34px;font-size:20px}.book-reader .reader-cover{height:calc(100dvh - 10px);max-width:calc(100vw - 10px)}}
+
+.book-reader .reader-progress {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  left: 18px;
+  z-index: 34;
+  display: grid;
+  grid-template-columns: minmax(30px, auto) minmax(0, 1fr) minmax(30px, auto);
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 5px 12px;
+  border: 1px solid #ffffff55;
+  border-radius: 10px;
+  color: #111;
+  background: linear-gradient(135deg, #ffffffa8, #d7e0e78f);
+  box-shadow: 0 8px 28px #0004, inset 0 1px #fff8;
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  font-size: 13px;
+  font-weight: 700;
+}
+.book-reader .reader-progress span:first-child { text-align: right; }
+.book-reader .reader-progress input {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #24211d;
+}
+@media(max-width:620px){
+  .book-reader .reader-progress{right:8px;bottom:7px;left:8px;gap:7px;min-height:32px;padding:3px 8px}
+}
+
+/* Panel de marcadores: columna lateral; el resto de la pantalla solo es el cierre. */
+.book-reader > aside,
+.book-reader > aside.open {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 51;
+  box-sizing: border-box;
+  display: block;
+  width: min(340px, 88vw);
+  height: 100dvh;
+  padding: 24px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 0;
+  border-right: 1px solid #ffffff2b;
+  border-radius: 0;
+  color: #eee8dc;
+  background: #16120ff2;
+  box-shadow: 14px 0 38px #0008;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform .25s ease;
+}
+.book-reader > aside { transform: translateX(-105%); }
+.book-reader > aside.open { transform: translateX(0); }
+.book-reader .reader-sidebar-scrim {
+  appearance: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #0006;
+  box-shadow: none;
+  opacity: 1;
+}
+.book-reader .reader-side-heading > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #ffffff36;
+  border-radius: 50%;
+  color: #fff;
+  background: #ffffff12;
+}
+
+/* Los marcadores se despliegan como un menú unido a la barra superior. */
+.book-reader > aside,
+.book-reader > aside.open {
+  position: fixed;
+  inset: 76px 14px auto auto;
+  z-index: 51;
+  width: min(330px, calc(100vw - 28px));
+  height: auto;
+  max-height: calc(100dvh - 96px);
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid #ffffff55;
+  border-radius: 12px;
+  color: #1a1815;
+  background: linear-gradient(145deg, #fffffff0, #dce2e5e8);
+  box-shadow: 0 16px 42px #0007, inset 0 1px #fff;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  scrollbar-width: thin;
+  transform-origin: top right;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.book-reader > aside {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-10px) scale(.97);
+}
+.book-reader > aside.open {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.book-reader > aside .eyebrow,
+.book-reader > aside .reader-empty { color: #615b54; }
+.book-reader > aside .reader-side-heading h2 { color: #171512; }
+.book-reader > aside .reader-side-heading > button {
+  color: #171512;
+  border-color: #17151233;
+  background: #1715120d;
+}
+.book-reader > aside .bookmark-form {
+  margin: 12px 0;
+  padding: 12px 0;
+  border-color: #17151225;
+}
+.book-reader > aside .bookmark-form label { color: #3d3934; }
+.book-reader > aside .bookmark-form input {
+  color: #171512;
+  border-color: #17151235;
+  background: #ffffffa8;
+}
+.book-reader > aside .bookmark-list article {
+  border-color: #17151226;
+  background: #ffffff75;
+}
+.book-reader > aside .bookmark-list article.current {
+  border-color: #8b692b;
+  background: #ead8b8b8;
+}
+.book-reader > aside .bookmark-list article > button:first-child { color: #171512; }
+.book-reader > aside .bookmark-list article > button:first-child span { color: #615b54; }
+.book-reader > aside .bookmark-list article > button:last-child { border-color: #17151226; }
+.book-reader .reader-sidebar-scrim {
+  display: none;
+  pointer-events: none;
+}
+@media(max-width:620px){
+  .book-reader > aside,.book-reader > aside.open{inset:62px 8px auto auto;width:min(310px,calc(100vw - 16px));max-height:calc(100dvh - 78px);padding:13px}
+}
+
+/* Acabado de espejo esmerilado para el menú y su botón. */
+.book-reader > aside,
+.book-reader > aside.open {
+  isolation: isolate;
+  overflow-x: hidden;
+  border: 1px solid #ffffffb3;
+  color: #111;
+  background:
+    linear-gradient(118deg, #ffffffb8 0%, #ffffff5c 28%, #c8d1d86b 58%, #ffffff9c 100%);
+  box-shadow:
+    0 20px 55px #0005,
+    inset 0 1px 0 #fff,
+    inset 1px 0 0 #ffffff8c,
+    inset 0 -1px 0 #8e9aa466;
+  backdrop-filter: blur(22px) saturate(120%) contrast(92%);
+  -webkit-backdrop-filter: blur(22px) saturate(120%) contrast(92%);
+}
+.book-reader > aside::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 18% 0%, #ffffffd4, transparent 35%),
+    linear-gradient(100deg, transparent 20%, #ffffff52 46%, transparent 70%);
+  opacity: .8;
+}
+.book-reader .reader-toolbar-floating .bookmark-toggle {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ffffffa8;
+  color: #111;
+  background: linear-gradient(135deg, #ffffffe0, #bfc9d087 52%, #ffffffb3);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #71808b52, 0 4px 12px #0003;
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+.book-reader .reader-toolbar-floating .bookmark-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  left: 5px;
+  height: 42%;
+  pointer-events: none;
+  border-radius: 5px 5px 50% 50%;
+  background: linear-gradient(#ffffffd9, #ffffff1a);
+}
+.book-reader .reader-toolbar-floating .bookmark-toggle svg { position: relative; z-index: 1; }
+
+/* La portada y el libro abierto comparten el mismo marco vertical. */
+.book-reader .reader-cover {
+  box-sizing: border-box;
+  display: block;
+  height: calc(100dvh - 16px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.book-reader .book-spread {
+  box-sizing: border-box;
+  height: calc(100dvh - 16px);
+  max-height: calc(100dvh - 16px);
+}
+.book-reader .book-spread .paper-page {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+}
+.book-reader .book-spread .paper-page canvas {
+  max-height: calc(100dvh - 74px);
+}
+
+/* Centrado preciso de la X del menú de marcadores. */
+.book-reader > aside .reader-side-heading {
+  align-items: flex-start;
+}
+.book-reader > aside .reader-side-heading > button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 0 3px;
+  font: 400 27px/1 Arial, sans-serif;
+  text-align: center;
+}
+@media(max-width:620px){
+  .book-reader .reader-cover,.book-reader .book-spread{height:calc(100dvh - 10px);max-height:calc(100dvh - 10px)}
+  .book-reader .book-spread .paper-page canvas{max-height:calc(100dvh - 60px)}
+}

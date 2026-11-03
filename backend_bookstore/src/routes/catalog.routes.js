@@ -24,7 +24,13 @@ router.get('/home', asyncHandler(async (_request, response) => {
 router.get('/genres', asyncHandler(async (_request, response) => {
   const [legacy, categories] = await Promise.all([Genre.find({ active: true }).sort({ name: 1 }).lean(), Book.distinct('category', { status: 'published', category: { $nin: [null, ''] } })]);
   const known = new Set(legacy.map((item) => item.name.toLocaleLowerCase('es')));
-  const items = [...legacy, ...categories.filter((name) => !known.has(name.toLocaleLowerCase('es'))).map((name) => ({ _id: `category:${name}`, name, slug: name }))];
+  const baseItems = [...legacy, ...categories.filter((name) => !known.has(name.toLocaleLowerCase('es'))).map((name) => ({ _id: `category:${name}`, name, slug: name }))];
+  const items = await Promise.all(baseItems.map(async (item) => {
+    const byName = { category: new RegExp(`^${escapeRegex(item.name)}$`, 'i') };
+    const filter = { status: 'published', $or: [byName] };
+    if (mongoose.isValidObjectId(item._id)) filter.$or.push({ genres: item._id });
+    return { ...item, booksCount: await Book.countDocuments(filter) };
+  }));
   response.json({ items });
 }));
 router.get('/authors', asyncHandler(async (_request, response) => {
@@ -81,6 +87,11 @@ router.get('/books', asyncHandler(async (request, response) => {
   response.json({ items, pagination: pageMeta(page, limit, total) });
 }));
 
+router.get('/books/id/:id', optionalAuth, asyncHandler(async (request, response) => {
+  const book = await Book.findOne({ _id: request.params.id, status: 'published' }).select('title slug cover imageUrl images').lean();
+  if (!book) throw new ApiError(404, 'Libro no encontrado.');
+  response.json({ book });
+}));
 router.get('/books/:slug', optionalAuth, asyncHandler(async (request, response) => {
   const book = await Book.findOne({ slug: request.params.slug, status: 'published' }).select('-pdfRef').populate('authors', 'name biography').populate('genres', 'name slug').lean();
   if (!book) throw new ApiError(404, 'Libro no encontrado.');

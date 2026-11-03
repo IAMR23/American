@@ -1,11 +1,41 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import BookGrid from '../components/BookGrid.jsx'; import { api } from '../lib/api.js';
+import { FiArrowLeft, FiChevronDown } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { api } from '../lib/api.js';
+import WelcomePanel from '../components/WelcomePanel.jsx';
+
+const columns = [
+  { key: 'genres', title: 'Géneros' },
+  { key: 'radio', title: 'Radio novelas' },
+  { key: 'audio', title: 'Audio libros' },
+  { key: 'others', title: 'Otros' },
+];
 
 export default function Catalog() {
-  const [params, setParams] = useSearchParams(); const [data, setData] = useState(null); const [genres, setGenres] = useState([]); const [error, setError] = useState('');
-  useEffect(() => { api('/catalog/genres').then((d) => setGenres(d.items)); }, []);
-  useEffect(() => { setError(''); api(`/catalog/books?${params}`).then(setData).catch((e) => setError(e.message)); }, [params]);
-  const update = (key, value) => { const next = new URLSearchParams(params); value ? next.set(key, value) : next.delete(key); if (key !== 'page') next.set('page', '1'); setParams(next); };
-  return <main className="container page"><div className="page-title"><p className="eyebrow">Colección completa</p><h1>Catálogo</h1></div><div className="filters"><input type="search" value={params.get('q') ?? ''} onChange={(e) => update('q', e.target.value)} placeholder="Buscar por título o autor" /><select value={params.get('genre') ?? ''} onChange={(e) => update('genre', e.target.value)}><option value="">Todos los géneros</option>{genres.map((g) => <option value={g.slug} key={g._id}>{g.name}</option>)}</select><select value={params.get('sort') ?? 'recent'} onChange={(e) => update('sort', e.target.value)}><option value="recent">Más recientes</option><option value="oldest">Más antiguos</option><option value="title_asc">Título A–Z</option><option value="title_desc">Título Z–A</option><option value="author">Autor</option><option value="rating_desc">Mejor puntuación</option><option value="rating_asc">Menor puntuación</option><option value="reads">Más leídos</option></select></div>{error ? <div className="state error">{error}</div> : !data ? <div className="state">Buscando libros…</div> : <><p className="result-count">{data.pagination.total} libros</p><BookGrid books={data.items} /><div className="pager"><button disabled={data.pagination.page <= 1} onClick={() => update('page', String(data.pagination.page - 1))}>Anterior</button><span>Página {data.pagination.page} de {data.pagination.totalPages || 1}</span><button disabled={data.pagination.page >= data.pagination.totalPages} onClick={() => update('page', String(data.pagination.page + 1))}>Siguiente</button></div></>}</main>;
+  const [genres, setGenres] = useState([]);
+  const [background, setBackground] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([api('/catalog/genres'), api('/catalog/home-config')])
+      .then(([genreData, config]) => { setGenres(genreData.items || []); setBackground(config.background); })
+      .catch((loadError) => setError(loadError.message));
+  }, []);
+
+  const heroStyle = background?.image?.detail ? { backgroundImage: `linear-gradient(90deg,rgba(13,12,10,.94),rgba(13,12,10,.3)),url(${background.image.detail})` } : undefined;
+
+  return <main className="bookstore-home all-content-page">
+    <section className="bookstore-hero-stage"><aside className="hero-side hero-side-left"><span>Otros enlaces</span><a href="https://www.american-karaoke.com/" target="_blank" rel="noreferrer" aria-label="Visitar American Karaoke"><img src="/american-karaoke-logo.png" alt="American Karaoke" /></a></aside><div className="hero catalog-hero" style={heroStyle}><div className="hero-copy"><p className="eyebrow">Biblioteca virtual</p><h1><span>Book</span>Store <small>Online</small></h1><p>Descubre todo el contenido disponible.</p></div></div><aside className="hero-side hero-side-right"><WelcomePanel /></aside></section>
+    <section className="all-content container">
+      <Link className="back-home" to="/"><FiArrowLeft aria-hidden="true" /> Regresar a inicio</Link>
+      <h2>Todo el contenido</h2>
+      {error && <p className="notice error">{error}</p>}
+      <div className="content-columns">
+        {columns.map((column) => <section className="content-column" key={column.key}>
+          <header><h3>{column.title}</h3><FiChevronDown aria-hidden="true" /></header>
+          {column.key === 'genres' && <div className="content-column-list">{genres.map((genre) => <Link to={`/generos/${encodeURIComponent(genre.slug)}`} key={genre._id}><span>{genre.name}</span><strong>{genre.booksCount ?? 0}</strong></Link>)}</div>}
+        </section>)}
+      </div>
+    </section>
+  </main>;
 }

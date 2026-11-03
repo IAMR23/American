@@ -97,7 +97,9 @@ test('administración filtra libros y ya no expone el CRUD de autores', async ()
   assert.equal(response.body.items[0].title, 'El Aleph');
   assert.deepEqual(response.body.pagination, { page: 1, limit: 1, total: 1, totalPages: 1 });
   await adminAgent.get('/api/admin/authors?q=borg&limit=10&page=1').expect(404);
-  assert.equal((await adminAgent.get('/api/admin/categories?q=fic&limit=10&page=1').expect(200)).body.items[0].name, 'Ficción');
+  const genre = (await adminAgent.get('/api/admin/genres?q=fic&limit=10&page=1').expect(200)).body.items[0];
+  assert.equal(genre.name, 'Ficción');
+  await adminAgent.delete(`/api/admin/genres/${genre._id}`).expect(404);
 });
 
 test('un usuario normal puede guardar y aplicar su fondo personal', async () => {

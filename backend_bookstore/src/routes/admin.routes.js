@@ -94,19 +94,33 @@ router.delete('/books/:id', asyncHandler(async (request, response) => {
   response.status(204).end();
 }));
 
-function crudRoutes(path, Model, hasSlug = false) {
-  router.get(`/${path}`, asyncHandler(async (request, response) => { const { page, limit, skip } = pagination(request.query, 50); const filter = request.query.q ? { name: new RegExp(escapeRegex(String(request.query.q)), 'i') } : {}; const [items, total] = await Promise.all([Model.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean(), Model.countDocuments(filter)]); response.json({ items, pagination: pageMeta(page, limit, total) }); }));
-  router.post(`/${path}`, asyncHandler(async (request, response) => { const data = { ...request.body }; if (hasSlug) data.slug = makeSlug(data.slug || data.name); response.status(201).json({ item: await Model.create(data) }); }));
-  router.patch(`/${path}/:id`, asyncHandler(async (request, response) => { const data = { ...request.body }; if (hasSlug && (data.slug || data.name)) data.slug = makeSlug(data.slug || data.name); const item = await Model.findByIdAndUpdate(request.params.id, data, { new: true, runValidators: true }); if (!item) throw new ApiError(404, 'Registro no encontrado.'); response.json({ item }); }));
-  router.delete(`/${path}/:id`, asyncHandler(async (request, response) => {
-    const item = await Model.findById(request.params.id);
-    if (!item) throw new ApiError(404, 'Registro no encontrado.');
-    const relation = path === 'authors' ? { authors: item._id } : { $or: [{ genres: item._id }, { category: new RegExp(`^${escapeRegex(item.name)}$`, 'i') }] };
-    if (await Book.exists(relation)) throw new ApiError(409, 'No se puede eliminar porque tiene libros asociados; desactívalo o reasigna los libros.');
-    await item.deleteOne(); response.status(204).end();
-  }));
-}
-crudRoutes('categories', Genre, true);
+router.get('/genres', asyncHandler(async (request, response) => {
+  const { page, limit, skip } = pagination(request.query, 50);
+  const filter = request.query.q ? { name: new RegExp(escapeRegex(String(request.query.q)), 'i') } : {};
+  const [items, total] = await Promise.all([
+    Genre.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+    Genre.countDocuments(filter),
+  ]);
+  response.json({ items, pagination: pageMeta(page, limit, total) });
+}));
+router.post('/genres', asyncHandler(async (request, response) => {
+  const name = String(request.body.name ?? '').trim();
+  if (!name) throw new ApiError(400, 'El nombre del género es obligatorio.');
+  const active = request.body.active === undefined ? true : Boolean(request.body.active);
+  response.status(201).json({ item: await Genre.create({ name, slug: makeSlug(name), active }) });
+}));
+router.patch('/genres/:id', asyncHandler(async (request, response) => {
+  const changes = {};
+  if (request.body.name !== undefined) {
+    changes.name = String(request.body.name).trim();
+    if (!changes.name) throw new ApiError(400, 'El nombre del género es obligatorio.');
+    changes.slug = makeSlug(changes.name);
+  }
+  if (request.body.active !== undefined) changes.active = Boolean(request.body.active);
+  const item = await Genre.findByIdAndUpdate(request.params.id, changes, { new: true, runValidators: true });
+  if (!item) throw new ApiError(404, 'Género no encontrado.');
+  response.json({ item });
+}));
 
 router.get('/home-sections', asyncHandler(async (request, response) => {
   const { page, limit, skip } = pagination(request.query, 10);
