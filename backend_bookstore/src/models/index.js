@@ -33,7 +33,7 @@ const imageSchema = new Schema({ original: String, detail: String, thumbnail: St
 const bookSchema = new Schema({
   title: { type: String, required: true, trim: true, maxlength: 250 }, slug: { type: String, required: true, unique: true, lowercase: true, index: true },
   author: { type: String, trim: true, maxlength: 200 }, category: { type: String, trim: true, maxlength: 120, index: true },
-  classification: { type: String, enum: ['letras', 'imagenes', 'revistas'], index: true }, imageUrl: { type: String, trim: true },
+  classification: { type: String, enum: ['letras', 'imagenes', 'revistas', 'audio-sonido'], index: true }, imageUrl: { type: String, trim: true },
   images: [{
     url: { type: String, required: true, trim: true },
     fit: { type: String, enum: ['cover', 'contain'], default: 'cover' },

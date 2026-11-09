@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { FiClipboard, FiEdit2, FiImage, FiPower, FiSave, FiX } from 'react-icons/fi';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import PasswordField from '../components/PasswordField.jsx';
-import { api } from '../lib/api.js';
+import { api, assetUrl, isPrivateDropboxPreview } from '../lib/api.js';
 
-const sections = ['books', 'genres', 'users', 'backgrounds', 'moderation'];
-const labels = { books: 'Libros', genres: 'Géneros', users: 'Usuarios', backgrounds: 'Fondos', moderation: 'Moderación' };
+const sections = ['books', 'genres', 'home', 'users', 'backgrounds'];
+const labels = { books: 'Libros', genres: 'Géneros', home: 'Inicio', users: 'Usuarios', backgrounds: 'Fondos' };
 const emptyFilters = { q: '', author: '', category: '', classification: '' };
 
 function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
@@ -30,18 +30,19 @@ function BookForm({ categories, onSubmit, initial, onCancel }) {
   const initialImage = initial?.images?.[0]?.url || initial?.imageUrl || '';
   const [imageUrl, setImageUrl] = useState(initialImage);
   const [imageError, setImageError] = useState(false);
+  const privateDropboxPreview = isPrivateDropboxPreview(imageUrl);
 
   return <form className="admin-form admin-form-fields book-simple-form" onSubmit={onSubmit}>
     <div className="form-heading"><h3>{initial ? 'Editar libro' : 'Subir libro'}</h3><p>Completa la información principal del libro.</p></div>
     <label>Título<input name="title" required maxLength="250" defaultValue={initial?.title || ''} /></label>
     <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={initial?.pdfRef || ''} /></label>
-    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://ejemplo.com/portada.jpg" value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setImageError(false); }} /></label>
+    <label>Link de la imagen<input name="imageUrl" type="url" required placeholder="https://www.dropbox.com/scl/fi/..." value={imageUrl} onChange={(event) => { setImageUrl(event.target.value); setImageError(false); }} /><small>En Dropbox usa “Copiar enlace”; no copies la URL de la vista previa.</small></label>
     <div className="book-link-preview" aria-live="polite">
-      {imageUrl.trim() && !imageError ? <img src={imageUrl.trim()} alt="Vista previa de la portada" onError={() => setImageError(true)} /> : <div><FiImage aria-hidden="true" /><span>{imageError ? 'No se pudo cargar esta imagen. Revisa el enlace.' : 'La portada aparecerá aquí.'}</span></div>}
+      {imageUrl.trim() && !imageError && !privateDropboxPreview ? <img src={assetUrl(imageUrl.trim())} alt="Vista previa de la portada" onError={() => setImageError(true)} /> : <div><FiImage aria-hidden="true" /><span>{privateDropboxPreview ? 'Este enlace de vista previa de Dropbox es privado. Usa Compartir → Copiar enlace.' : imageError ? 'No se pudo cargar esta imagen. Revisa que el enlace sea público.' : 'La portada aparecerá aquí.'}</span></div>}
     </div>
     <label>Género<select name="category" required defaultValue={initial?.category || initial?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona un género</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
     <label>Autor<input name="author" required maxLength="200" defaultValue={initial?.author || initial?.authors?.map((value) => value.name).join(', ') || ''} /></label>
-    <label>Clasificación<select name="classification" required defaultValue={initial?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
+    <label>Clasificación<select name="classification" required defaultValue={initial?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option><option value="audio-sonido">Audio y Sonido</option></select></label>
     <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Subir libro'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
   </form>;
 }
@@ -64,7 +65,7 @@ function BookSlotWorkspace({ books, categories, onSubmit }) {
         <label>Link de libro<input name="pdfRef" type="url" required placeholder="https://www.dropbox.com/..." defaultValue={selectedBook?.pdfRef || ''} /></label>
         <label>Género<select name="category" required defaultValue={selectedBook?.category || selectedBook?.genres?.[0]?.name || ''}><option value="" disabled>Selecciona un género</option>{categories.filter((category) => category.active).map((category) => <option key={category._id} value={category.name}>{category.name}</option>)}</select></label>
         <label>Autor<input name="author" required maxLength="200" defaultValue={selectedBook?.author || selectedBook?.authors?.map((author) => author.name).join(', ') || ''} /></label>
-        <label>Clasificación<select name="classification" required defaultValue={selectedBook?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label>
+        <label>Clasificación<select name="classification" required defaultValue={selectedBook?.classification || ''}><option value="" disabled>Selecciona una opción</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option><option value="audio-sonido">Audio y Sonido</option></select></label>
         <button type="submit"><FiSave aria-hidden="true" /> {selectedBook ? 'Guardar cambios' : 'Crear libro'}</button>
       </form>}
     </aside>
@@ -74,7 +75,7 @@ function BookSlotWorkspace({ books, categories, onSubmit }) {
           const book = books[index];
           const previewUrl = selectedIndex === index && imageUrl.trim() ? imageUrl.trim() : book?.images?.[0]?.url || book?.imageUrl;
           return <button type="button" className={`book-record-slot ${selectedIndex === index ? 'selected' : ''} ${book ? 'has-book occupied' : 'available'} ${previewUrl ? 'has-preview' : ''}`} key={book?._id || `slot-${index}`} onClick={() => setSelectedIndex(index)}>
-            {previewUrl ? <img src={previewUrl} alt={book ? `Portada de ${book.title}` : 'Vista previa de la nueva portada'} /> : <FiImage aria-hidden="true" />}
+            {previewUrl ? <img src={assetUrl(previewUrl)} alt={book ? `Portada de ${book.title}` : 'Vista previa de la nueva portada'} /> : <FiImage aria-hidden="true" />}
             {book ? <><em>Ocupado</em><div className="book-slot-info"><strong>{book.title || 'Libro sin título'}</strong><small>{[book.author, book.category].filter(Boolean).join(' · ') || 'Información guardada'}</small></div></> : <div className="book-slot-info"><strong>{previewUrl ? 'Nueva portada' : 'Disponible'}</strong><small>Crear libro</small></div>}
           </button>;
         })}
@@ -100,6 +101,15 @@ function GenreForm({ onSubmit, initial, onCancel }) {
     <label>Nombre<input name="name" required maxLength="120" defaultValue={initial?.name || ''} /></label>
     <label>Estado<select name="active" defaultValue={String(initial?.active ?? true)}><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
     <div className="form-actions wide"><button type="submit"><FiSave aria-hidden="true" /> {initial ? 'Guardar cambios' : 'Crear género'}</button>{initial && <button type="button" className="secondary" onClick={onCancel}><FiX aria-hidden="true" /> Cancelar</button>}</div>
+  </form>;
+}
+
+function HomeGenresForm({ genres, selected, onChange, onSubmit, loading }) {
+  const toggle = (id) => onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+  return <form className="admin-form admin-form-fields home-genres-form" onSubmit={onSubmit}>
+    <div className="form-heading"><h3>Carruseles de la página inicial</h3><p>Selecciona los géneros que se mostrarán. Cada carrusel incluirá como máximo los 20 libros creados más recientemente.</p></div>
+    <fieldset className="home-genre-options wide"><legend>Géneros visibles</legend>{genres.map((genre) => <label key={genre._id}><input type="checkbox" checked={selected.includes(genre._id)} onChange={() => toggle(genre._id)} /><span>{genre.name}</span></label>)}</fieldset>
+    <div className="form-actions wide"><button type="submit" disabled={loading || !selected.length}><FiSave aria-hidden="true" /> Guardar selección</button></div>
   </form>;
 }
 
@@ -154,7 +164,6 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
   const [data, setData] = useState([]);
   const [message, setMessage] = useState('');
   const [categories, setCategories] = useState([]);
-  const [moderationType, setModerationType] = useState('comments');
   const [loading, setLoading] = useState(true);
   const [backgroundFile, setBackgroundFile] = useState(null);
   const [formVersion, setFormVersion] = useState(0);
@@ -164,6 +173,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [activeBackgroundId, setActiveBackgroundId] = useState('');
+  const [homeGenreIds, setHomeGenreIds] = useState([]);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -171,18 +181,19 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: '10' });
-      if (section === 'moderation') params.set('type', moderationType);
       if (['books', 'genres', 'users'].includes(section) && filters.q) params.set('q', filters.q);
       if (section === 'books') {
         if (filters.author) params.set('author', filters.author);
         if (filters.category) params.set('category', filters.category);
         if (filters.classification) params.set('classification', filters.classification);
       }
-      const endpoint = `/admin/${section === 'moderation' ? 'moderation' : section}?${params}`;
+      const endpoint = section === 'home' ? '/admin/home-config' : `/admin/${section}?${params}`;
       const result = await api(endpoint);
-      setData(result.items || []);
+      const resultItems = section === 'home' ? result.genres || [] : result.items || [];
+      setData(resultItems);
+      if (section === 'home') setHomeGenreIds(result.selectedGenreIds || []);
       if (section === 'backgrounds') setActiveBackgroundId(String(result.setting?.value?.backgroundId?._id || result.setting?.value?.backgroundId || ''));
-      const nextPagination = result.pagination || { page: 1, limit: 10, total: result.items?.length || 0, totalPages: 1 };
+      const nextPagination = result.pagination || { page: 1, limit: 10, total: resultItems.length, totalPages: 1 };
       setPagination(nextPagination);
       const lastPage = Math.max(1, nextPagination.totalPages || 1);
       if (page > lastPage) setPage(lastPage);
@@ -195,7 +206,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [section, moderationType, page, filters]);
+  useEffect(() => { load(); }, [section, page, filters]);
 
   useEffect(() => {
     if (!editing) return undefined;
@@ -249,6 +260,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
         await api(endpoint, { method, body });
       } else {
         const body = Object.fromEntries(new FormData(form));
+        if (resource === 'books' && isPrivateDropboxPreview(body.imageUrl)) throw new Error('El enlace de previews.dropbox.com es privado. En Dropbox selecciona Compartir → Copiar enlace y pega ese enlace público.');
         if (resource === 'books' && body.imageUrl && !body.images) body.images = JSON.stringify([{ url: body.imageUrl, fit: 'cover', positionX: 50, positionY: 50 }]);
         if (resource === 'books' && !JSON.parse(body.images || '[]').filter(Boolean).length) throw new Error('Ingresa al menos un link de imagen.');
         if (body.active !== undefined) body.active = body.active === 'true';
@@ -261,8 +273,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
 
   async function updateItem(id, changes) {
     try {
-      const url = section === 'moderation' ? `/admin/moderation/${moderationType}/${id}` : `/admin/${section}/${id}`;
-      await api(url, { method: 'PATCH', body: changes }); await load();
+      await api(`/admin/${section}/${id}`, { method: 'PATCH', body: changes }); await load();
     } catch (error) { setMessage(error.message); }
   }
 
@@ -272,7 +283,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     try {
       const id = pendingDelete._id;
       if (section === 'users') await api(`/admin/users/${id}`, { method: 'PATCH', body: { status: 'deleted' } });
-      else await api(section === 'moderation' ? `/admin/moderation/${moderationType}/${id}` : `/admin/${section}/${id}`, { method: 'DELETE' });
+      else await api(`/admin/${section}/${id}`, { method: 'DELETE' });
       setPendingDelete(null);
       setMessage('Registro eliminado correctamente.');
       await load();
@@ -285,6 +296,15 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
       await api(`/admin/backgrounds/${id}/select`, { method: 'PUT' });
       setActiveBackgroundId(String(id));
       setMessage('Fondo principal actualizado.');
+    } catch (error) { setMessage(error.message); }
+  }
+
+  async function saveHomeConfig(event) {
+    event.preventDefault(); setMessage('');
+    try {
+      const result = await api('/admin/home-config', { method: 'PUT', body: { genreIds: homeGenreIds } });
+      setHomeGenreIds(result.selectedGenreIds || []);
+      setMessage('Géneros de la página inicial actualizados.');
     } catch (error) { setMessage(error.message); }
   }
 
@@ -305,14 +325,14 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
       {message && <p className="notice">{message}</p>}
       {section === 'books' && <BookForm key={`create-${formVersion}`} categories={categories} onSubmit={(event) => save(event, null)} />}
       {section === 'genres' && <GenreForm key={`create-${formVersion}`} onSubmit={(event) => save(event, null)} />}
+      {section === 'home' && <HomeGenresForm genres={data} selected={homeGenreIds} onChange={setHomeGenreIds} onSubmit={saveHomeConfig} loading={loading} />}
       {section === 'users' && <UserForm onSubmit={(event) => save(event, null)} />}
       {section === 'backgrounds' && <BackgroundForm key={`background-${formVersion}`} imageFile={backgroundFile} setImageFile={setBackgroundFile} onSubmit={(event) => save(event, null)} />}
-      {section === 'moderation' && <form className="admin-form admin-form-fields moderation-form" onSubmit={(event) => event.preventDefault()}><div className="form-heading"><h3>Contenido a moderar</h3><p>Selecciona el tipo de contenido que deseas revisar.</p></div><label>Tipo de contenido<select value={moderationType} onChange={(event) => setModerationType(event.target.value)}><option value="comments">Comentarios</option><option value="ratings">Reseñas</option></select></label></form>}
 
-      <><div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
+      {section !== 'home' && <><div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
       {['books', 'genres'].includes(section) && <form className="admin-list-filters" onSubmit={applyFilters}>
         <label>{section === 'books' ? 'Nombre del libro' : 'Nombre del género'}<input value={filterDraft.q} onChange={(event) => setFilterDraft((current) => ({ ...current, q: event.target.value }))} placeholder="Escribe un nombre" /></label>
-        {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Género<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre del género" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option></select></label></>}
+        {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Género<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre del género" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option><option value="audio-sonido">Audio y Sonido</option></select></label></>}
         <div className="admin-filter-actions"><button type="submit">Buscar</button><button type="button" className="secondary" onClick={clearFilters}>Limpiar</button></div>
       </form>}
       <div className={`admin-list ${section === 'genres' ? 'genre-card-grid' : ''}`}>{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article className={section === 'genres' ? `genre-card ${item.active ? 'active' : 'inactive'}` : ''} key={item._id}>
@@ -321,12 +341,11 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
           {section === 'books' && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
           {section === 'genres' && <><button type="button" className="icon-action edit" onClick={() => startEditing(item)} aria-label={`Editar ${item.name}`} title="Editar"><FiEdit2 aria-hidden="true" /></button><button type="button" className="icon-action status" onClick={() => updateItem(item._id, { active: !item.active })} aria-label={`${item.active ? 'Desactivar' : 'Activar'} ${item.name}`} title={item.active ? 'Desactivar' : 'Activar'}><FiPower aria-hidden="true" /></button></>}
           {section === 'users' && <><label>Rol<select value={item.role} onChange={(event) => updateItem(item._id, { role: event.target.value })}><option value="user">Usuario</option><option value="admin">Administrador</option></select></label><label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="active">Activo</option><option value="suspended">Suspendido</option><option value="deleted">Eliminado</option></select></label></>}
-          {section === 'moderation' && <button type="button" onClick={() => updateItem(item._id, { status: item.status === 'hidden' ? 'published' : 'hidden' })}>{item.status === 'hidden' ? 'Publicar' : 'Ocultar'}</button>}
           {section === 'backgrounds' && <button type="button" className={String(item._id) === activeBackgroundId ? 'active-background' : ''} disabled={String(item._id) === activeBackgroundId} onClick={() => selectBackground(item._id)}>{String(item._id) === activeBackgroundId ? 'Activo' : 'Seleccionar fondo'}</button>}
           {section !== 'genres' && <button type="button" className="danger" onClick={() => setPendingDelete(item)}>Eliminar</button>}
         </div>
       </article>)}</div>
-      {pagination.totalPages > 1 && <nav className="admin-pagination" aria-label="Paginación de registros"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button><span>Página {page} de {pagination.totalPages}</span><button type="button" disabled={page >= pagination.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button></nav>}</>
+      {pagination.totalPages > 1 && <nav className="admin-pagination" aria-label="Paginación de registros"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}>Anterior</button><span>Página {page} de {pagination.totalPages}</span><button type="button" disabled={page >= pagination.totalPages || loading} onClick={() => setPage((current) => current + 1)}>Siguiente</button></nav>}</>}
     </section>
     {editing && ['books', 'genres'].includes(section) && <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelEditing(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-label={`Editar ${editing.title || editing.name}`}><button type="button" className="admin-modal-close" onClick={cancelEditing} aria-label="Cerrar modal" autoFocus><FiX aria-hidden="true" /></button>{section === 'books' && <BookForm key={`edit-${formVersion}`} categories={categories} onSubmit={save} initial={editing} onCancel={cancelEditing} />}{section === 'genres' && <GenreForm key={`edit-${formVersion}`} onSubmit={save} initial={editing} onCancel={cancelEditing} />}</section></div>}
     <ConfirmDialog open={Boolean(pendingDelete)} itemName={pendingDelete?.title || pendingDelete?.name || pendingDelete?.user?.name || pendingDelete?.content || pendingDelete?.review || 'Registro seleccionado'} busy={deleting} onCancel={() => setPendingDelete(null)} onConfirm={confirmRemove} />

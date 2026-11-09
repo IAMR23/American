@@ -9,16 +9,22 @@ const sortMap = {
   recent: { addedAt: -1, _id: 1 }, oldest: { addedAt: 1, _id: 1 }, title_asc: { title: 1, _id: 1 }, title_desc: { title: -1, _id: 1 }, rating_desc: { ratingsCount: -1, ratingAverage: -1, _id: 1 }, rating_asc: { ratingsCount: -1, ratingAverage: 1, _id: 1 }, reads: { readsCount: -1, _id: 1 },
 };
 
-function publicBookQuery() { return Book.find({ status: 'published' }).populate('authors', 'name').populate('genres', 'name slug'); }
+function publicBookQuery(filter = {}) { return Book.find({ status: 'published', ...filter }).populate('authors', 'name').populate('genres', 'name slug'); }
 
 router.get('/home', asyncHandler(async (_request, response) => {
-  const [mostRead, bestRated, recent, genres, setting] = await Promise.all([
-    publicBookQuery().sort(sortMap.reads).limit(8).lean(), publicBookQuery().sort(sortMap.rating_desc).limit(8).lean(), publicBookQuery().sort(sortMap.recent).limit(8).lean(), Genre.find({ active: true }).sort({ name: 1 }).lean(), SiteSetting.findOne({ key: 'homepage' }).lean(),
-  ]);
-  const byGenre = await Promise.all(genres.slice(0, 8).map(async (genre) => ({ genre, books: await publicBookQuery().where('genres').in([genre._id]).sort(sortMap.recent).limit(6).lean() })));
+  const setting = await SiteSetting.findOne({ key: 'homepage' }).lean();
+  const selectedGenreIds = (setting?.value?.genreIds || []).filter((id) => mongoose.isValidObjectId(id));
+  const genreFilter = selectedGenreIds.length ? { _id: { $in: selectedGenreIds }, active: true } : { active: true };
+  const genres = await Genre.find(genreFilter).sort({ name: 1 }).lean();
+  const selectedOrder = new Map(selectedGenreIds.map((id, index) => [String(id), index]));
+  if (selectedGenreIds.length) genres.sort((left, right) => selectedOrder.get(String(left._id)) - selectedOrder.get(String(right._id)));
+  const byGenre = await Promise.all(genres.slice(0, selectedGenreIds.length || 4).map(async (genre) => ({
+    genre,
+    books: await publicBookQuery({ $or: [{ genres: genre._id }, { category: new RegExp(`^${escapeRegex(genre.name)}$`, 'i') }] }).sort(sortMap.recent).limit(20).lean(),
+  })));
   let background = null;
   if (setting?.value?.backgroundId) background = await Background.findOne({ _id: setting.value.backgroundId, active: true }).lean();
-  response.json({ mostRead, bestRated, recent, byGenre, background });
+  response.json({ byGenre: byGenre.filter((section) => section.books.length), background });
 }));
 
 router.get('/genres', asyncHandler(async (_request, response) => {
@@ -43,7 +49,7 @@ router.get('/home-config', optionalAuth, asyncHandler(async (request, response) 
   const setting = await SiteSetting.findOne({ key: 'homepage' }).lean();
   let background = request.user?.preferredBackground ? await Background.findOne({ _id: request.user.preferredBackground, active: true }).lean() : null;
   if (!background && setting?.value?.backgroundId) background = await Background.findOne({ _id: setting.value.backgroundId, active: true }).lean();
-  response.json({ background });
+  response.json({ background, selectedGenreIds: (setting?.value?.genreIds || []).map(String) });
 }));
 router.get('/backgrounds', authenticate, asyncHandler(async (request, response) => {
   const items = await Background.find({ active: true }).sort({ name: 1 }).lean();

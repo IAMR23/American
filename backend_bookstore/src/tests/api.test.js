@@ -102,6 +102,26 @@ test('administración filtra libros y ya no expone el CRUD de autores', async ()
   await adminAgent.delete(`/api/admin/genres/${genre._id}`).expect(404);
 });
 
+test('home genre selection returns the 20 newest books per carousel', async () => {
+  const genre = await Genre.create({ name: 'Historia', slug: 'historia' });
+  await Book.create(Array.from({ length: 22 }, (_, index) => ({
+    title: `Historia ${index + 1}`,
+    slug: `historia-${index + 1}`,
+    author: 'Autor',
+    category: genre.name,
+    status: 'published',
+    pdfRef: `https://www.dropbox.com/s/test/historia-${index + 1}.pdf?dl=0`,
+    addedAt: new Date(2025, 0, index + 1),
+  })));
+  const saved = await adminAgent.put('/api/admin/home-config').send({ genreIds: [genre.id] }).expect(200);
+  assert.deepEqual(saved.body.selectedGenreIds, [genre.id]);
+  const home = await request(app).get('/api/catalog/home').expect(200);
+  assert.equal(home.body.byGenre.length, 1);
+  assert.equal(home.body.byGenre[0].genre.name, 'Historia');
+  assert.equal(home.body.byGenre[0].books.length, 20);
+  assert.equal(home.body.byGenre[0].books[0].title, 'Historia 22');
+});
+
 test('un usuario normal puede guardar y aplicar su fondo personal', async () => {
   const background = await Background.create({ name: 'Biblioteca azul', active: true, image: { detail: '/uploads/backgrounds/blue.webp', thumbnail: '/uploads/backgrounds/blue-thumb.webp' } });
   await request(app).put(`/api/catalog/backgrounds/${background.id}/select`).expect(401);

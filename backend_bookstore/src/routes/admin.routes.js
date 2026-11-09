@@ -13,6 +13,7 @@ const router = Router();
 router.use(authenticate, requireAdmin);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: Number(process.env.MAX_IMAGE_MB ?? 10) * 1024 * 1024, files: 1 } });
 const makeSlug = (value) => slugify(String(value), { lower: true, strict: true, locale: 'es' });
+const isPrivateDropboxPreview = (value) => /^https?:\/\/previews\.dropbox\.com\//i.test(String(value ?? '').trim());
 const findActiveCategory = (value) => Genre.findOne({ name: new RegExp(`^${escapeRegex(String(value ?? '').trim())}$`, 'i'), active: true });
 const normalizeBookImages = (value, fallback = '') => {
   let images = value;
@@ -61,11 +62,12 @@ router.get('/books/:id', asyncHandler(async (request, response) => { const book 
 router.post('/books', asyncHandler(async (request, response) => {
   const body = request.body;
   const classification = String(body.classification ?? '').trim().toLowerCase();
-  if (!body.title || !body.author || !body.category || !body.pdfRef || !['letras', 'imagenes', 'revistas'].includes(classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
+  if (!body.title || !body.author || !body.category || !body.pdfRef || !['letras', 'imagenes', 'revistas', 'audio-sonido'].includes(classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
   const category = await findActiveCategory(body.category);
   if (!category) throw new ApiError(400, 'Selecciona una categoría activa.');
   const images = normalizeBookImages(body.images, body.imageUrl);
   if (!images.length) throw new ApiError(400, 'Ingresa al menos un enlace de imagen.');
+  if (images.some((image) => isPrivateDropboxPreview(image.url))) throw new ApiError(400, 'El enlace de vista previa de Dropbox es privado. Usa Compartir → Copiar enlace.');
   const data = { title: body.title, slug: makeSlug(body.title), author: body.author, category: category.name, classification, imageUrl: images[0].url, images, pdfRef: body.pdfRef, status: 'published' };
   response.status(201).json({ book: await Book.create(data) });
 }));
@@ -75,10 +77,11 @@ router.patch('/books/:id', asyncHandler(async (request, response) => {
   for (const key of allowed) if (request.body[key] !== undefined) book[key] = request.body[key];
   if (request.body.images !== undefined || request.body.imageUrl !== undefined) {
     book.images = normalizeBookImages(request.body.images, request.body.imageUrl);
+    if (book.images.some((image) => isPrivateDropboxPreview(image.url))) throw new ApiError(400, 'El enlace de vista previa de Dropbox es privado. Usa Compartir → Copiar enlace.');
     book.imageUrl = book.images[0]?.url || '';
   }
   if (request.body.title) book.slug = makeSlug(request.body.title);
-  if (!book.title || !book.author || !book.category || !book.pdfRef || !['letras', 'imagenes', 'revistas'].includes(book.classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
+  if (!book.title || !book.author || !book.category || !book.pdfRef || !['letras', 'imagenes', 'revistas', 'audio-sonido'].includes(book.classification)) throw new ApiError(400, 'Título, enlace del libro, categoría, autor y clasificación son obligatorios.');
   if (request.body.category !== undefined) {
     const category = await findActiveCategory(request.body.category);
     if (!category) throw new ApiError(400, 'Selecciona una categoría activa.');
@@ -120,6 +123,27 @@ router.patch('/genres/:id', asyncHandler(async (request, response) => {
   const item = await Genre.findByIdAndUpdate(request.params.id, changes, { new: true, runValidators: true });
   if (!item) throw new ApiError(404, 'Género no encontrado.');
   response.json({ item });
+}));
+
+router.get('/home-config', asyncHandler(async (_request, response) => {
+  const [genres, setting] = await Promise.all([
+    Genre.find({ active: true }).sort({ name: 1 }).lean(),
+    SiteSetting.findOne({ key: 'homepage' }).lean(),
+  ]);
+  response.json({ genres, selectedGenreIds: (setting?.value?.genreIds || []).map(String) });
+}));
+router.put('/home-config', asyncHandler(async (request, response) => {
+  const genreIds = [...new Set((Array.isArray(request.body.genreIds) ? request.body.genreIds : []).map(String))];
+  if (!genreIds.length) throw new ApiError(400, 'Selecciona al menos un género para la página inicial.');
+  if (genreIds.length > 12 || genreIds.some((id) => !mongoose.isValidObjectId(id))) throw new ApiError(400, 'La selección de géneros no es válida.');
+  const activeGenres = await Genre.countDocuments({ _id: { $in: genreIds }, active: true });
+  if (activeGenres !== genreIds.length) throw new ApiError(400, 'Todos los géneros seleccionados deben estar activos.');
+  const setting = await SiteSetting.findOneAndUpdate(
+    { key: 'homepage' },
+    { $set: { 'value.genreIds': genreIds } },
+    { new: true, upsert: true },
+  );
+  response.json({ selectedGenreIds: setting.value.genreIds.map(String) });
 }));
 
 router.get('/home-sections', asyncHandler(async (request, response) => {
@@ -178,8 +202,8 @@ router.patch('/users/:id', asyncHandler(async (request, response) => {
 
 router.get('/backgrounds', asyncHandler(async (_request, response) => response.json({ items: await Background.find().sort({ createdAt: -1 }).lean(), setting: await SiteSetting.findOne({ key: 'homepage' }).lean() })));
 router.post('/backgrounds', upload.single('image'), asyncHandler(async (request, response) => { const image = await processImage(request.file, 'background'); response.status(201).json({ background: await Background.create({ name: String(request.body.name ?? 'Fondo'), image }) }); }));
-router.put('/backgrounds/:id/select', asyncHandler(async (request, response) => { if (!await Background.exists({ _id: request.params.id, active: true })) throw new ApiError(404, 'Fondo no encontrado.'); const setting = await SiteSetting.findOneAndUpdate({ key: 'homepage' }, { value: { backgroundId: request.params.id } }, { new: true, upsert: true }); response.json({ setting }); }));
-router.delete('/backgrounds/:id', asyncHandler(async (request, response) => { const background = await Background.findByIdAndDelete(request.params.id); if (!background) throw new ApiError(404, 'Fondo no encontrado.'); await removeImage(background.image); await SiteSetting.updateOne({ key: 'homepage', 'value.backgroundId': background._id }, { $set: { value: { backgroundId: null } } }); response.status(204).end(); }));
+router.put('/backgrounds/:id/select', asyncHandler(async (request, response) => { if (!await Background.exists({ _id: request.params.id, active: true })) throw new ApiError(404, 'Fondo no encontrado.'); const setting = await SiteSetting.findOneAndUpdate({ key: 'homepage' }, { $set: { 'value.backgroundId': request.params.id } }, { new: true, upsert: true }); response.json({ setting }); }));
+router.delete('/backgrounds/:id', asyncHandler(async (request, response) => { const background = await Background.findByIdAndDelete(request.params.id); if (!background) throw new ApiError(404, 'Fondo no encontrado.'); await removeImage(background.image); await SiteSetting.updateOne({ key: 'homepage', 'value.backgroundId': background._id }, { $set: { 'value.backgroundId': null } }); response.status(204).end(); }));
 
 router.get('/moderation', asyncHandler(async (request, response) => { const type = request.query.type === 'ratings' ? 'ratings' : 'comments'; const Model = type === 'ratings' ? Rating : Comment; const { page, limit, skip } = pagination(request.query, 20); const [items, total] = await Promise.all([Model.find().populate('user', 'name email status').populate('book', 'title').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(), Model.countDocuments()]); response.json({ type, items, pagination: pageMeta(page, limit, total) }); }));
 router.patch('/moderation/:type/:id', asyncHandler(async (request, response) => { const Model = request.params.type === 'ratings' ? Rating : Comment; const item = await Model.findByIdAndUpdate(request.params.id, { status: request.body.status }, { new: true, runValidators: true }); if (!item) throw new ApiError(404, 'Elemento no encontrado.'); if (Model === Rating) await recalculateRating(item.book); response.json({ item }); }));

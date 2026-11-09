@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
-import { api, assetUrl } from '../lib/api.js';
+import { api, apiBaseUrl, assetUrl } from '../lib/api.js';
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 
@@ -55,7 +55,7 @@ export default function Reader() {
       api(`/me/books/${id}/bookmarks`),
       api('/catalog/home-config').catch(() => ({ background: null })),
       api(`/catalog/books/id/${id}`),
-      pdfjsLib.getDocument({ url: `/api/me/books/${id}/read`, withCredentials: true }).promise,
+      pdfjsLib.getDocument({ url: `${apiBaseUrl}/me/books/${id}/read`, withCredentials: true }).promise,
     ]).then(([progress, marks, config, bookData, pdf]) => {
       if (cancelled) return;
       documentRef.current = pdf;
