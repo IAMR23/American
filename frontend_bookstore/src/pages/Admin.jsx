@@ -173,6 +173,7 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [activeBackgroundId, setActiveBackgroundId] = useState('');
+  const [secondaryBackgroundId, setSecondaryBackgroundId] = useState('');
   const [homeGenreIds, setHomeGenreIds] = useState([]);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -192,7 +193,10 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
       const resultItems = section === 'home' ? result.genres || [] : result.items || [];
       setData(resultItems);
       if (section === 'home') setHomeGenreIds(result.selectedGenreIds || []);
-      if (section === 'backgrounds') setActiveBackgroundId(String(result.setting?.value?.backgroundId?._id || result.setting?.value?.backgroundId || ''));
+      if (section === 'backgrounds') {
+        setActiveBackgroundId(String(result.setting?.value?.backgroundId?._id || result.setting?.value?.backgroundId || ''));
+        setSecondaryBackgroundId(String(result.setting?.value?.secondaryBackgroundId?._id || result.setting?.value?.secondaryBackgroundId || ''));
+      }
       const nextPagination = result.pagination || { page: 1, limit: 10, total: resultItems.length, totalPages: 1 };
       setPagination(nextPagination);
       const lastPage = Math.max(1, nextPagination.totalPages || 1);
@@ -291,11 +295,12 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     finally { setDeleting(false); }
   }
 
-  async function selectBackground(id) {
+  async function selectBackground(id, role) {
     try {
-      await api(`/admin/backgrounds/${id}/select`, { method: 'PUT' });
-      setActiveBackgroundId(String(id));
-      setMessage('Fondo principal actualizado.');
+      await api(`/admin/backgrounds/${id}/select`, { method: 'PUT', body: { role } });
+      if (role === 'secondary') setSecondaryBackgroundId(String(id));
+      else setActiveBackgroundId(String(id));
+      setMessage(role === 'secondary' ? 'Fondo secundario actualizado.' : 'Fondo principal actualizado.');
     } catch (error) { setMessage(error.message); }
   }
 
@@ -336,12 +341,12 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
         <div className="admin-filter-actions"><button type="submit">Buscar</button><button type="button" className="secondary" onClick={clearFilters}>Limpiar</button></div>
       </form>}
       <div className={`admin-list ${section === 'genres' ? 'genre-card-grid' : ''}`}>{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article className={section === 'genres' ? `genre-card ${item.active ? 'active' : 'inactive'}` : ''} key={item._id}>
-        <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? (String(item._id) === activeBackgroundId ? 'Activo · Fondo seleccionado actualmente' : 'Disponible para seleccionar') : itemDetails(item)}</small></div></div>
+        <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? [String(item._id) === activeBackgroundId && 'Principal', String(item._id) === secondaryBackgroundId && 'Secundario'].filter(Boolean).join(' · ') || 'Disponible para seleccionar' : itemDetails(item)}</small></div></div>
         <div className="row-actions">
           {section === 'books' && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
           {section === 'genres' && <><button type="button" className="icon-action edit" onClick={() => startEditing(item)} aria-label={`Editar ${item.name}`} title="Editar"><FiEdit2 aria-hidden="true" /></button><button type="button" className="icon-action status" onClick={() => updateItem(item._id, { active: !item.active })} aria-label={`${item.active ? 'Desactivar' : 'Activar'} ${item.name}`} title={item.active ? 'Desactivar' : 'Activar'}><FiPower aria-hidden="true" /></button></>}
           {section === 'users' && <><label>Rol<select value={item.role} onChange={(event) => updateItem(item._id, { role: event.target.value })}><option value="user">Usuario</option><option value="admin">Administrador</option></select></label><label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="active">Activo</option><option value="suspended">Suspendido</option><option value="deleted">Eliminado</option></select></label></>}
-          {section === 'backgrounds' && <button type="button" className={String(item._id) === activeBackgroundId ? 'active-background' : ''} disabled={String(item._id) === activeBackgroundId} onClick={() => selectBackground(item._id)}>{String(item._id) === activeBackgroundId ? 'Activo' : 'Seleccionar fondo'}</button>}
+          {section === 'backgrounds' && <><button type="button" className={String(item._id) === activeBackgroundId ? 'active-background' : ''} disabled={String(item._id) === activeBackgroundId} onClick={() => selectBackground(item._id, 'primary')}>{String(item._id) === activeBackgroundId ? 'Principal activo' : 'Usar como principal'}</button><button type="button" className={String(item._id) === secondaryBackgroundId ? 'active-background' : ''} disabled={String(item._id) === secondaryBackgroundId} onClick={() => selectBackground(item._id, 'secondary')}>{String(item._id) === secondaryBackgroundId ? 'Secundario activo' : 'Usar como secundario'}</button></>}
           {section !== 'genres' && <button type="button" className="danger" onClick={() => setPendingDelete(item)}>Eliminar</button>}
         </div>
       </article>)}</div>

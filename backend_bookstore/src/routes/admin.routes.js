@@ -202,8 +202,21 @@ router.patch('/users/:id', asyncHandler(async (request, response) => {
 
 router.get('/backgrounds', asyncHandler(async (_request, response) => response.json({ items: await Background.find().sort({ createdAt: -1 }).lean(), setting: await SiteSetting.findOne({ key: 'homepage' }).lean() })));
 router.post('/backgrounds', upload.single('image'), asyncHandler(async (request, response) => { const image = await processImage(request.file, 'background'); response.status(201).json({ background: await Background.create({ name: String(request.body.name ?? 'Fondo'), image }) }); }));
-router.put('/backgrounds/:id/select', asyncHandler(async (request, response) => { if (!await Background.exists({ _id: request.params.id, active: true })) throw new ApiError(404, 'Fondo no encontrado.'); const setting = await SiteSetting.findOneAndUpdate({ key: 'homepage' }, { $set: { 'value.backgroundId': request.params.id } }, { new: true, upsert: true }); response.json({ setting }); }));
-router.delete('/backgrounds/:id', asyncHandler(async (request, response) => { const background = await Background.findByIdAndDelete(request.params.id); if (!background) throw new ApiError(404, 'Fondo no encontrado.'); await removeImage(background.image); await SiteSetting.updateOne({ key: 'homepage', 'value.backgroundId': background._id }, { $set: { 'value.backgroundId': null } }); response.status(204).end(); }));
+router.put('/backgrounds/:id/select', asyncHandler(async (request, response) => {
+  if (!await Background.exists({ _id: request.params.id, active: true })) throw new ApiError(404, 'Fondo no encontrado.');
+  const settingKey = request.body.role === 'secondary' ? 'value.secondaryBackgroundId' : 'value.backgroundId';
+  const setting = await SiteSetting.findOneAndUpdate({ key: 'homepage' }, { $set: { [settingKey]: request.params.id } }, { new: true, upsert: true });
+  response.json({ setting });
+}));
+router.delete('/backgrounds/:id', asyncHandler(async (request, response) => {
+  const background = await Background.findByIdAndDelete(request.params.id); if (!background) throw new ApiError(404, 'Fondo no encontrado.');
+  await removeImage(background.image);
+  await Promise.all([
+    SiteSetting.updateOne({ key: 'homepage', 'value.backgroundId': background._id }, { $unset: { 'value.backgroundId': '' } }),
+    SiteSetting.updateOne({ key: 'homepage', 'value.secondaryBackgroundId': background._id }, { $unset: { 'value.secondaryBackgroundId': '' } }),
+  ]);
+  response.status(204).end();
+}));
 
 router.get('/moderation', asyncHandler(async (request, response) => { const type = request.query.type === 'ratings' ? 'ratings' : 'comments'; const Model = type === 'ratings' ? Rating : Comment; const { page, limit, skip } = pagination(request.query, 20); const [items, total] = await Promise.all([Model.find().populate('user', 'name email status').populate('book', 'title').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(), Model.countDocuments()]); response.json({ type, items, pagination: pageMeta(page, limit, total) }); }));
 router.patch('/moderation/:type/:id', asyncHandler(async (request, response) => { const Model = request.params.type === 'ratings' ? Rating : Comment; const item = await Model.findByIdAndUpdate(request.params.id, { status: request.body.status }, { new: true, runValidators: true }); if (!item) throw new ApiError(404, 'Elemento no encontrado.'); if (Model === Rating) await recalculateRating(item.book); response.json({ item }); }));

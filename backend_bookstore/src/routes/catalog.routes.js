@@ -23,8 +23,10 @@ router.get('/home', asyncHandler(async (_request, response) => {
     books: await publicBookQuery({ $or: [{ genres: genre._id }, { category: new RegExp(`^${escapeRegex(genre.name)}$`, 'i') }] }).sort(sortMap.recent).limit(20).lean(),
   })));
   let background = null;
+  let secondaryBackground = null;
   if (setting?.value?.backgroundId) background = await Background.findOne({ _id: setting.value.backgroundId, active: true }).lean();
-  response.json({ byGenre: byGenre.filter((section) => section.books.length), background });
+  if (setting?.value?.secondaryBackgroundId) secondaryBackground = await Background.findOne({ _id: setting.value.secondaryBackgroundId, active: true }).lean();
+  response.json({ byGenre: byGenre.filter((section) => section.books.length), background, secondaryBackground });
 }));
 
 router.get('/genres', asyncHandler(async (_request, response) => {
@@ -49,7 +51,8 @@ router.get('/home-config', optionalAuth, asyncHandler(async (request, response) 
   const setting = await SiteSetting.findOne({ key: 'homepage' }).lean();
   let background = request.user?.preferredBackground ? await Background.findOne({ _id: request.user.preferredBackground, active: true }).lean() : null;
   if (!background && setting?.value?.backgroundId) background = await Background.findOne({ _id: setting.value.backgroundId, active: true }).lean();
-  response.json({ background, selectedGenreIds: (setting?.value?.genreIds || []).map(String) });
+  const secondaryBackground = setting?.value?.secondaryBackgroundId ? await Background.findOne({ _id: setting.value.secondaryBackgroundId, active: true }).lean() : null;
+  response.json({ background, secondaryBackground, selectedGenreIds: (setting?.value?.genreIds || []).map(String) });
 }));
 router.get('/backgrounds', authenticate, asyncHandler(async (request, response) => {
   const items = await Background.find({ active: true }).sort({ name: 1 }).lean();

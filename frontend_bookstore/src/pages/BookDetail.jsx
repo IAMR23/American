@@ -3,6 +3,7 @@ import { FiHeart, FiMessageCircle, FiThumbsDown } from 'react-icons/fi';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api, assetUrl } from '../lib/api.js';
+import { openReaderFullscreen } from '../lib/fullscreen.js';
 
 function CommentCard({ item, user, replyingTo, replyText, setReplyText, onReply, onCancelReply, onPublishReply, onReact, nested = false }) {
   return <article className={`conversation-comment ${nested ? 'reply' : ''}`}>
@@ -49,7 +50,7 @@ export default function BookDetail() {
   if (error) return <main className="state error">{error}</main>;
   if (!book) return <main className="state">Abriendo ficha…</main>;
 
-  const protectedLink = (label, to) => user ? <Link className="button" to={to}>{label}</Link> : <Link className="button" to="/acceso" state={{ from: location.pathname }}>Inicia sesión para {label.toLowerCase()}</Link>;
+  const protectedLink = (label, to) => user ? <Link className="button" to={to} onClick={openReaderFullscreen}>{label}</Link> : <Link className="button" to="/acceso" state={{ from: location.pathname }}>Inicia sesión para {label.toLowerCase()}</Link>;
 
   async function favorite() {
     try {

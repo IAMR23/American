@@ -122,6 +122,18 @@ test('home genre selection returns the 20 newest books per carousel', async () =
   assert.equal(home.body.byGenre[0].books[0].title, 'Historia 22');
 });
 
+test('admin keeps independent primary and secondary backgrounds', async () => {
+  const [primary, secondary] = await Background.create([
+    { name: 'Principal', image: { detail: '/uploads/backgrounds/primary.webp' } },
+    { name: 'Secundario', image: { detail: '/uploads/backgrounds/secondary.webp' } },
+  ]);
+  await adminAgent.put(`/api/admin/backgrounds/${primary.id}/select`).send({ role: 'primary' }).expect(200);
+  await adminAgent.put(`/api/admin/backgrounds/${secondary.id}/select`).send({ role: 'secondary' }).expect(200);
+  const config = await request(app).get('/api/catalog/home-config').expect(200);
+  assert.equal(config.body.background.name, 'Principal');
+  assert.equal(config.body.secondaryBackground.name, 'Secundario');
+});
+
 test('un usuario normal puede guardar y aplicar su fondo personal', async () => {
   const background = await Background.create({ name: 'Biblioteca azul', active: true, image: { detail: '/uploads/backgrounds/blue.webp', thumbnail: '/uploads/backgrounds/blue-thumb.webp' } });
   await request(app).put(`/api/catalog/backgrounds/${background.id}/select`).expect(401);
