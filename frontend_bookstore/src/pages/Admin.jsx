@@ -8,6 +8,15 @@ const sections = ['books', 'genres', 'home', 'users', 'backgrounds'];
 const labels = { books: 'Libros', genres: 'Géneros', home: 'Inicio', users: 'Usuarios', backgrounds: 'Fondos' };
 const emptyFilters = { q: '', author: '', category: '', classification: '' };
 
+function AdminBookCover({ book }) {
+  const source = book.cover?.thumbnail || book.cover?.detail || book.images?.[0]?.url || book.imageUrl || '';
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [source]);
+  return <div className="admin-book-cover">
+    {source && !failed ? <img src={assetUrl(source)} alt={`Portada de ${book.title}`} loading="lazy" onError={() => setFailed(true)} /> : <div><FiImage aria-hidden="true" /><span>Sin portada disponible</span></div>}
+  </div>;
+}
+
 function MultiSelector({ name, label, hint, options, initialSelected = [] }) {
   const [selected, setSelected] = useState(() => initialSelected.map((value) => value?._id || value));
   const selectedOptions = options.filter((option) => selected.includes(option._id));
@@ -213,6 +222,15 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
   useEffect(() => { load(); }, [section, page, filters]);
 
   useEffect(() => {
+    if (!['books', 'genres'].includes(section)) return undefined;
+    const timeout = window.setTimeout(() => {
+      setPage(1);
+      setFilters({ ...filterDraft });
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [filterDraft, section]);
+
+  useEffect(() => {
     if (!editing) return undefined;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => { if (event.key === 'Escape') cancelEditing(); };
@@ -236,12 +254,6 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
     setFilterDraft({ ...emptyFilters }); setFilters({ ...emptyFilters });
     setPagination({ page: 1, limit: 10, total: 0, totalPages: 1 });
     setFormVersion((current) => current + 1);
-  }
-
-  function applyFilters(event) {
-    event.preventDefault();
-    setPage(1);
-    setFilters({ ...filterDraft });
   }
 
   function clearFilters() {
@@ -335,15 +347,18 @@ export default function Admin({ initialSection = 'books', standalone = false }) 
       {section === 'backgrounds' && <BackgroundForm key={`background-${formVersion}`} imageFile={backgroundFile} setImageFile={setBackgroundFile} onSubmit={(event) => save(event, null)} />}
 
       {section !== 'home' && <><div className="admin-list-heading"><h3>Registros existentes</h3>{loading && <span>Cargando…</span>}</div>
-      {['books', 'genres'].includes(section) && <form className="admin-list-filters" onSubmit={applyFilters}>
+      {['books', 'genres'].includes(section) && <div className="admin-list-filters">
         <label>{section === 'books' ? 'Nombre del libro' : 'Nombre del género'}<input value={filterDraft.q} onChange={(event) => setFilterDraft((current) => ({ ...current, q: event.target.value }))} placeholder="Escribe un nombre" /></label>
         {section === 'books' && <><label>Autor<input value={filterDraft.author} onChange={(event) => setFilterDraft((current) => ({ ...current, author: event.target.value }))} placeholder="Nombre del autor" /></label><label>Género<input value={filterDraft.category} onChange={(event) => setFilterDraft((current) => ({ ...current, category: event.target.value }))} placeholder="Nombre del género" /></label><label>Clasificación<select value={filterDraft.classification} onChange={(event) => setFilterDraft((current) => ({ ...current, classification: event.target.value }))}><option value="">Todas</option><option value="letras">Letras</option><option value="imagenes">Imágenes</option><option value="revistas">Revistas</option><option value="audio-sonido">Audio y Sonido</option></select></label></>}
-        <div className="admin-filter-actions"><button type="submit">Buscar</button><button type="button" className="secondary" onClick={clearFilters}>Limpiar</button></div>
-      </form>}
-      <div className={`admin-list ${section === 'genres' ? 'genre-card-grid' : ''}`}>{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => <article className={section === 'genres' ? `genre-card ${item.active ? 'active' : 'inactive'}` : ''} key={item._id}>
+        <div className="filter-debounce-status"><span>Los resultados se actualizan automáticamente al escribir.</span><button type="button" className="secondary" onClick={clearFilters}>Limpiar filtros</button></div>
+      </div>}
+      <div className={`admin-list ${section === 'books' ? 'book-admin-grid' : section === 'genres' ? 'genre-card-grid' : ''}`}>{!loading && !data.length && <div className="empty">No hay registros en esta sección.</div>}{data.map((item) => section === 'books' ? <article className="admin-book-card" key={item._id}>
+        <AdminBookCover book={item} />
+        <div className="admin-book-card-copy"><strong>{item.title || 'Libro sin título'}</strong><small>{itemDetails(item)}</small><span>{item.classification || 'Sin clasificación'}</span></div>
+        <div className="row-actions"><button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button><button type="button" className="danger" onClick={() => setPendingDelete(item)}>Eliminar</button></div>
+      </article> : <article className={section === 'genres' ? `genre-card ${item.active ? 'active' : 'inactive'}` : ''} key={item._id}>
         <div className="admin-record-summary">{section === 'backgrounds' && item.image?.thumbnail && <img className="background-record-preview" src={item.image.thumbnail} alt={`Vista previa de ${item.name}`} />}<div><strong>{item.title || item.name || item.user?.name || 'Registro'}</strong><small>{section === 'backgrounds' ? [String(item._id) === activeBackgroundId && 'Principal', String(item._id) === secondaryBackgroundId && 'Secundario'].filter(Boolean).join(' · ') || 'Disponible para seleccionar' : itemDetails(item)}</small></div></div>
         <div className="row-actions">
-          {section === 'books' && <button type="button" onClick={() => startEditing(item)}><FiEdit2 aria-hidden="true" /> Editar</button>}
           {section === 'genres' && <><button type="button" className="icon-action edit" onClick={() => startEditing(item)} aria-label={`Editar ${item.name}`} title="Editar"><FiEdit2 aria-hidden="true" /></button><button type="button" className="icon-action status" onClick={() => updateItem(item._id, { active: !item.active })} aria-label={`${item.active ? 'Desactivar' : 'Activar'} ${item.name}`} title={item.active ? 'Desactivar' : 'Activar'}><FiPower aria-hidden="true" /></button></>}
           {section === 'users' && <><label>Rol<select value={item.role} onChange={(event) => updateItem(item._id, { role: event.target.value })}><option value="user">Usuario</option><option value="admin">Administrador</option></select></label><label>Estado<select value={item.status} onChange={(event) => updateItem(item._id, { status: event.target.value })}><option value="active">Activo</option><option value="suspended">Suspendido</option><option value="deleted">Eliminado</option></select></label></>}
           {section === 'backgrounds' && <><button type="button" className={String(item._id) === activeBackgroundId ? 'active-background' : ''} disabled={String(item._id) === activeBackgroundId} onClick={() => selectBackground(item._id, 'primary')}>{String(item._id) === activeBackgroundId ? 'Principal activo' : 'Usar como principal'}</button><button type="button" className={String(item._id) === secondaryBackgroundId ? 'active-background' : ''} disabled={String(item._id) === secondaryBackgroundId} onClick={() => selectBackground(item._id, 'secondary')}>{String(item._id) === secondaryBackgroundId ? 'Secundario activo' : 'Usar como secundario'}</button></>}
